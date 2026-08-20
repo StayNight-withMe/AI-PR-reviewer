@@ -56,3 +56,61 @@ export const CLI = {
   /** Default scope: the current branch against its base, not the whole project. */
   DEFAULT_MODE: "branch",
 };
+/** ----------------------------------- gh ---------------------------------- */
+/** The GitHub CLI integration: `mode=pr` reads a pull request through `gh` and reviews exactly… */
+export const GH = {
+  BIN: "gh",
+  /** Env var that overrides the binary (a portable install, a wrapper). */
+  ENV_BIN: "PR_REVIEW_GH",
+  /** Default remote name the PR branch is fetched from. */
+  DEFAULT_REMOTE: "origin",
+  /** `gh pr view <ref> --json <fields>`: everything the page header needs. */
+  ARGS_VIEW: ["pr", "view"],
+  /** `gh pr list --json ...`: what the agent sees before picking one. */
+  ARGS_LIST: ["pr", "list"],
+  /** The light fields `gh pr list` returns. */
+  LIST_FIELDS: ["number", "title", "state", "isDraft", "headRefName", "baseRefName", "url", "author", "updatedAt"],
+  /** `gh pr list --state <x>`: the states the tool accepts. */
+  LIST_STATES: ["open", "closed", "merged", "all"],
+  LIST_DEFAULT_LIMIT: 20,
+  LIST_MAX_LIMIT: 100,
+  /** A cheap check that `gh` is logged in before a PR is read. */
+  ARGS_AUTH_STATUS: ["auth", "status"],
+  ARGS_JSON: ["--json"],
+  ARGS_REPO: ["--repo"],
+  /** The fields requested from `gh pr view`; keep in sync with `parsePullRequest`. */
+  FIELDS: [
+    "number",
+    "title",
+    "url",
+    "state",
+    "isDraft",
+    "baseRefName",
+    "headRefName",
+    "baseRefOid",
+    "headRefOid",
+    "author",
+    "body",
+    "additions",
+    "deletions",
+    "changedFiles",
+    "mergeable",
+  ],
+  /** Fetch a PR head into a local ref without checking it out. */
+  ARGS_FETCH: ["fetch", "--no-tags"],
+  /** A local ref that pins the fetched PR head; never the moving remote branch. */
+  HEAD_REF_PREFIX: "refs/pr-review/pr-",
+  /** A local ref that pins the fetched PR base; never `origin/<branch>`. */
+  BASE_REF_PREFIX: "refs/pr-review/base-",
+  /** Where the PR head is fetched from, when the source branch is on the base repo. */
+  HEAD_REF_TEMPLATE: "refs/pull/{number}/head",
+  TITLE_PREFIX: "PR #",
+  /** Identity of a PR in the review id, so two PRs of a repo never collide. */
+  SCOPE_PREFIX: "pr",
+  ERROR_NO_BIN:
+    "The GitHub CLI (gh) was not found. Install it from https://cli.github.com and run `gh auth login`.",
+  ERROR_NOT_AUTHED: "The GitHub CLI is not authenticated. Run `gh auth login` and try again.",
+  ERROR_NO_PR: "No pull request found for this repository.",
+  ERROR_BAD_JSON: "The GitHub CLI returned an unreadable pull request.",
+  ERROR_FETCH_FAILED: "Could not fetch the pull request head: ",
+};
