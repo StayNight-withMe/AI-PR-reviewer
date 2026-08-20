@@ -1,0 +1,54 @@
+# PR Review for Visual Studio 2022
+A menu button opens a dockable tab that hosts the review page in **WebView2**.
+The page is the same localhost app the MCP server and the AI use, so nothing is
+duplicated: this project only starts the bundled Node server and shows its URL.
+## What it does
+- **PR Review → Open review of the current branch** (Tools menu) opens the window
+  if it is not open yet, starts the server once, and points WebView2 at the page.
+- The window title shows the branch and the change size, e.g.
+  `PR Review: feature/login (+120 / -34)`.
+- Closing Visual Studio stops the server; the page disappears with it.
+Scope is **the current branch against its base** by default — the review shows
+only what this branch changed, not the whole project.
+## Requirements
+- Visual Studio 2022 (17.x) with the **Visual Studio extension development**
+  workload (it provides the VSIX build targets).
+- Node.js on `PATH`, or `PR_REVIEW_NODE` pointing at `node.exe`.
+## Build
+The project builds to a DLL with the .NET SDK:
+```powershell
+dotnet build
+```
+To produce the installable **`.vsix`**, use MSBuild from a machine with the
+extension-development workload:
+```powershell
+msbuild PrReview.VisualStudio.csproj /p:Configuration=Release
+```
+The `.vsix` lands in `bin\Release\net48\`. Double-click it to install.
+## Bundle the server into the VSIX
+The extension looks for the server at
+`<extension install dir>\server\src\cli.js`. From the repository root, one
+script adds the engine to this project's `server\` folder:
+```sh
+node scripts/bundle-server.mjs visualstudio
+```
+It copies `src\` (including `assets\`), `package.json` and a `BUNDLE.json` version
+stamp — but not `node_modules`, which the launcher does not need. To ship the
+files inside the `.vsix`, include them in the project:
+```xml
+<ItemGroup>
+  <Content Include="server\**\*" />
+</ItemGroup>
+```
+During development, skip the copy and point the package at a checkout instead:
+```powershell
+$env:PR_REVIEW_CLI = "Z:\Alpha Dev\pr-review-mcp\src\cli.js"
+```
+## How it talks to the server
+The server prints one machine-readable line when the page is ready:
+```
+PR_REVIEW_READY {"url":"http://127.0.0.1:54321/","reviewId":"...","port":54321,"branch":"...",
+                 "additions":120,"deletions":34,...}
+```
+`ServerRunner` reads that line and hands the URL to the WebView. A launch error
+is reported on the same channel as `PR_REVIEW_ERROR <message>`.

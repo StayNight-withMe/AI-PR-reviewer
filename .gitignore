@@ -1,0 +1,27 @@
+node_modules/
+npm-debug.log*
+yarn-error.log*
+# Review artifacts (written to the OS temp dir, but keep the old folder out too)
+.pr-review/
+.pr-review-mcp/
+# Editor extension build output
+editors/vscode/out/
+editors/vscode/server/
+editors/visualstudio/bin/
+editors/visualstudio/obj/
+editors/visualstudio/server/
+editors/jetbrains/server/
+editors/jetbrains/.gradle/
+editors/jetbrains/build/
+# Python
+__pycache__/
+*.pyc
+# Selenium / browser drivers
+geckodriver/
+chromedriver/
+*.log
+# OS
+.DS_Store
+Thumbs.db
+# History builder scratch
+.history-*

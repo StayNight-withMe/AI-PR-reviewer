@@ -1,0 +1,10 @@
+[
+  {
+    "keys": ["ctrl+alt+r"],
+    "command": "pr_review_open"
+  },
+  {
+    "keys": ["ctrl+alt+shift+r"],
+    "command": "pr_review_stop"
+  }
+]

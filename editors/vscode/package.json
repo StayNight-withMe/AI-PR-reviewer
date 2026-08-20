@@ -1,0 +1,85 @@
+{
+  "name": "pr-review",
+  "displayName": "PR Review",
+  "description": "Open a GitHub-style review of your current branch in a tab, with the same page the MCP server and the AI use.",
+  "version": "0.1.0",
+  "publisher": "pr-review",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "keywords": ["review", "git", "branch", "diff", "pull request"],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "prReview.open",
+        "title": "PR Review: Open review of the current branch",
+        "icon": "$(git-pull-request)"
+      },
+      {
+        "command": "prReview.close",
+        "title": "PR Review: Close the review tab"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "prReview.open",
+          "group": "navigation",
+          "when": "resourceScheme == file"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "prReview.close",
+          "when": "prReview.active"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "PR Review",
+      "properties": {
+        "prReview.nodePath": {
+          "type": "string",
+          "default": "node",
+          "description": "Path to the Node.js executable that runs the review server."
+        },
+        "prReview.cliPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to src/cli.js. Empty means the bundled copy next to the extension."
+        },
+        "prReview.mode": {
+          "type": "string",
+          "enum": ["branch", "uncommitted", "range", "all"],
+          "default": "branch",
+          "description": "What a click reviews. 'branch' is the current branch against its base."
+        },
+        "prReview.base": {
+          "type": "string",
+          "default": "",
+          "description": "Base ref for the branch review. Empty lets the server pick origin/dev, origin/main, ..."
+        },
+        "prReview.showIn": {
+          "type": "string",
+          "enum": ["webview", "simpleBrowser", "external"],
+          "default": "webview",
+          "description": "Where the review opens: inside the editor tab, the built-in Simple Browser, or the system browser."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -w -p ./",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0"
+  }
+}
