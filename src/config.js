@@ -322,3 +322,18 @@ export const GIT = {
   ERROR_NOT_INSTALLED: "git executable not found. Install Git and make sure it is on PATH.",
   ERROR_NOT_A_REPO: "Not a git repository: ",
 };
+/** -------------------------------- artifacts ------------------------------ */
+export const ARTIFACTS = {
+  REVIEW_JSON: "review.json",
+  REVIEW_MARKDOWN: "review.md",
+  IMAGES_DIR: "images",
+  DISPATCH_PROMPT: "dispatch-prompt.md",
+};
+/** ------------------------------ mcp tool limits --------------------------- */
+/** Defaults of the MCP tool schemas, so the defaults and the text agree. */
+export const TOOLS = {
+  AWAIT_DEFAULT_SECONDS: 120,
+  AWAIT_MAX_SECONDS: 3600,
+  SCOPE_LIST_DEFAULT: 50,
+  SCOPE_LIST_MAX: 500,
+};
