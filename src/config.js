@@ -397,3 +397,15 @@ export const SYMBOL_INDEX = {
   GREP_NAME_FLAG: "-e",
   GREP_PATH_FLAG: "--",
 };
+export const SYMBOL_KIND = {
+  CLASS: "class",
+  INTERFACE: "interface",
+  ENUM: "enum",
+  RECORD: "record",
+  STRUCT: "struct",
+  CONST: "const",
+  PROPERTY: "property",
+  METHOD: "method",
+  SYMBOL: "symbol",
+  DEFINITION: "definition",
+};
