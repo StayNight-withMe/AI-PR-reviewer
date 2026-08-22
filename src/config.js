@@ -337,3 +337,39 @@ export const TOOLS = {
   SCOPE_LIST_DEFAULT: 50,
   SCOPE_LIST_MAX: 500,
 };
+/** ------------------------------- agent handoff --------------------------- */
+/** Connection back to the OpenCode session that opened the review, so a submit can start the fix… */
+export const AGENT = {
+  BIN: "opencode",
+  ARGS: { RUN: ["run"], API: ["api", "session.prompt"], API_GET: ["api", "session.get"] },
+  FLAG_SESSION: "--session",
+  /** `--param sessionID=<id>` addresses one exact session. */
+  FLAG_PARAM: "--param",
+  PARAM_SESSION: "sessionID={id}",
+  /** OpenCode puts the id of the session that made the MCP call into the call metadata under this… */
+  META_SESSION_KEY: "ai.opencode/sessionID",
+  /** The API expects the prompt as a plain text body. */
+  BODY_FIELD: "text",
+  SHELL_PLATFORMS: { WIN32: "win32" },
+  /** Grace window before assuming the child started successfully. */
+  SPAWN_GRACE_MS: 1200,
+  ERROR_NO_SESSION:
+    "No OpenCode session found. Open the review from a session (start_review) to enable auto-dispatch.",
+  ERROR_NO_BINARY: "OpenCode CLI not found, so the fix turn could not be started.",
+  ERROR_API_FAILED: "The OpenCode API rejected the fix turn.",
+  ERROR_SESSION_MISSING:
+    "The OpenCode session that opened this review is gone, so the fix turn could not be delivered.",
+  /** Native CLI locations, tried before falling back to the `.cmd` shim. */
+  BINARY_CANDIDATES: [
+    "%APPDATA%/npm/node_modules/@opencode/cli-windows-x64/bin/opencode.exe",
+    "%LOCALAPPDATA%/npm/node_modules/@opencode/cli-windows-x64/bin/opencode.exe",
+    "%PROGRAMFILES%/opencode/opencode.exe",
+    "/usr/local/bin/opencode",
+    "/opt/homebrew/bin/opencode",
+  ],
+  ENV_PLACEHOLDER: {
+    APP_DATA: "%APPDATA%",
+    LOCAL_APP_DATA: "%LOCALAPPDATA%",
+    PROGRAM_FILES: "%PROGRAMFILES%",
+  },
+};
