@@ -373,3 +373,27 @@ export const AGENT = {
     PROGRAM_FILES: "%PROGRAMFILES%",
   },
 };
+/** ------------------------------ symbol index ----------------------------- */
+export const SYMBOL_INDEX = {
+  MAX_FILES: 4000,
+  MAX_FILE_BYTES: 400_000,
+  MAX_USAGE_FILES: 60,
+  MIN_NAME_LENGTH: 2,
+  MAX_POPOVER_USAGES: 12,
+  IGNORED_DIR: "node_modules/",
+  NEWLINE_CODE: 0x0a,
+  GENERIC_SUFFIX: /<.*$/,
+  /** Bare identifier matcher for usage counting and cell lookups. */
+  WORD: /\b[A-Za-z_]\w*\b/g,
+  /** Usage lines kept per file, enough for the popover's line links. */
+  MAX_USAGE_LINES: 12,
+  WHERE_SUFFIX: /\s+where\b.*$/,
+  IDENTIFIER: /^[A-Za-z_]\w*$/,
+  IDENTIFIER_SIMPLE: /^[A-Za-z_]\w*$/,
+  LOWER_START: /^[a-z]/,
+  COMMENT_LINE: "//",
+  COMMENT_STAR: "*",
+  COMMENT_BLOCK: "/*",
+  GREP_NAME_FLAG: "-e",
+  GREP_PATH_FLAG: "--",
+};
