@@ -516,3 +516,16 @@ export const RENDER = {
   HTML_GT: "&gt;",
   HTML_QUOTE: "&quot;",
 };
+/** ---------------------------------- gaps ---------------------------------- */
+/** Side of a hunk a hidden region of unchanged lines belongs to. */
+export const GAP = {
+  UP: "up",
+  DOWN: "down",
+};
+/** Folding policy for the unchanged lines around a diff hunk. */
+export const CONTEXT = {
+  /** A region is hidden only when it holds MORE non-empty lines than this. */
+  DEFAULT_COLLAPSE_LINES: 10,
+  /** This value disables folding: every region is shown expanded. */
+  NEVER_COLLAPSE: 0,
+};
