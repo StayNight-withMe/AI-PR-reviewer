@@ -497,3 +497,22 @@ export const DIFF = {
     php: "php", dockerfile: "dockerfile", env: "properties", gitignore: "properties",
   },
 };
+/** --------------------------------- render -------------------------------- */
+export const RENDER = {
+  ID_LENGTH: 12,
+  DEFAULT_TITLE_SEPARATOR: " · ",
+  TITLE_SUFFIX: " · PR Review",
+  LANG: "en",
+  META_CHARSET: "utf-8",
+  META_VIEWPORT: "width=device-width, initial-scale=1",
+  SCRIPT_TYPE_JSON: "application/json",
+  SAFE_JSON_LT: "\\u003c",
+  REPO_FALLBACK: "repository",
+  REMOTE_HTTPS_PREFIX: "https://",
+  HASH_ALGORITHM: "sha1",
+  HASH_ENCODING: "hex",
+  HTML_AMP: "&amp;",
+  HTML_LT: "&lt;",
+  HTML_GT: "&gt;",
+  HTML_QUOTE: "&quot;",
+};
