@@ -579,3 +579,13 @@ export const MODE_LABELS = {
   all: "All commits on branch",
   pr: "Pull request",
 };
+export const REVIEW_STATE = {
+  APPROVE: "APPROVE",
+  REQUEST_CHANGES: "REQUEST_CHANGES",
+  COMMENT: "COMMENT",
+};
+export const REVIEW_STATE_LABEL = {
+  APPROVE: "Approved",
+  REQUEST_CHANGES: "Changes requested",
+  COMMENT: "Commented",
+};
