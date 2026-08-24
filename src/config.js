@@ -529,3 +529,37 @@ export const CONTEXT = {
   /** This value disables folding: every region is shown expanded. */
   NEVER_COLLAPSE: 0,
 };
+/** ---------------------------------- ui ----------------------------------- */
+export const UI = {
+  CONTEXT_STEP: 20,
+  DIFF_BLOCK_CELLS: 5,
+  TOAST_MS: 2600,
+  FLASH_MS: 900,
+  MAX_COMMENT_PREVIEW_LINES: 2,
+  MAX_POPOVER_USAGES: 12,
+  POPOVER_WIDTH: 560,
+  POPOVER_MAX_HEIGHT: 360,
+  POPOVER_MARGIN: 8,
+  POPOVER_OFFSET: 6,
+  HYDRATION_CHUNK: 4,
+  HYDRATION_DELAY_MS: 0,
+  /** Viewed collapse fade, mirrors `viewedFade` in styles.css. */
+  VIEWED_ANIM_MS: 160,
+  /** localStorage key of the device-wide settings (mirrors client constants). */
+  SETTINGS_KEY: "pr-review:settings:v1",
+  SUPPRESS_CLICK_MS: 300,
+  /** Delay before re-focusing a freshly opened tab. */
+  FOCUS_RETRY_MS: 60,
+  /** Delay before a scroll is checked and corrected. */
+  SCROLL_SETTLE_MS: 450,
+  /** How far a file may drift from the top before the scroll is repeated. */
+  SCROLL_SETTLE_TOLERANCE: 40,
+  OBSERVER_MARGIN: "300px",
+  STORAGE_PREFIX: "pr-review:v3:",
+  THEME_STORAGE_KEY: "pr-review-theme",
+  DEFAULT_THEME: "dark",
+  TARGET_NEW: "pr-file",
+  TARGET_SELF: "_self",
+  TARGET_BLANK: "_blank",
+  NOOPENER: "noopener",
+};
