@@ -589,3 +589,16 @@ export const REVIEW_STATE_LABEL = {
   REQUEST_CHANGES: "Changes requested",
   COMMENT: "Commented",
 };
+export const REVIEW_STATE_DOT = {
+  APPROVE: "dot-approve",
+  REQUEST_CHANGES: "dot-request",
+  COMMENT: "dot-comment",
+};
+export const DIFF_MODE = {
+  UNIFIED: "unified",
+  SPLIT: "split",
+};
+export const TREE_OPEN = {
+  CURRENT: "current",
+  NEW: "new",
+};
