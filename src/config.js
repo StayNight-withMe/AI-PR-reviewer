@@ -563,3 +563,19 @@ export const UI = {
   TARGET_BLANK: "_blank",
   NOOPENER: "noopener",
 };
+export const MODE = {
+  UNCOMMITTED: "uncommitted",
+  COMMITS: "commits",
+  BRANCH: "branch",
+  RANGE: "range",
+  ALL: "all",
+  PR: "pr",
+};
+export const MODE_LABELS = {
+  uncommitted: "Uncommitted changes",
+  branch: "Branch commits",
+  commits: "Selected commits",
+  range: "Commit range",
+  all: "All commits on branch",
+  pr: "Pull request",
+};
