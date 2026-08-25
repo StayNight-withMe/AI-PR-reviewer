@@ -602,3 +602,16 @@ export const TREE_OPEN = {
   CURRENT: "current",
   NEW: "new",
 };
+/** Where the "View file" button opens the file. */
+export const VIEW_FILE_MODE = {
+  /** A separate browser tab (the default). */
+  TAB: "tab",
+  /** The same page: the review scrolls to the file. */
+  SAME: "same",
+  /** An embedded panel inside the review, like a tab of its own. */
+  PANEL: "panel",
+};
+export const SYMBOL_LINKS = {
+  ON: "on",
+  OFF: "off",
+};
