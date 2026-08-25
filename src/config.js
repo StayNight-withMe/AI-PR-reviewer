@@ -626,3 +626,17 @@ export const DISPATCH_MODE = {
 export const TREE = {
   STATUS_UNCHANGED: "unchanged",
 };
+export const FILEVIEW = {
+  ENCODING: "utf8",
+  ERROR_CANNOT_READ: "Cannot read ",
+  HUNK_NEW_LINE: /\+(\d+)(?:,\d+)?/,
+  DIFF_HEADER_OLD: "---",
+  DIFF_HEADER_NEW: "+++",
+};
+export const ASSETS = {
+  JS: ["constants.js", "core.js", "highlight.js", "tree.js", "tree-resize.js", "diff.js", "comments.js", "search.js", "commits.js", "settings.js", "occurrences.js", "pathtip.js", "main.js"],
+  BUNDLE: "hljs-bundle.js",
+  STYLES: "styles.css",
+  /** The standalone file viewer: its own script plus the shared occurrences. */
+  VIEWER_JS: ["occurrences.js", "viewer.js"],
+};
