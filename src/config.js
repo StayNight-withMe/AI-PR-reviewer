@@ -615,3 +615,14 @@ export const SYMBOL_LINKS = {
   ON: "on",
   OFF: "off",
 };
+export const THEME = {
+  DARK: "dark",
+  LIGHT: "light",
+};
+export const DISPATCH_MODE = {
+  DISPATCH: "dispatch",
+  PATH: "path",
+};
+export const TREE = {
+  STATUS_UNCHANGED: "unchanged",
+};
