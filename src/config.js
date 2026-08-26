@@ -640,3 +640,7 @@ export const ASSETS = {
   /** The standalone file viewer: its own script plus the shared occurrences. */
   VIEWER_JS: ["occurrences.js", "viewer.js"],
 };
+export const FILES = {
+  ASSETS_DIR: "assets",
+  ENCODING: "utf8",
+};
