@@ -64,3 +64,19 @@ export async function currentBranch(repoPath) {
   const { ok, stdout } = await git(repoPath, GIT.ARGS.BRANCH_SHOW);
   return ok ? stdout.trim() || GIT.DEFAULT_REF : GIT.DEFAULT_REF;
 }
+export async function remoteUrl(repoPath) {
+  const { ok, stdout } = await git(repoPath, GIT.ARGS.REMOTE);
+  return ok ? stdout.trim() : null;
+}
+/** The branches of the repository, remote ones included. */
+export async function listBranches(repoPath) {
+  const { ok, stdout } = await git(repoPath, GIT.ARGS.BRANCHES);
+  if (!ok) return [];
+
+  return [...new Set(
+    stdout
+      .split(P.NEWLINE)
+      .map((line) => line.trim())
+      .filter((name) => name && name !== GIT.HEAD_ALIAS),
+  )].sort();
+}
