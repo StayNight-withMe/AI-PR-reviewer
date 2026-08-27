@@ -53,3 +53,14 @@ export async function git(repoPath, args, { allowFailure = true, input } = {}) {
     return { ok: false, code: error.code ?? P.ONE, stdout, stderr };
   }
 }
+export async function resolveRepo(repoPath) {
+  const { ok, stdout, stderr } = await git(repoPath, GIT.ARGS.REV_PARSE_TOPLEVEL);
+  if (!ok) {
+    throw new Error(`${GIT.ERROR_NOT_A_REPO}${repoPath}${stderr ? ` (${stderr.trim()})` : P.EMPTY}`);
+  }
+  return stdout.trim();
+}
+export async function currentBranch(repoPath) {
+  const { ok, stdout } = await git(repoPath, GIT.ARGS.BRANCH_SHOW);
+  return ok ? stdout.trim() || GIT.DEFAULT_REF : GIT.DEFAULT_REF;
+}
