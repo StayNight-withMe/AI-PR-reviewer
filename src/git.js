@@ -93,3 +93,16 @@ export async function parentOrEmptyTree(repoPath, sha) {
   const { ok, stdout } = await git(repoPath, [...GIT.ARGS.REV_PARSE_COMMIT, `${sha}${GIT.TILDE}`]);
   return ok && stdout.trim() ? stdout.trim() : GIT.EMPTY_TREE_OBJECT;
 }
+/** Patch between two revisions (a tree or a commit), straight from `from` to `to`. */
+export async function diffFromTo(repoPath, from, to) {
+  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.DIFF, from, to]);
+  return ok ? stdout : P.EMPTY;
+}
+/** The commits in newest-first order, without walking their ancestors. */
+export async function orderCommits(repoPath, shas) {
+  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.REV_LIST_NO_WALK, ...shas]);
+  if (!ok || !stdout.trim()) return shas;
+
+  const ordered = stdout.split(P.NEWLINE).map((line) => line.trim()).filter(Boolean);
+  return ordered.length ? ordered : shas;
+}
