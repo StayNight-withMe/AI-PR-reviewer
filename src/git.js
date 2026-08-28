@@ -80,3 +80,16 @@ export async function listBranches(repoPath) {
       .filter((name) => name && name !== GIT.HEAD_ALIAS),
   )].sort();
 }
+export async function resolveCommit(repoPath, ref) {
+  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.REV_PARSE_COMMIT, GIT.FLAGS.VERIFY, `${ref}${GIT.COMMIT_SUFFIX}`]);
+  return ok ? stdout.trim() : null;
+}
+export async function mergeBase(repoPath, base, head) {
+  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.MERGE_BASE, base, head]);
+  return ok ? stdout.trim() : null;
+}
+/** The commit itself, or the empty tree when it has no parent (a root commit). */
+export async function parentOrEmptyTree(repoPath, sha) {
+  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.REV_PARSE_COMMIT, `${sha}${GIT.TILDE}`]);
+  return ok && stdout.trim() ? stdout.trim() : GIT.EMPTY_TREE_OBJECT;
+}
