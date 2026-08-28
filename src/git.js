@@ -106,3 +106,20 @@ export async function orderCommits(repoPath, shas) {
   const ordered = stdout.split(P.NEWLINE).map((line) => line.trim()).filter(Boolean);
   return ordered.length ? ordered : shas;
 }
+/** Commits of a range, newest first. */
+export async function listCommits(repoPath, { range, head, excludeRemotes = false, limit = GIT.MAX_COMMITS } = {}) {
+  const args = [...GIT.ARGS.LOG, `${GIT.FLAG_MAX_COUNT}${limit}`];
+  if (range) args.push(range);
+  if (excludeRemotes) args.push(head ?? GIT.DEFAULT_REF, ...GIT.ARGS.LOG_NOT_REMOTES);
+
+  const { ok, stdout } = await git(repoPath, args);
+  if (!ok) return [];
+
+  return stdout
+    .split(P.NEWLINE)
+    .filter(Boolean)
+    .map((line) => {
+      const [sha, shortSha, subject, authorName, authorEmail, date] = line.split(GIT.LOG_FIELD_SEPARATOR);
+      return { sha, shortSha, subject, authorName, authorEmail, date };
+    });
+}
