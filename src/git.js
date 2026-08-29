@@ -133,3 +133,47 @@ export async function listBranchHeads(repoPath, branches) {
     return { name, sha: sha ?? P.EMPTY, shortSha: shortSha ?? P.EMPTY, subject: subject ?? P.EMPTY, authorName: authorName ?? P.EMPTY, date: date ?? P.EMPTY };
   }));
 }
+/** Full-text project search: one `git grep` over the working tree. */
+export async function searchProject(repoPath, query, { limit = GIT.MAX_SEARCH_HITS } = {}) {
+  const trimmed = String(query ?? P.EMPTY).trim();
+  if (trimmed.length < GIT.MIN_SEARCH_LENGTH) return [];
+  // files are searched as well: a query of a file name has to find that file.
+  const [content, paths] = await Promise.all([
+    git(repoPath, [
+      ...GIT.ARGS.GREP_LINES,
+      GIT.FLAG_IGNORE_CASE,
+      trimmed,
+      GIT.FLAGS.HEAD,
+      GIT.FLAGS.DOT,
+      ...GIT.EXCLUDE_PATHSPEC,
+    ]),
+    git(repoPath, GIT.ARGS.LS_FILES),
+  ]);
+
+  const hits = [];
+  if (content.ok && content.stdout) {
+    for (const line of content.stdout.split(P.NEWLINE)) {
+      if (!line) continue;
+      const hit = parseGrepLine(line);
+      if (hit) hits.push(hit);
+    }
+  }
+
+  if (paths.ok && paths.stdout) {
+    const needle = trimmed.toLowerCase();
+    for (const path of paths.stdout.split(P.NEWLINE)) {
+      if (!path || !path.toLowerCase().includes(needle)) continue;
+      hits.push({ path, line: P.ONE, text: path });
+    }
+  }
+
+  const seen = new Set();
+  return hits
+    .filter((hit) => {
+      const key = `${hit.path}:${hit.line}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(P.ZERO, limit);
+}
