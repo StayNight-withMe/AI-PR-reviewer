@@ -123,3 +123,13 @@ export async function listCommits(repoPath, { range, head, excludeRemotes = fals
       return { sha, shortSha, subject, authorName, authorEmail, date };
     });
 }
+/** The head commit of every branch. */
+export async function listBranchHeads(repoPath, branches) {
+  return Promise.all(branches.map(async (name) => {
+    const { ok, stdout } = await git(repoPath, [...GIT.ARGS.LOG, `${GIT.FLAG_MAX_COUNT}1`, name]);
+    const line = ok ? stdout.split(P.NEWLINE)[0] : P.EMPTY;
+    const [sha, shortSha, subject, authorName, , date] = line.split(GIT.LOG_FIELD_SEPARATOR);
+
+    return { name, sha: sha ?? P.EMPTY, shortSha: shortSha ?? P.EMPTY, subject: subject ?? P.EMPTY, authorName: authorName ?? P.EMPTY, date: date ?? P.EMPTY };
+  }));
+}
