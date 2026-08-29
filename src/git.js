@@ -192,3 +192,22 @@ function parseGrepLine(line) {
     text: line.slice(second + P.ONE),
   };
 }
+export async function commitDiff(repoPath, sha) {
+  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.SHOW_STAT, sha]);
+  return ok ? stdout : P.EMPTY;
+}
+/** SHAs already reachable from any remote ref: these must never be rewritten. */
+export async function pushedShas(repoPath) {
+  const { ok, stdout } = await git(repoPath, GIT.ARGS.REV_LIST_UNPUSHED);
+  if (!ok) return new Set();
+  // Everything reachable from HEAD minus everything not on a remote.
+  const unpushed = new Set(stdout.split(P.NEWLINE).filter(Boolean));
+  const { ok: headOk, stdout: headOut } = await git(repoPath, GIT.ARGS.REV_LIST_HEAD);
+  if (!headOk) return new Set();
+
+  const pushed = new Set();
+  for (const sha of headOut.split(P.NEWLINE).filter(Boolean)) {
+    if (!unpushed.has(sha)) pushed.add(sha);
+  }
+  return pushed;
+}
