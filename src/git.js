@@ -177,3 +177,18 @@ export async function searchProject(repoPath, query, { limit = GIT.MAX_SEARCH_HI
     })
     .slice(P.ZERO, limit);
 }
+/** Parses one line of `git grep`: path, line number and the text of the line. */
+function parseGrepLine(line) {
+  const first = line.indexOf(P.COLON);
+  const second = line.indexOf(P.COLON, first + P.ONE);
+  if (first === P.NEG_ONE || second === P.NEG_ONE) return null;
+
+  const lineNumber = Number(line.slice(first + P.ONE, second));
+  if (!Number.isFinite(lineNumber)) return null;
+
+  return {
+    path: line.slice(P.ZERO, first),
+    line: lineNumber,
+    text: line.slice(second + P.ONE),
+  };
+}
