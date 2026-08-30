@@ -211,3 +211,22 @@ export async function pushedShas(repoPath) {
   }
   return pushed;
 }
+/** Rewrites the message of a commit. */
+export async function renameCommit(repoPath, sha, message, { allowPushed = false } = {}) {
+  const resolved = await resolveCommit(repoPath, sha);
+  if (!resolved) throw new Error(`Commit not found: ${sha}`);
+
+  if (!allowPushed) {
+    const pushed = await pushedShas(repoPath);
+    if (pushed.has(resolved)) throw new Error("This commit is already pushed; allow rewriting it explicitly.");
+  }
+
+  const head = await resolveCommit(repoPath, GIT.DEFAULT_REF);
+  if (!head) throw new Error("No commits to rewrite.");
+  if (resolved === head) {
+    await amendMessage(repoPath, message);
+    return resolveCommit(repoPath, GIT.DEFAULT_REF);
+  }
+
+  return replayWithNewMessage(repoPath, resolved, head, message);
+}
