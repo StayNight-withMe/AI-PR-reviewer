@@ -230,3 +230,39 @@ export async function renameCommit(repoPath, sha, message, { allowPushed = false
 
   return replayWithNewMessage(repoPath, resolved, head, message);
 }
+async function amendMessage(repoPath, message) {
+  const { ok, stderr } = await git(repoPath, [...GIT.ARGS.COMMIT_AMEND_MESSAGE, message]);
+  if (!ok) throw new Error(stderr?.trim() || "git commit --amend failed.");
+}
+/** Rewrites an older commit and replays everything above it. */
+async function replayWithNewMessage(repoPath, sha, head, message) {
+  const parent = await firstParent(repoPath, sha);
+  const tree = await revParse(repoPath, `${sha}${GIT.TREE_SUFFIX}`);
+  if (!tree) throw new Error("Cannot read the commit tree.");
+
+  const backup = `${GIT.BACKUP_REF_PREFIX}${sha.slice(0, GIT.SHORT_SHA_LENGTH)}`;
+  await git(repoPath, [...GIT.ARGS.UPDATE_REF, backup, head]);
+
+  const created = await git(repoPath, [
+    GIT.ARGS.COMMIT_TREE,
+    tree,
+    ...(parent ? [GIT.FLAGS.PARENT, parent] : []),
+    ...GIT.ARGS.COMMIT_MESSAGE, message,
+  ]);
+
+  const newSha = created.ok ? created.stdout.trim() : null;
+  if (!newSha) throw new Error(created.stderr?.trim() || "git commit-tree failed.");
+
+  const rebaseArgs = parent
+    ? [...GIT.ARGS.REBASE_ONTO, newSha, parent, GIT.DEFAULT_REF]
+    : [...GIT.ARGS.REBASE_ROOT, newSha, GIT.DEFAULT_REF];
+
+  const rebased = await git(repoPath, rebaseArgs);
+  if (!rebased.ok) {
+    await git(repoPath, GIT.ARGS.REBASE_ABORT);
+    await git(repoPath, [GIT.ARGS.RESET[0], GIT.ARGS.RESET[1], head]);
+    throw new Error(rebased.stderr?.trim() || `Rewrite failed; restored ${backup}.`);
+  }
+
+  return resolveCommit(repoPath, GIT.DEFAULT_REF);
+}
