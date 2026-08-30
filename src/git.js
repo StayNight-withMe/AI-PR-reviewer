@@ -266,3 +266,14 @@ async function replayWithNewMessage(repoPath, sha, head, message) {
 
   return resolveCommit(repoPath, GIT.DEFAULT_REF);
 }
+async function firstParent(repoPath, sha) {
+  const { ok, stdout } = await git(repoPath, [GIT.REV_LIST, GIT.FLAGS.PARENTS, GIT.FLAGS.MAX_COUNT_ONE, sha]);
+  if (!ok) return null;
+  // Output is "<sha> <parent>..." — the commit itself is the first field.
+  const parts = stdout.trim().split(P.SPACE).filter(Boolean);
+  return parts.length > P.ONE ? parts[P.ONE] : null;
+}
+async function revParse(repoPath, ref) {
+  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.REV_PARSE_COMMIT, GIT.FLAGS.VERIFY, ref]);
+  return ok ? stdout.trim() : null;
+}
