@@ -277,3 +277,34 @@ async function revParse(repoPath, ref) {
   const { ok, stdout } = await git(repoPath, [...GIT.ARGS.REV_PARSE_COMMIT, GIT.FLAGS.VERIFY, ref]);
   return ok ? stdout.trim() : null;
 }
+export async function diffUncommitted(repoPath, { includeStaged = true, includeUntracked = true } = {}) {
+  const parts = [];
+  const pathspec = [GIT.FLAGS.HEAD, GIT.FLAGS.DOT, ...GIT.EXCLUDE_PATHSPEC];
+
+  if (includeStaged) {
+    const staged = await git(repoPath, [...GIT.ARGS.DIFF_CACHED, GIT.DEFAULT_REF, ...pathspec]);
+    if (staged.ok) parts.push(staged.stdout);
+  }
+
+  const unstaged = await git(repoPath, [...GIT.ARGS.DIFF, ...pathspec]);
+  if (unstaged.ok) parts.push(unstaged.stdout);
+
+  if (includeUntracked) {
+    const untracked = await git(repoPath, GIT.ARGS.LS_FILES_UNTRACKED);
+    if (untracked.ok) {
+      for (const file of untracked.stdout.split(P.NEWLINE).filter(Boolean)) {
+        if (file.startsWith(`${GIT.LEGACY_ARTIFACT_DIR}${P.SLASH}`)) continue;
+        const content = await git(repoPath, [...GIT.ARGS.DIFF_NO_INDEX, GIT.EMPTY_TREE, file]);
+        if (content.ok || content.stdout) parts.push(content.stdout);
+      }
+    }
+  }
+  // Each `git diff` already ends with a newline, and `git diff --no-index`
+  // exits with code 1 but still writes a full patch. Joining the parts with
+  // another newline left a blank line between hunks, which the diff parser
+  // turned into a phantom empty "meta" row at the end of the file.
+  return parts
+    .filter(Boolean)
+    .map((part) => part.replace(/\n+$/, P.NEWLINE))
+    .join(P.EMPTY);
+}
