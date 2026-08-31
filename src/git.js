@@ -308,3 +308,17 @@ export async function diffUncommitted(repoPath, { includeStaged = true, includeU
     .map((part) => part.replace(/\n+$/, P.NEWLINE))
     .join(P.EMPTY);
 }
+export async function diffBetween(repoPath, base, head) {
+  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.DIFF, `${base}${GIT.RANGE_SEPARATOR}${head ?? GIT.DEFAULT_REF}`]);
+  return ok ? stdout : P.EMPTY;
+}
+export async function fileContent(repoPath, ref, filePath) {
+  const { ok, stdout } = await git(repoPath, [GIT.SHOW, `${ref}:${filePath}`]);
+  return ok ? stdout : null;
+}
+/** Returns every tracked file path in the repository. */
+export async function listFiles(repoPath, { ref = GIT.DEFAULT_REF } = {}) {
+  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.LS_TREE, ref]);
+  if (!ok) return [];
+  return stdout.split(P.NEWLINE).map((line) => line.trim()).filter(Boolean);
+}
