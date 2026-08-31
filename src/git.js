@@ -322,3 +322,26 @@ export async function listFiles(repoPath, { ref = GIT.DEFAULT_REF } = {}) {
   if (!ok) return [];
   return stdout.split(P.NEWLINE).map((line) => line.trim()).filter(Boolean);
 }
+/** Tracked file -> change status map. */
+export async function fileStatus(repoPath, { base, head } = {}) {
+  const range = base && head
+    ? `${base}${GIT.RANGE_SEPARATOR}${head}`
+    : head || GIT.DEFAULT_REF;
+
+  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.DIFF_NAME_STATUS, range]);
+  if (!ok) return {};
+
+  const map = {};
+  for (const line of stdout.split(P.NEWLINE)) {
+    const [raw, ...rest] = line.trim().split(P.TAB);
+    if (!raw) continue;
+
+    const code = raw.trim().toUpperCase();
+    let path = rest.join(P.TAB).trim();
+    if (code.startsWith(GIT.STATUS_RENAME)) path = rest[rest.length - P.ONE] || rest[P.ZERO];
+    if (!path) continue;
+
+    map[path] = toStatus(code);
+  }
+  return map;
+}
