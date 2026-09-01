@@ -345,3 +345,34 @@ export async function fileStatus(repoPath, { base, head } = {}) {
   }
   return map;
 }
+/** Working-tree status for the uncommitted scope. */
+export async function workingTreeStatus(repoPath) {
+  const [changed, untracked] = await Promise.all([
+    git(repoPath, [...GIT.ARGS.DIFF_NAME_STATUS, GIT.DEFAULT_REF]),
+    git(repoPath, GIT.ARGS.LS_FILES_UNTRACKED),
+  ]);
+
+  const map = {};
+
+  if (changed.ok && changed.stdout) {
+    for (const line of changed.stdout.split(P.NEWLINE)) {
+      const [raw, ...rest] = line.trim().split(P.TAB);
+      if (!raw) continue;
+      const code = raw.trim().toUpperCase();
+      let path = rest.join(P.TAB).trim();
+      if (code.startsWith(GIT.STATUS_RENAME)) path = rest[rest.length - P.ONE] || rest[P.ZERO];
+      if (!path) continue;
+      map[path] = toStatus(code);
+    }
+  }
+
+  if (untracked.ok && untracked.stdout) {
+    for (const path of untracked.stdout.split(P.NEWLINE).map((line) => line.trim()).filter(Boolean)) {
+      // Our own artifacts never count as the user's changes.
+      if (path.startsWith(`${GIT.LEGACY_ARTIFACT_DIR}${P.SLASH}`)) continue;
+      if (!map[path]) map[path] = GIT.STATUS_ADDED_NAME;
+    }
+  }
+
+  return map;
+}
