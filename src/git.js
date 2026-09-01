@@ -376,3 +376,32 @@ export async function workingTreeStatus(repoPath) {
 
   return map;
 }
+function toStatus(code) {
+  // codes must be mapped to the same names the diff parser uses.
+  if (code.startsWith(GIT.STATUS_RENAME)) return GIT.STATUS_RENAMED;
+  if (code === GIT.STATUS_ADDED) return GIT.STATUS_ADDED_NAME;
+  if (code === GIT.STATUS_DELETED) return GIT.STATUS_DELETED_NAME;
+  return GIT.STATUS_MODIFIED;
+}
+/** Reads many blobs in a single `git cat-file --batch` call. */
+export async function readBlobs(repoPath, paths, { ref = GIT.DEFAULT_REF } = {}) {
+  const unique = Array.from(new Set(paths)).filter(Boolean);
+  const result = new Map();
+  if (!unique.length) return result;
+
+  const input = unique.map((path) => `${ref}:${path}`).join(P.NEWLINE) + P.NEWLINE;
+
+  return new Promise((resolve) => {
+    const child = spawn(resolveGitBinary(), GIT.ARGS.CAT_FILE_BATCH, { cwd: repoPath, windowsHide: true });
+    const chunks = [];
+
+    child.stdout.on("data", (chunk) => chunks.push(chunk));
+    child.on("error", () => resolve(result));
+    child.on("close", () => {
+      resolve(parseBatchOutput(Buffer.concat(chunks), unique));
+    });
+
+    child.stdin.on("error", () => {});
+    child.stdin.end(input);
+  });
+}
