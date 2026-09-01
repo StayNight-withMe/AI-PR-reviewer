@@ -405,3 +405,30 @@ export async function readBlobs(repoPath, paths, { ref = GIT.DEFAULT_REF } = {})
     child.stdin.end(input);
   });
 }
+function parseBatchOutput(buffer, paths) {
+  const result = new Map();
+  let offset = P.ZERO;
+  let index = P.ZERO;
+
+  while (offset < buffer.length && index < paths.length) {
+    const newline = buffer.indexOf(GIT.NEWLINE_BYTE, offset);
+    if (newline === GIT.NEWLINE_NOT_FOUND) break;
+
+    const header = buffer.toString("utf8", offset, newline);
+    offset = newline + P.ONE;
+
+    const parts = header.split(P.SPACE);
+    const path = paths[index];
+    index += P.ONE;
+
+    if (parts.length < GIT.BATCH_HEADER_PARTS || parts[P.ONE] === GIT.MISSING_OBJECT) continue;
+
+    const size = Number(parts[P.TWO]);
+    if (!Number.isFinite(size) || size < P.ZERO) continue;
+
+    result.set(path, buffer.toString("utf8", offset, offset + size));
+    offset += size + P.ONE;
+  }
+
+  return result;
+}
