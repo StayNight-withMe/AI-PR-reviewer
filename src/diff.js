@@ -40,3 +40,54 @@ function unquote(value) {
 
   return new TextDecoder().decode(Uint8Array.from(bytes));
 }
+/** The UTF-8 bytes of a single code point. */
+function utf8Bytes(char) {
+  return Array.from(new TextEncoder().encode(char));
+}
+/** Splits a unified diff into the file/hunk/row model the UI renders. */
+export function parseDiff(text) {
+  // git always terminates its output with a newline. A plain split leaves one
+  // trailing empty line, which became a phantom `meta` row at the bottom of
+  // every file's last hunk. Dropping a single trailing empty line is exact:
+  // every real hunk line carries a prefix (`+`, `-`, ` `) or is a marker.
+  const normalized = String(text ?? P.EMPTY).replace(/\r\n/g, P.NEWLINE);
+  const body = normalized.endsWith(P.NEWLINE) ? normalized.slice(P.ZERO, -P.ONE) : normalized;
+  const lines = body.split(P.NEWLINE);
+  const files = [];
+  let current = null;
+
+  const flush = () => {
+    if (!current) return;
+    files.push(current);
+    current = null;
+  };
+
+  for (const line of lines) {
+    if (line.startsWith(PREFIX.DIFF_GIT)) {
+      flush();
+      current = createFile(line);
+      continue;
+    }
+
+    if (!current) continue;
+
+    if (!current.headerConsumed) consumeHeader(current, line);
+
+    if (line.startsWith(PREFIX.HUNK)) {
+      current.headerConsumed = true;
+      current.hunks.push(createHunk(line));
+      continue;
+    }
+
+    if (current.hunks.length === P.ZERO) {
+      current.raw.push(line);
+      continue;
+    }
+
+    current.hunks[current.hunks.length - P.ONE].lines.push(line);
+  }
+
+  flush();
+  files.forEach(attachRows);
+  return files;
+}
