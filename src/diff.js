@@ -91,3 +91,23 @@ export function parseDiff(text) {
   files.forEach(attachRows);
   return files;
 }
+function createFile(headerLine) {
+  const match = headerLine.match(HEADER_PATTERN);
+  const rawOld = match ? unquote(match[1]) : P.EMPTY;
+  const rawNew = match ? unquote(match[2]) : P.EMPTY;
+
+  return {
+    oldPath: stripPrefix(rawOld),
+    newPath: stripPrefix(rawNew),
+    path: stripPrefix(rawNew || rawOld),
+    status: STATUS.MODIFIED,
+    binary: false,
+    oldMode: null,
+    newMode: null,
+    hunks: [],
+    additions: P.ZERO,
+    deletions: P.ZERO,
+    raw: [headerLine],
+    headerConsumed: false,
+  };
+}
