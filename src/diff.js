@@ -125,3 +125,17 @@ function consumeHeader(file, line) {
   else if (line.startsWith(PREFIX.NEW_MODE)) file.newMode = line.slice(PREFIX.NEW_MODE.length).trim();
   else if (line.startsWith(PREFIX.BINARY_FILES)) file.binary = true;
 }
+function createHunk(line) {
+  const match = line.match(HUNK_PATTERN);
+  if (!match) return { header: line, section: P.EMPTY, oldStart: P.ZERO, oldLines: P.ZERO, newStart: P.ZERO, newLines: P.ZERO, lines: [] };
+
+  return {
+    header: line,
+    section: match[5] ?? P.EMPTY,
+    oldStart: Number(match[1]),
+    oldLines: Number(match[2] ?? P.ONE),
+    newStart: Number(match[3]),
+    newLines: Number(match[4] ?? P.ONE),
+    lines: [],
+  };
+}
