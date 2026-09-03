@@ -111,3 +111,17 @@ function createFile(headerLine) {
     headerConsumed: false,
   };
 }
+function consumeHeader(file, line) {
+  if (line.startsWith(PREFIX.NEW_FILE_MODE)) file.status = STATUS.ADDED;
+  else if (line.startsWith(PREFIX.DELETED_FILE_MODE)) file.status = STATUS.DELETED;
+  else if (line.startsWith(PREFIX.RENAME_FROM)) {
+    file.status = STATUS.RENAMED;
+    file.oldPath = line.slice(PREFIX.RENAME_FROM.length).trim();
+  } else if (line.startsWith(PREFIX.RENAME_TO)) {
+    file.status = STATUS.RENAMED;
+    file.newPath = line.slice(PREFIX.RENAME_TO.length).trim();
+    file.path = file.newPath;
+  } else if (line.startsWith(PREFIX.OLD_MODE)) file.oldMode = line.slice(PREFIX.OLD_MODE.length).trim();
+  else if (line.startsWith(PREFIX.NEW_MODE)) file.newMode = line.slice(PREFIX.NEW_MODE.length).trim();
+  else if (line.startsWith(PREFIX.BINARY_FILES)) file.binary = true;
+}
