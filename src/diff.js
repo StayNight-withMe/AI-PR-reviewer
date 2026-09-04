@@ -180,3 +180,14 @@ export function diffStats(files) {
     { additions: P.ZERO, deletions: P.ZERO },
   );
 }
+export function isBinaryPath(filePath) {
+  return DIFF.BINARY_EXTENSIONS.includes(extensionOf(filePath));
+}
+export function languageFor(filePath) {
+  const fileName = baseName(filePath);
+
+  if (fileName === LANGS.DOCKERFILE) return LANGS.DOCKERFILE;
+  if (fileName === LANGS.MAKEFILE) return LANGS.MAKEFILE;
+
+  return DIFF.LANGUAGE_BY_EXTENSION[fileName.includes(P.DOT) ? extensionOf(fileName) : fileName] ?? LANG_DEFAULT;
+}
