@@ -139,3 +139,29 @@ function createHunk(line) {
     lines: [],
   };
 }
+function attachRows(file) {
+  let oldLine = P.ZERO;
+  let newLine = P.ZERO;
+
+  for (const hunk of file.hunks) {
+    oldLine = hunk.oldStart;
+    newLine = hunk.newStart;
+    hunk.rows = [];
+
+    for (const line of hunk.lines) {
+      const kind = lineKind(line);
+      const content = kind === KIND.META ? line : line.slice(P.ONE);
+
+      hunk.rows.push({
+        kind,
+        content,
+        oldLine: kind === KIND.ADD || kind === KIND.META ? null : oldLine,
+        newLine: kind === KIND.DEL || kind === KIND.META ? null : newLine,
+      });
+
+      if (kind === KIND.ADD) { file.additions += P.ONE; newLine += P.ONE; }
+      else if (kind === KIND.DEL) { file.deletions += P.ONE; oldLine += P.ONE; }
+      else if (kind === KIND.CTX) { oldLine += P.ONE; newLine += P.ONE; }
+    }
+  }
+}
