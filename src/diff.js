@@ -165,3 +165,18 @@ function attachRows(file) {
     }
   }
 }
+function lineKind(line) {
+  if (line.startsWith(PREFIX.ADDED_LINE)) return KIND.ADD;
+  if (line.startsWith(PREFIX.DELETED_LINE)) return KIND.DEL;
+  if (line.startsWith(PREFIX.CONTEXT_LINE)) return KIND.CTX;
+  return KIND.META;
+}
+export function diffStats(files) {
+  return files.reduce(
+    (total, file) => ({
+      additions: total.additions + file.additions,
+      deletions: total.deletions + file.deletions,
+    }),
+    { additions: P.ZERO, deletions: P.ZERO },
+  );
+}
