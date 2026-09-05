@@ -191,3 +191,9 @@ export function languageFor(filePath) {
 
   return DIFF.LANGUAGE_BY_EXTENSION[fileName.includes(P.DOT) ? extensionOf(fileName) : fileName] ?? LANG_DEFAULT;
 }
+function baseName(filePath) {
+  return filePath.split(P.SLASH).pop()?.toLowerCase() ?? P.EMPTY;
+}
+function extensionOf(filePath) {
+  return filePath.split(P.DOT).pop()?.toLowerCase() ?? P.EMPTY;
+}
