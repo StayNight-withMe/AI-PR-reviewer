@@ -21,9 +21,3 @@ export function toFileModel(diffText) {
 
   return sortLikeTree(files);
 }
-/** File + stats bundle used by the commit / range endpoints. */
-export function toDiffSet(diffText) {
-  const files = toFileModel(diffText);
-  return { files, stats: diffStats(files) };
-}
-export { diffStats };

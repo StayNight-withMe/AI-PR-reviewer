@@ -14,19 +14,3 @@ export async function writeReviewOwner(outputDir, sessionId) {
   } catch {
   }
 }
-/** The recorded owner of a review, or null when none was written. */
-export async function readReviewOwner(outputDir) {
-  if (!outputDir) return null;
-
-  try {
-    const raw = await readFile(join(outputDir, OWNER_FILE), SERVER.FILE_ENCODING);
-    const entry = JSON.parse(raw);
-    return typeof entry?.sessionId === "string" && entry.sessionId ? entry.sessionId : null;
-  } catch {
-    return null;
-  }
-}
-/** Removes a leading/trailing space so a copied id still matches. */
-export function normalizeSessionId(value) {
-  return typeof value === "string" ? value.trim() || P.EMPTY : P.EMPTY;
-}
