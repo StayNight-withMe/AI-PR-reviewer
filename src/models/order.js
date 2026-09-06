@@ -33,3 +33,14 @@ function comparePaths(left, right, directories) {
   // An ancestor folder sorts before anything nested inside it.
   return leftParts.length - rightParts.length;
 }
+/** Sorts entries (strings or objects with `.path`) into the exact order the sidebar tree renders… */
+export function sortLikeTree(entries) {
+  const paths = entries.map((entry) => (typeof entry === P.TYPE_STRING ? entry : entry.path));
+  const directories = collectDirectories(paths);
+
+  return entries.slice().sort((a, b) => {
+    const left = typeof a === P.TYPE_STRING ? a : a.path;
+    const right = typeof b === P.TYPE_STRING ? b : b.path;
+    return comparePaths(left, right, directories);
+  });
+}

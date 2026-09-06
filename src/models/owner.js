@@ -26,3 +26,7 @@ export async function readReviewOwner(outputDir) {
     return null;
   }
 }
+/** Removes a leading/trailing space so a copied id still matches. */
+export function normalizeSessionId(value) {
+  return typeof value === "string" ? value.trim() || P.EMPTY : P.EMPTY;
+}
