@@ -55,3 +55,39 @@ function countNonEmpty(lines, start, end) {
   return nonEmpty;
 }
 /** Last old line of a hunk; a pure addition covers no old line at all. */
+function oldEnd(hunk) {
+  return hunk.oldLines > P.ZERO ? hunk.oldStart + hunk.oldLines - P.ONE : hunk.oldStart - P.ONE;
+}
+/** Last new line of a hunk; a pure deletion covers no new line at all. */
+function newEnd(hunk) {
+  return hunk.newLines > P.ZERO ? hunk.newStart + hunk.newLines - P.ONE : hunk.newStart - P.ONE;
+}
+/** Attaches the gap metadata to the file model. */
+export async function attachGapMetadata(root, files, { ref, useWorkingTree = false, refs } = {}) {
+  const targets = files.filter((file) => !file.binary && file.status !== DIFF.STATUS.DELETED);
+  if (!targets.length) return files;
+
+  const paths = targets.map((file) => file.path);
+  const contents = useWorkingTree
+    ? await readFilesForHighlight(root, paths, { refs })
+    : await readBlobLines(root, paths, ref);
+
+  for (const file of targets) {
+    const entry = contents[file.path];
+    const lines = entry?.lines ?? null;
+
+    if (!lines) {
+      // Without content the file length is unknown, so only the regions
+      // between hunks can be described. They are still expandable.
+      file.gaps = geometryGaps(file);
+      file.totalLines = P.ZERO;
+      continue;
+    }
+
+    const { totalLines, gaps } = computeGaps(file, lines);
+    file.gaps = gaps;
+    file.totalLines = totalLines;
+  }
+
+  return files;
+}
