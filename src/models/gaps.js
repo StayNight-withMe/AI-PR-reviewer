@@ -31,3 +31,17 @@ export function computeGaps(file, lines) {
 
   return { totalLines: lines.length, gaps };
 }
+/** Builds one region descriptor. */
+function makeGap(hunkIndex, dir, newStart, newEnd, shift, lines) {
+  const count = newEnd - newStart + P.ONE;
+  return {
+    hunk: hunkIndex,
+    dir,
+    newStart,
+    newEnd,
+    oldStart: newStart - shift,
+    oldEnd: newEnd - shift,
+    count,
+    nonEmpty: countNonEmpty(lines, newStart, newEnd),
+  };
+}
