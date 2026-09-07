@@ -45,3 +45,13 @@ function makeGap(hunkIndex, dir, newStart, newEnd, shift, lines) {
     nonEmpty: countNonEmpty(lines, newStart, newEnd),
   };
 }
+/** Counts the lines that carry something other than whitespace. */
+function countNonEmpty(lines, start, end) {
+  let nonEmpty = P.ZERO;
+  for (let line = start; line <= end; line += P.ONE) {
+    const text = lines[line - P.ONE];
+    if (text !== undefined && text.trim() !== P.EMPTY) nonEmpty += P.ONE;
+  }
+  return nonEmpty;
+}
+/** Last old line of a hunk; a pure addition covers no old line at all. */
