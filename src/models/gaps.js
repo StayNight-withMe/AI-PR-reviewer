@@ -101,3 +101,28 @@ async function readBlobLines(root, paths, ref) {
   return result;
 }
 /** Regions derived from the hunks alone. */
+function geometryGaps(file) {
+  const hunks = file.hunks ?? [];
+  const gaps = [];
+
+  for (let index = 0; index < hunks.length; index += 1) {
+    const hunk = hunks[index];
+    const start = index === 0 ? P.ONE : newEnd(hunks[index - 1]) + P.ONE;
+    const end = hunk.newStart - P.ONE;
+    if (end < start) continue;
+
+    const shift = hunk.newStart - hunk.oldStart;
+    gaps.push({
+      hunk: index,
+      dir: GAP.UP,
+      newStart: start,
+      newEnd: end,
+      oldStart: start - shift,
+      oldEnd: end - shift,
+      count: end - start + P.ONE,
+      nonEmpty: end - start + P.ONE,
+    });
+  }
+
+  return gaps;
+}
