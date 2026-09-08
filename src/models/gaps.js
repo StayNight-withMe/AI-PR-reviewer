@@ -91,3 +91,13 @@ export async function attachGapMetadata(root, files, { ref, useWorkingTree = fal
 
   return files;
 }
+/** File content of a git ref, split into lines. */
+async function readBlobLines(root, paths, ref) {
+  const blobs = await readBlobs(root, paths, { ref });
+  const result = {};
+  for (const [path, text] of blobs) {
+    result[path] = { path, lines: splitLines(text) };
+  }
+  return result;
+}
+/** Regions derived from the hunks alone. */
