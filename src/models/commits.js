@@ -19,29 +19,3 @@ export async function commitsSinceMergeBase(root, base, head, limit) {
 
   return listCommits(root, { range: `${base}${GIT.RANGE_SEPARATOR_TWO_DOT}${head}`, limit });
 }
-/** Base branch for a scope that does not name one. */
-export async function defaultBase(root) {
-  for (const candidate of GIT.BASE_CANDIDATES) {
-    if (await resolveCommit(root, candidate)) return candidate;
-  }
-  return GIT.DEFAULT_BASE;
-}
-/** Commits that belong to the reviewed scope. */
-export async function loadScopeCommits(root, scope) {
-  if (scope.commits.length) return scope.commits;
-
-  const head = scope.head ?? GIT.DEFAULT_REF;
-  // as a branch review sees them. Listing "everything not on a remote" dumped
-  // 200 unrelated commits into the tab; the branch base is the correct anchor.
-  if (!scope.base) {
-    const base = await defaultBase(root).catch(() => null);
-    if (base) {
-      const own = await commitsSinceMergeBase(root, base, head, GIT.MAX_COMMITS).catch(() => P.EMPTY_ARRAY);
-      // No commits of its own is a valid answer (the branch is at the base).
-      return own;
-    }
-    return P.EMPTY_ARRAY;
-  }
-
-  return commitsSinceMergeBase(root, scope.base, head, GIT.MAX_COMMITS).catch(() => P.EMPTY_ARRAY);
-}
