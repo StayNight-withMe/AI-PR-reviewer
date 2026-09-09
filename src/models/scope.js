@@ -23,3 +23,35 @@ export async function resolveScope(root, params) {
     default: throw new Error(`${SCOPE_ERROR_UNKNOWN_MODE}${params.mode}`);
   }
 }
+async function resolveUncommitted(root, params) {
+  const diffText = await diffUncommitted(root, {
+    includeStaged: params.includeStaged !== false,
+    includeUntracked: params.includeUntracked !== false,
+  });
+  return { diffText, commits: P.EMPTY_ARRAY, base: params.base ?? null, head: params.head ?? null };
+}
+async function resolveCommits(root, params) {
+  const refs = params.commits ?? P.EMPTY_ARRAY;
+  if (!refs.length) throw new Error(SCOPE_ERROR_COMMITS_REQUIRED);
+
+  const resolved = [];
+  for (const ref of refs) {
+    const sha = await resolveCommit(root, ref);
+    if (!sha) throw new Error(`${SCOPE_ERROR_COMMIT_NOT_FOUND}${ref}`);
+    resolved.push(sha);
+  }
+  // same file is often touched by two selected commits, and concatenating the
+  // patches listed it twice. The UI keys "viewed"/collapse by path, so two
+  // sections of one path shared a single flag and the second click cleared it.
+  const ordered = await orderCommits(root, resolved);
+  const head = ordered[P.ZERO];
+  const oldest = ordered[ordered.length - P.ONE];
+  const base = await parentOrEmptyTree(root, oldest);
+
+  return {
+    diffText: await diffFromTo(root, base, head),
+    commits: await describeCommits(root, ordered),
+    base,
+    head,
+  };
+}
