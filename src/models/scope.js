@@ -55,3 +55,20 @@ async function resolveCommits(root, params) {
     head,
   };
 }
+async function describeCommits(root, ordered) {
+  const log = await listCommits(root, { limit: GIT.MAX_HISTORY }).catch(() => P.EMPTY_ARRAY);
+
+  return ordered.map((sha) => log.find((commit) => commit.sha === sha)
+    ?? { sha, shortSha: sha.slice(P.ZERO, GIT.SHORT_SHA_LENGTH), subject: sha.slice(P.ZERO, GIT.SHORT_SHA_LENGTH), authorName: P.EMPTY, authorEmail: P.EMPTY, date: P.EMPTY });
+}
+/** Commits of the reviewed line of work. */
+async function resolveBranch(root, params) {
+  const base = params.base ?? (await defaultBase(root));
+  const head = params.head ?? GIT.DEFAULT_REF;
+  return {
+    diffText: await diffBetween(root, base, head),
+    commits: await commitsSinceMergeBase(root, base, head, params.limit ?? GIT.MAX_COMMITS),
+    base,
+    head,
+  };
+}
