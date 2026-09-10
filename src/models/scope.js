@@ -82,3 +82,13 @@ async function resolveRange(root, params) {
     head,
   };
 }
+async function resolveAll(root, params) {
+  const base = params.base ?? (await defaultBase(root));
+  return {
+    diffText: await diffBetween(root, base, GIT.DEFAULT_REF),
+    commits: await commitsSinceMergeBase(root, base, GIT.DEFAULT_REF, params.limit ?? GIT.MAX_HISTORY),
+    base,
+    head: GIT.DEFAULT_REF,
+  };
+}
+/** A GitHub pull request: one range from the PR's base commit to its head commit. */
