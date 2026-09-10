@@ -72,3 +72,13 @@ async function resolveBranch(root, params) {
     head,
   };
 }
+async function resolveRange(root, params) {
+  if (!params.base) throw new Error(SCOPE_ERROR_RANGE_REQUIRES_BASE);
+  const head = params.head ?? GIT.DEFAULT_REF;
+  return {
+    diffText: await diffBetween(root, params.base, head),
+    commits: await commitsSinceMergeBase(root, params.base, head, params.limit ?? GIT.MAX_COMMITS),
+    base: params.base,
+    head,
+  };
+}
