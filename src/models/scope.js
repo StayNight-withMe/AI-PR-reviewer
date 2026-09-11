@@ -92,3 +92,32 @@ async function resolveAll(root, params) {
   };
 }
 /** A GitHub pull request: one range from the PR's base commit to its head commit. */
+async function resolvePullRequest(root, params) {
+  const selector = {
+    number: params.pr ?? params.prNumber,
+    base: params.base,
+    head: params.head,
+    repo: params.prRepo,
+  };
+  const pr = await viewPullRequest(root, selector);
+  if (!pr.number) throw new Error(GH.ERROR_NO_PR);
+
+  const commits = await ensurePullRequestCommits(root, pr, { remote: params.remote ?? GH.DEFAULT_REMOTE });
+
+  return {
+    // A PR is diffed from its base commit to its head commit (two-dot), which is
+    // what GitHub shows. `diffBetween` uses three-dot (merge-base), and that is
+    // empty when the PR's history does not share an ancestor with the base —
+    // e.g. a PR whose branch was committed straight onto the remote.
+    diffText: await diffFromTo(root, commits.base, commits.head),
+    commits: await commitsSinceMergeBase(root, commits.base, commits.head, params.limit ?? GIT.MAX_COMMITS),
+    base: commits.base,
+    head: commits.head,
+    pr,
+    // Content of the reviewed files must come from the PR head commit, not the
+    // working tree: the checkout can be on any branch while a PR is reviewed.
+    ref: commits.head,
+    scopeKey: pullRequestScope(pr),
+    label: pullRequestTitle(pr),
+  };
+}
