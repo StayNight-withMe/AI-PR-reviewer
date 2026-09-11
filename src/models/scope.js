@@ -121,3 +121,7 @@ async function resolvePullRequest(root, params) {
     label: pullRequestTitle(pr),
   };
 }
+const SCOPE_ERROR_UNKNOWN_MODE = "Unknown mode: ";
+const SCOPE_ERROR_COMMITS_REQUIRED = "mode=commits requires at least one commit in `commits`.";
+const SCOPE_ERROR_COMMIT_NOT_FOUND = "Commit not found: ";
+const SCOPE_ERROR_RANGE_REQUIRES_BASE = "mode=range requires `base`.";
