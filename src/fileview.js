@@ -85,3 +85,33 @@ export async function readFilesForHighlight(repoRoot, paths, { refs = [GIT.DEFAU
 
   return result;
 }
+/** New files come from the disk; modified files from disk or the index; a DELETED file exists… */
+async function readCurrentContent(repoRoot, filePath, fromHead, refs, preferRef) {
+  // A pinned ref (a PR head) wins over the disk: the checkout is irrelevant.
+  if (preferRef) {
+    const pinned = await git(repoRoot, [GIT.SHOW, `${preferRef}:${filePath}`]);
+    if (pinned.ok) return { ok: true, text: pinned.stdout };
+    // Absent at the pinned head: it was deleted, so read it from the base.
+    for (const ref of refs ?? P.EMPTY_ARRAY) {
+      if (!ref) continue;
+      const fromRef = await git(repoRoot, [GIT.SHOW, `${ref}:${filePath}`]);
+      if (fromRef.ok) return { ok: true, text: fromRef.stdout, deleted: true };
+    }
+    return { ok: false, text: P.EMPTY };
+  }
+
+  const disk = await readFromDisk(repoRoot, filePath);
+  if (disk.ok) return disk;
+
+  const staged = await git(repoRoot, [GIT.SHOW, `${P.COLON}${filePath}`]);
+  if (staged.ok) return { ok: true, text: staged.stdout };
+
+  if (fromHead && fromHead.ok) return { ok: true, text: fromHead.stdout, deleted: true };
+  // A file deleted inside a range is gone from both disk and HEAD.
+  for (const ref of refs ?? P.EMPTY_ARRAY) {
+    const fromRef = await git(repoRoot, [GIT.SHOW, `${ref}:${filePath}`]);
+    if (fromRef.ok) return { ok: true, text: fromRef.stdout, deleted: true };
+  }
+
+  return { ok: false, text: P.EMPTY };
+}
