@@ -44,3 +44,44 @@ export async function readFileForViewer(repoRoot, filePath, { refs = [GIT.DEFAUL
     changed: content.deleted ? allLines(lines.length) : Array.from(changed).sort((a, b) => a - b),
   };
 }
+/** Lightweight content reader for syntax highlighting. */
+export async function readFilesForHighlight(repoRoot, paths, { refs = [GIT.DEFAULT_REF], preferRef = null } = {}) {
+  const wanted = paths.filter(Boolean);
+  if (!wanted.length) return {};
+  // A PR (or any committed range) is reviewed at a commit that may not be
+  // checked out, so the working tree is the wrong source. Read that commit.
+  const diskReads = preferRef
+    ? wanted.map(() => ({ ok: false, text: P.EMPTY }))
+    : await Promise.all(wanted.map((filePath) => readFromDisk(repoRoot, filePath)));
+  let missing = wanted.filter((_, index) => !diskReads[index].ok);
+
+  const orderedRefs = preferRef ? [preferRef, ...refs.filter((ref) => ref && ref !== preferRef)] : refs;
+  const texts = new Map();
+  for (const ref of orderedRefs) {
+    if (!missing.length) break;
+
+    const blobs = await readBlobs(repoRoot, missing, { ref });
+    for (const [filePath, text] of blobs) texts.set(filePath, text);
+    missing = missing.filter((filePath) => !texts.has(filePath));
+  }
+
+  const result = {};
+  wanted.forEach((filePath, index) => {
+    const disk = diskReads[index];
+    const text = disk.ok ? disk.text : (texts.get(filePath) ?? null);
+
+    if (text === null) { result[filePath] = null; return; }
+    if (text.length > GIT.MAX_REVIEW_FILE_BYTES) {
+      result[filePath] = { path: filePath, language: languageFor(filePath), lines: P.EMPTY_ARRAY, tooLarge: true };
+      return;
+    }
+
+    result[filePath] = {
+      path: filePath,
+      language: languageFor(filePath),
+      lines: splitLines(text),
+    };
+  });
+
+  return result;
+}
