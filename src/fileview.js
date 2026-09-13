@@ -115,3 +115,15 @@ async function readCurrentContent(repoRoot, filePath, fromHead, refs, preferRef)
 
   return { ok: false, text: P.EMPTY };
 }
+async function readFromDisk(repoRoot, filePath) {
+  try {
+    return { ok: true, text: await readTextFile(join(repoRoot, filePath), FILEVIEW.ENCODING) };
+  } catch {
+    return { ok: false, text: P.EMPTY };
+  }
+}
+function allLines(count) {
+  const set = new Set();
+  for (let line = P.ONE; line <= count; line += P.ONE) set.add(line);
+  return set;
+}
