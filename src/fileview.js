@@ -127,3 +127,26 @@ function allLines(count) {
   for (let line = P.ONE; line <= count; line += P.ONE) set.add(line);
   return set;
 }
+async function changedLines(repoRoot, filePath, range) {
+  const changed = new Set();
+  // A pinned review (a PR) compares the file between its base and head commits;
+
+  const args = range
+    ? [...GIT.ARGS.DIFF, GIT.FLAG_UNIFIED_ZERO, range.base, range.head, GIT.FLAGS.HEAD, filePath]
+    : [...GIT.ARGS.DIFF, GIT.FLAG_UNIFIED_ZERO, GIT.DEFAULT_REF, GIT.FLAGS.HEAD, filePath];
+  const diff = await git(repoRoot, args);
+  if (!diff.ok || !diff.stdout) return changed;
+
+  let newLine = P.ZERO;
+  for (const raw of diff.stdout.split(P.NEWLINE)) {
+    if (raw.startsWith(DIFF.PREFIX.HUNK)) {
+      const match = raw.match(FILEVIEW.HUNK_NEW_LINE);
+      if (match) newLine = Number(match[1]);
+      continue;
+    }
+    if (raw.startsWith(FILEVIEW.DIFF_HEADER_OLD) || raw.startsWith(FILEVIEW.DIFF_HEADER_NEW)) continue;
+    if (raw.startsWith(DIFF.PREFIX.ADDED_LINE)) { changed.add(newLine); newLine += P.ONE; }
+    else if (raw.startsWith(DIFF.PREFIX.CONTEXT_LINE)) newLine += P.ONE;
+  }
+  return changed;
+}
