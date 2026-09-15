@@ -34,3 +34,23 @@ export async function loadAssets() {
   };
   return cache;
 }
+export function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, RENDER.HTML_AMP)
+    .replace(/</g, RENDER.HTML_LT)
+    .replace(/>/g, RENDER.HTML_GT)
+    .replace(/"/g, RENDER.HTML_QUOTE);
+}
+/** The PR badge in the header: a link to the pull request, with its state. */
+function prBadge(pr) {
+  if (!pr) return P.EMPTY;
+  const label = pr.number ? `#${pr.number}` : "PR";
+  const state = pr.draft ? "draft" : String(pr.state ?? P.EMPTY).toLowerCase();
+  const href = pr.url ? escapeHtml(pr.url) : null;
+  const text = escapeHtml(state ? `${label} · ${state}` : label);
+  const title = pr.title ? ` title="${escapeHtml(pr.title)}"` : P.EMPTY;
+
+  return href
+    ? `<a class="pr-badge" href="${href}" target="_blank" rel="noopener"${title}>${text}</a>`
+    : `<span class="pr-badge"${title}>${text}</span>`;
+}
