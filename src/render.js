@@ -369,3 +369,54 @@ ${assets.hljsScript ? `<script>${assets.hljsScript}</script>` : ""}
 </body>
 </html>`;
 }
+export async function buildFilePage(repoName, file, reviewId) {
+  const assets = await loadAssets();
+
+  const data = {
+    repo: repoName,
+    reviewId: reviewId || P.EMPTY,
+    path: file.path,
+    language: file.language,
+    isNew: file.isNew,
+    lines: file.lines,
+    changed: file.changed,
+    tooLarge: !!file.tooLarge,
+  };
+
+  const safeJson = JSON.stringify(data).replace(/</g, RENDER.SAFE_JSON_LT);
+
+  return `<!DOCTYPE html>
+<html lang="${RENDER.LANG}" data-theme="${UI.DEFAULT_THEME}">
+<head>
+<meta charset="${RENDER.META_CHARSET}">
+<meta name="viewport" content="${RENDER.META_VIEWPORT}">
+<title>${escapeHtml(file.path)}${RENDER.DEFAULT_TITLE_SEPARATOR}${escapeHtml(repoName)}</title>
+<style>${assets.styles}</style>
+</head>
+<body>
+<header class="gh-header">
+  ${GITHUB_MARK}
+  <h1><span class="gh-muted">${escapeHtml(repoName)}</span>${P.SPACE}${P.SLASH}${P.SPACE}<strong>${escapeHtml(file.path)}</strong></h1>
+  <div class="spacer"></div>
+  <div class="gh-header-meta">
+    <span class="small muted" id="line-count"></span>
+    <button class="gh-btn gh-btn-sm" id="btn-add-file-comment" title="Add a comment to this file">Add file comment</button>
+    <button class="gh-btn gh-btn-sm" id="btn-theme">◐</button>
+  </div>
+</header>
+
+<div class="viewer-wrap">
+  <div class="viewer-toolbar">
+    <span class="small muted" id="changed-count"></span>
+    <div class="spacer"></div>
+    <span class="small muted">Click the + gutter (or a line number) and drag to comment</span>
+  </div>
+  <div id="file-viewer"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script id="file-data" type="${RENDER.SCRIPT_TYPE_JSON}">${safeJson}</script>
+<script>${assets.viewer}</script>
+</body>
+</html>`;
+}
