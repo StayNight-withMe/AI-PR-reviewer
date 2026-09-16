@@ -420,3 +420,89 @@ export async function buildFilePage(repoName, file, reviewId) {
 </body>
 </html>`;
 }
+export function buildMarkdown(meta, review) {
+  const lines = [];
+  // A submit may omit the summary (an API client, an older page, a test): the
+  // Markdown must still be produced instead of failing the whole request.
+  const summary = review.summary ?? P.EMPTY_OBJECT;
+  const pending = summary.files === undefined;
+
+  lines.push(`# Review: ${meta.repo}${RENDER.DEFAULT_TITLE_SEPARATOR}${meta.branch}`);
+  lines.push(P.EMPTY);
+  lines.push(`- **Mode**: ${meta.modeLabel || meta.mode}`);
+  lines.push(`- **State**: ${review.reviewState}`);
+  if (!pending) {
+    lines.push(`- **Files**: ${summary.files} (+${summary.additions} / ${P.DASH}${summary.deletions})`);
+    lines.push(`- **Comments**: ${summary.comments}`);
+  } else {
+    lines.push(`- **Comments**: ${(review.comments ?? P.EMPTY_ARRAY).length}`);
+  }
+  if (meta.base) lines.push(`- **Base**: \`${meta.base}\``);
+  if (meta.head) lines.push(`- **Head**: \`${meta.head}\``);
+
+  if (meta.commits?.length) {
+    lines.push(P.EMPTY);
+    lines.push("## Commits");
+    for (const commit of meta.commits) {
+      lines.push(`- \`${commit.shortSha}\` ${commit.subject}${commit.authorName ? ` — ${commit.authorName}` : P.EMPTY}`);
+    }
+  }
+
+  if (meta.pr) {
+    lines.push(P.EMPTY);
+    lines.push("## Pull request");
+    lines.push(P.EMPTY);
+    const label = meta.pr.number ? `#${meta.pr.number}` : "pull request";
+    lines.push(`- **Pull request**: ${label}${meta.pr.title ? ` — ${meta.pr.title}` : P.EMPTY}`);
+    if (meta.pr.url) lines.push(`- **URL**: ${meta.pr.url}`);
+    if (meta.pr.state) lines.push(`- **State**: ${meta.pr.state}${meta.pr.draft ? " (draft)" : P.EMPTY}`);
+    if (meta.pr.headRefName) lines.push(`- **Head branch**: \`${meta.pr.headRefName}\``);
+  }
+
+  const comments = review.comments ?? P.EMPTY_ARRAY;
+
+  if (review.reviewBody) {
+    lines.push(P.EMPTY);
+    lines.push("## Summary");
+    lines.push(P.EMPTY);
+    lines.push(review.reviewBody);
+  }
+
+  lines.push(P.EMPTY);
+  lines.push("## Inline comments");
+  lines.push(P.EMPTY);
+
+  if (!comments.length) {
+    lines.push("_No inline comments._");
+  } else {
+    for (const [path, grouped] of groupByPath(comments)) {
+      lines.push(`### \`${path}\``);
+      lines.push(P.EMPTY);
+      grouped
+        .sort((a, b) => a.lineStart - b.lineStart)
+        .forEach((comment) => {
+          const side = comment.side === DIFF.SIDE.LEFT ? "old" : "new";
+          const range = comment.lineEnd && comment.lineEnd !== comment.lineStart
+            ? `${comment.lineStart}${P.DASH}${comment.lineEnd}`
+            : `${comment.lineStart}`;
+          const resolved = comment.resolved === true ? " ~~resolved~~" : P.EMPTY;
+          lines.push(`- **line ${range}** (${side}): ${comment.body}${resolved}`);
+          for (const image of comment.images ?? P.EMPTY_ARRAY) {
+            if (image.file) lines.push(`  ![attachment](${image.file})`);
+          }
+        });
+      lines.push(P.EMPTY);
+    }
+  }
+
+  if (review.files?.length) {
+    lines.push("## Changed files");
+    lines.push(P.EMPTY);
+    for (const file of review.files) {
+      lines.push(`- \`${file.path}\` (${file.status}, +${file.additions}/${P.DASH}${file.deletions})`);
+    }
+    lines.push(P.EMPTY);
+  }
+
+  return lines.join(P.NEWLINE);
+}
