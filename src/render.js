@@ -506,3 +506,12 @@ export function buildMarkdown(meta, review) {
 
   return lines.join(P.NEWLINE);
 }
+function groupByPath(comments) {
+  const grouped = new Map();
+  for (const comment of comments) {
+    const list = grouped.get(comment.path) ?? [];
+    list.push(comment);
+    grouped.set(comment.path, list);
+  }
+  return grouped;
+}
