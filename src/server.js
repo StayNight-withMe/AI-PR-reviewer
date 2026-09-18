@@ -197,3 +197,13 @@ async function handleFileView({ response, url, buildFilePage }) {
   send(response, SERVER.STATUS_OK, SERVER.MIME.HTML, await buildFilePage(filePath));
   return true;
 }
+async function handleFileJson({ response, url, readFile }) {
+  const filePath = url.searchParams.get(QUERY.PATH) ?? P.EMPTY;
+  try {
+    const data = await readFile(filePath);
+    send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify(data));
+  } catch (error) {
+    send(response, SERVER.STATUS_NOT_FOUND, SERVER.MIME.JSON, JSON.stringify({ error: String(error.message) }));
+  }
+  return true;
+}
