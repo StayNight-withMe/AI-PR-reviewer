@@ -187,3 +187,13 @@ async function dispatch(ctx) {
 
   return false;
 }
+/** --------------------------------- handlers -------------------------------- */
+async function handleFileView({ response, url, buildFilePage }) {
+  const filePath = url.searchParams.get(QUERY.PATH) ?? P.EMPTY;
+  if (!filePath) {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.TEXT, SERVER.MISSING_PATH);
+    return true;
+  }
+  send(response, SERVER.STATUS_OK, SERVER.MIME.HTML, await buildFilePage(filePath));
+  return true;
+}
