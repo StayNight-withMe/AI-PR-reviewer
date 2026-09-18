@@ -75,3 +75,115 @@ export async function servePage(options) {
     getLastDispatch: () => session.lastDispatch,
   };
 }
+async function dispatch(ctx) {
+  const { request, response, url } = ctx;
+  const get = request.method === SERVER.METHOD_GET;
+  const post = request.method === SERVER.METHOD_POST;
+
+  if (get && (url.pathname === ROUTES.INDEX || url.pathname === ROUTES.INDEX_ALT)) {
+    send(response, SERVER.STATUS_OK, SERVER.MIME.HTML, ctx.html);
+    return true;
+  }
+
+  if (get && url.pathname === ROUTES.FILE) {
+    return handleFileView(ctx);
+  }
+
+  if (get && url.pathname === ROUTES.API_FILE) {
+    return handleFileJson(ctx);
+  }
+
+  if (post && url.pathname === ROUTES.API_FILES) {
+    return handleFilesBatch(ctx);
+  }
+
+  if (get && url.pathname === ROUTES.API_SYMBOLS) {
+    send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify(ctx.symbols));
+    return true;
+  }
+
+  if (get && url.pathname === ROUTES.API_PATHS) {
+    return handlePaths(ctx);
+  }
+
+  if (post && url.pathname === ROUTES.API_REVIEW) {
+    return handleReviewSubmit(ctx);
+  }
+  if (post && url.pathname === ROUTES.API_DISPATCH) {
+    return handleDispatch(ctx);
+  }
+
+  if (get && url.pathname === ROUTES.API_VERSION) {
+    send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({
+      ok: true,
+      name: APP.NAME,
+      version: APP.VERSION,
+      protocol: APP.PROTOCOL_VERSION,
+      reviewId: ctx.meta.id,
+    }));
+    return true;
+  }
+
+  if (get && url.pathname === ROUTES.API_RESULT) {
+    send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({
+      ok: true,
+      review: ctx.session.lastReview,
+      dispatch: ctx.session.lastDispatch,
+    }));
+    return true;
+  }
+  // Device-wide UI settings: one small file shared by every review page of
+
+  if (get && url.pathname === ROUTES.API_SETTINGS) {
+    send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, settings: await readSettings() }));
+    return true;
+  }
+
+  if (post && url.pathname === ROUTES.API_SETTINGS) {
+    let patch;
+    try {
+      patch = JSON.parse(await readBody(request));
+    } catch {
+      send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.INVALID_BODY }));
+      return true;
+    }
+    const settings = await writeSettings(patch);
+    send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, settings }));
+    return true;
+  }
+
+  if (get && url.pathname === ROUTES.API_COMMITS) {
+    const commits = ctx.listCommits
+      ? await ctx.listCommits()
+      : ctx.meta.commits ?? P.EMPTY_ARRAY;
+    send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, commits }));
+    return true;
+  }
+
+  if (get && url.pathname === ROUTES.API_COMMIT) {
+    return handleCommitDiff(ctx);
+  }
+
+  if (post && url.pathname === ROUTES.API_COMMIT_RENAME) {
+    return handleCommitRename(ctx);
+  }
+
+  if (get && url.pathname === ROUTES.API_RANGE) {
+    return handleRangeDiff(ctx);
+  }
+
+  if (get && url.pathname === ROUTES.API_SEARCH) {
+    return handleSearch(ctx);
+  }
+
+  if (get && url.pathname === ROUTES.API_USAGES) {
+    return handleUsages(ctx);
+  }
+
+  if (get && url.pathname === ROUTES.FAVICON) {
+    send(response, SERVER.STATUS_NO_CONTENT, SERVER.MIME.TEXT, P.EMPTY);
+    return true;
+  }
+
+  return false;
+}
