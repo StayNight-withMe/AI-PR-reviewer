@@ -207,3 +207,17 @@ async function handleFileJson({ response, url, readFile }) {
   }
   return true;
 }
+/** Batch variant of /api/file: one request for many files. */
+async function handleFilesBatch({ request, response, readFiles }) {
+  const payload = JSON.parse(await readBody(request));
+  const paths = Array.isArray(payload.paths) ? payload.paths.slice(P.ZERO, SERVER.MAX_BATCH_FILES) : P.EMPTY_ARRAY;
+
+  if (!readFiles) {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.MISSING_FILES }));
+    return true;
+  }
+
+  const files = await readFiles(paths);
+  send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, files }));
+  return true;
+}
