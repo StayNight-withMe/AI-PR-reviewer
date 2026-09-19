@@ -240,3 +240,23 @@ async function handleReviewSubmit({ request, response, outputDir, meta, onReview
   session.resolveSubmitted({ ...result, review });
   return true;
 }
+async function handleDispatch({ request, response, onDispatch, session }) {
+  const payload = JSON.parse(await readBody(request));
+  session.lastDispatch = payload;
+  const result = onDispatch ? await onDispatch(payload) : { ok: true };
+  send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, ...result }));
+  return true;
+}
+async function handleCommitDiff({ response, url, loadCommit }) {
+  const sha = url.searchParams.get(QUERY.SHA) ?? P.EMPTY;
+  if (!sha || !loadCommit) {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.MISSING_SHA }));
+    return true;
+  }
+  try {
+    send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, ...(await loadCommit(sha)) }));
+  } catch (error) {
+    send(response, SERVER.STATUS_ERROR, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: String(error.message) }));
+  }
+  return true;
+}
