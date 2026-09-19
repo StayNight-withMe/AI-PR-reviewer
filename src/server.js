@@ -221,3 +221,22 @@ async function handleFilesBatch({ request, response, readFiles }) {
   send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, files }));
   return true;
 }
+function handlePaths({ response, outputDir }) {
+  send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({
+    outputDir,
+    jsonPath: join(outputDir, ARTIFACTS.REVIEW_JSON),
+    markdownPath: join(outputDir, ARTIFACTS.REVIEW_MARKDOWN),
+    imagesDir: join(outputDir, ARTIFACTS.IMAGES_DIR),
+  }));
+  return true;
+}
+async function handleReviewSubmit({ request, response, outputDir, meta, onReview, session }) {
+  const review = JSON.parse(await readBody(request));
+  const savedImages = await persistImages(outputDir, review);
+  const result = await onReview(review, meta);
+
+  session.lastReview = { ...result, review };
+  send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, ...result, images: savedImages }));
+  session.resolveSubmitted({ ...result, review });
+  return true;
+}
