@@ -287,3 +287,16 @@ async function handleUsages({ response, url, findUsages }) {
   }
   return true;
 }
+async function handleSearch({ response, url, searchProject }) {
+  const query = url.searchParams.get(QUERY.Q) ?? P.EMPTY;
+  if (!query || !searchProject) {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.MISSING_QUERY }));
+    return true;
+  }
+  try {
+    send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, hits: await searchProject(query) }));
+  } catch (error) {
+    send(response, SERVER.STATUS_ERROR, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: String(error.message) }));
+  }
+  return true;
+}
