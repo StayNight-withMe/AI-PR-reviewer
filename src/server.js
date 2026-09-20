@@ -260,3 +260,17 @@ async function handleCommitDiff({ response, url, loadCommit }) {
   }
   return true;
 }
+async function handleRangeDiff({ response, url, loadRange }) {
+  const from = url.searchParams.get(QUERY.FROM) ?? P.EMPTY;
+  const to = url.searchParams.get(QUERY.TO) ?? P.EMPTY;
+  if (!from || !to || !loadRange) {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.MISSING_RANGE }));
+    return true;
+  }
+  try {
+    send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, ...(await loadRange(from, to)) }));
+  } catch (error) {
+    send(response, SERVER.STATUS_ERROR, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: String(error.message) }));
+  }
+  return true;
+}
