@@ -300,3 +300,32 @@ async function handleSearch({ response, url, searchProject }) {
   }
   return true;
 }
+async function handleCommitRename({ request, response, renameCommit }) {
+  if (!renameCommit) {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.RENAME_UNAVAILABLE }));
+    return true;
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(await readBody(request));
+  } catch {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.INVALID_BODY }));
+    return true;
+  }
+
+  const sha = String(payload?.sha ?? P.EMPTY);
+  const message = String(payload?.message ?? P.EMPTY);
+  if (!sha || !message.trim()) {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.MISSING_COMMIT_MESSAGE }));
+    return true;
+  }
+
+  try {
+    const result = await renameCommit(sha, message, { allowPushed: payload.allowPushed === true });
+    send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, commit: result }));
+  } catch (error) {
+    send(response, SERVER.STATUS_ERROR, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: String(error.message) }));
+  }
+  return true;
+}
