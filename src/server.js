@@ -274,3 +274,16 @@ async function handleRangeDiff({ response, url, loadRange }) {
   }
   return true;
 }
+async function handleUsages({ response, url, findUsages }) {
+  const name = url.searchParams.get(QUERY.NAME) ?? P.EMPTY;
+  if (!name || !findUsages) {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.MISSING_NAME }));
+    return true;
+  }
+  try {
+    send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, usages: await findUsages(name) }));
+  } catch (error) {
+    send(response, SERVER.STATUS_ERROR, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: String(error.message) }));
+  }
+  return true;
+}
