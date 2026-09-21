@@ -329,3 +329,30 @@ async function handleCommitRename({ request, response, renameCommit }) {
   }
   return true;
 }
+/** --------------------------------- helpers -------------------------------- */
+function send(response, status, contentType, body) {
+  response.writeHead(status, {
+    [HEADER_CONTENT_TYPE]: contentType,
+    [HEADER_CACHE_CONTROL]: SERVER.CACHE_CONTROL_VALUE,
+  });
+  response.end(body);
+}
+function readBody(request) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = P.ZERO;
+
+    request.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > SERVER.MAX_BODY_BYTES) {
+        reject(new Error(SERVER.BODY_TOO_LARGE));
+        request.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+
+    request.on("end", () => resolve(Buffer.concat(chunks).toString(SERVER.CHARSET)));
+    request.on("error", reject);
+  });
+}
