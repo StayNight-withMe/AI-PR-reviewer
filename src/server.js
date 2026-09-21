@@ -356,3 +356,31 @@ function readBody(request) {
     request.on("error", reject);
   });
 }
+function delay(ms, value) {
+  return new Promise((resolve) => setTimeout(() => resolve(value), ms));
+}
+/** Images pasted into comments arrive as data URLs; store them as real files. */
+async function persistImages(outputDir, review) {
+  const saved = [];
+  const imagesDir = join(outputDir, ARTIFACTS.IMAGES_DIR);
+
+  for (const comment of review.comments ?? P.EMPTY_ARRAY) {
+    if (!Array.isArray(comment.images) || comment.images.length === P.ZERO) continue;
+
+    await mkdir(imagesDir, { recursive: true });
+
+    for (const [index, image] of comment.images.entries()) {
+      const match = SERVER.DATA_URL_PATTERN.exec(image.dataUrl ?? P.EMPTY);
+      if (!match) continue;
+
+      const extension = match[1].split(P.SLASH)[1].replace(SERVER.XML_SUFFIX, P.EMPTY).replace(SERVER.JPEG_SUFFIX, SERVER.JPG_EXTENSION);
+      const fileName = `${comment.id}${P.DASH}${index}${P.DOT}${extension}`;
+      await writeFile(join(imagesDir, fileName), Buffer.from(match[2], SERVER.BASE64));
+
+      image.file = `${ARTIFACTS.IMAGES_DIR}${P.SLASH}${fileName}`;
+      saved.push(image.file);
+    }
+  }
+
+  return saved;
+}
