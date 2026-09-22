@@ -8,3 +8,13 @@ import { servePage, writeReviewFiles } from "./server.js";
 import { buildSymbolIndex } from "./symbols.js";
 import { readFileForViewer, readFilesForHighlight } from "./fileview.js";
 import { MODE_LABELS, DIFF, GIT, MODE, P, SERVER } from "./config.js";
+import { removeLegacyArtifacts, reviewDir } from "./artifacts.js";
+import { repoLabel } from "./models/repo.js";
+import { resolveScope } from "./models/scope.js";
+import { buildProjectTree } from "./models/tree.js";
+import { toDiffSet, toFileModel } from "./models/diffset.js";
+import { attachGapMetadata } from "./models/gaps.js";
+import { readReviewOwner, writeReviewOwner } from "./models/owner.js";
+import { buildDispatchMessage, buildDispatchPrompt, currentSessionId, dispatchToSession, resolveSessionId, writeDispatchPrompt } from "./dispatch.js";
+export { MODE_LABELS, repoLabel };
+/** Reason returned when a submit carries no comments and no summary. */
