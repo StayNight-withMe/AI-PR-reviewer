@@ -65,3 +65,13 @@ export async function buildReview(params) {
 
   return { root, meta, files, stats, allFiles, scope };
 }
+/** Where the gap metadata has to be read from. */
+function gapOptions(mode, scope) {
+  if (mode === MODE.UNCOMMITTED) {
+    return {
+      useWorkingTree: true,
+      refs: [GIT.DEFAULT_REF, scope.base].filter(Boolean),
+    };
+  }
+  return { ref: scope.head };
+}
