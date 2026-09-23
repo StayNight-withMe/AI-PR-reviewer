@@ -75,3 +75,14 @@ function gapOptions(mode, scope) {
   }
   return { ref: scope.head };
 }
+/** A short fingerprint of the reviewed change set. */
+function diffFingerprint(files) {
+  return files
+    .map((file) => `${file.path}:${file.additions}+${file.deletions}-${file.hunks.length}h`)
+    .join(P.PIPE);
+}
+/** Commits already on a remote can only be rewritten with explicit consent. */
+async function loadPushedShas(root) {
+  const shas = await pushedShas(root).catch(() => new Set());
+  return Array.from(shas);
+}
