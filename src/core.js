@@ -236,3 +236,14 @@ async function loadRangeDiff(root, from, to) {
   await attachGapMetadata(root, files, { ref: to });
   return { files, stats, from, to };
 }
+/** Live commit list, re-read after a rewrite so the UI sees the new shas. */
+async function loadLiveCommits(root, scope) {
+  const [commits, pushedList, headSha] = await Promise.all([
+    loadScopeCommits(root, scope),
+    loadPushedShas(root),
+    resolveCommit(root, GIT.DEFAULT_REF),
+  ]);
+
+  const pushedSet = new Set(pushedList);
+  return commits.map((commit) => toCommitSummary(commit, pushedSet, headSha));
+}
