@@ -97,3 +97,130 @@ function toCommitSummary(commit, pushedSet, headSha) {
     isHead: commit.sha === headSha,
   };
 }
+export async function startReview(params) {
+  const { root, meta, files, stats, allFiles, scope } = await buildReview(params);
+  // Artifacts are scratch data, not project data: by default they live outside
+
+  const outputDir = params.outputDir || reviewDir(root, meta.id, params.env);
+  await mkdir(outputDir, { recursive: true });
+  // A `.pr-review/` left by an older version is removed once, so the checkout does not keep a…
+  await removeLegacyArtifacts(root);
+  // Record who owns the review so a submit goes back to the right session even when the inherited…
+  await writeReviewOwner(outputDir, meta.sessionId);
+
+  await loadAssets();
+
+  const symbolIndex = params.symbols === false
+    ? { symbols: {}, definitions: {}, usages: {}, implementations: {} }
+    : await buildSymbolIndex(root);
+  const symbols = symbolIndex.symbols;
+  const usages = symbolIndex.usages;
+  const implementations = symbolIndex.implementations;
+
+  const collapsed = files.filter((f) => f.status === DIFF.STATUS.DELETED).map((f) => f.path);
+
+  const onReview = async (review, reviewMeta) =>
+    writeReviewFiles(outputDir, reviewMeta, review, buildMarkdown(reviewMeta, review));
+  // Deleted files may be absent from the working tree AND from HEAD (deleted inside a range), so…
+  const fallbackRefs = [GIT.DEFAULT_REF, meta.base].filter(Boolean);
+  // A PR is reviewed at a commit that is usually not checked out: content, highlighting and…
+  const reviewRange = params.mode === MODE.PR
+    ? { base: scope.base, head: scope.head }
+    : null;
+  const contentOptions = reviewRange
+    ? { refs: fallbackRefs, range: reviewRange }
+    : { refs: fallbackRefs };
+
+  /** A review with no comments and no summary has nothing for the agent to do. */
+  function hasReviewContent(review) {
+    const comments = Array.isArray(review?.comments) ? review.comments : P.EMPTY_ARRAY;
+    const body = String(review?.reviewBody ?? P.EMPTY).trim();
+    return comments.length > P.ZERO || body.length > P.ZERO;
+  }
+
+  let dispatched = null;
+  const onDispatch = async (payload) => {
+    dispatched = payload;
+    const review = payload.review ?? payload;
+    // An empty review has nothing to fix.
+
+    if (!hasReviewContent(review)) {
+      return {
+        dispatched: false,
+        reason: AGENT_REASON_EMPTY_REVIEW,
+        jsonPath: payload.jsonPath,
+      };
+    }
+    // A submit with "send to the AI" must start the fix turn by itself: the review page and the…
+    const prompt = buildDispatchPrompt(review, meta, payload);
+    const promptPath = await writeDispatchPrompt(outputDir, prompt);
+
+    const owner = await readReviewOwner(outputDir);
+    const targetSessionId = owner ?? meta.sessionId ?? currentSessionId();
+
+    const handoff = await dispatchToSession(
+      targetSessionId,
+      buildDispatchMessage(promptPath, root),
+
+      { cwd: root, promptKey: prompt },
+    );
+
+    return {
+      dispatched: true,
+      jsonPath: payload.jsonPath,
+      promptPath,
+      targetSessionId,
+      agent: handoff,
+    };
+  };
+
+  const html = await buildPage(meta, files, stats, allFiles, params.comments ?? [], params.reviewState ?? "COMMENT", {
+    symbols,
+    definitions: symbolIndex.definitions,
+    usages,
+    implementations,
+    collapsed,
+    diffMode: params.diffMode,
+    dispatchEnabled: params.dispatchEnabled !== false,
+  });
+
+  const page = await servePage({
+    html,
+    outputDir,
+    meta,
+    onReview,
+    onDispatch,
+    symbols,
+    buildFilePage: async (filePath) => {
+      const file = await readFileForViewer(root, filePath, contentOptions);
+      return buildFilePage(meta.repo, file, meta.id);
+    },
+    readFile: (filePath) => readFileForViewer(root, filePath, contentOptions),
+    readFiles: (paths) => readFilesForHighlight(root, paths, reviewRange
+      ? { refs: fallbackRefs, preferRef: reviewRange.head }
+      : { refs: fallbackRefs }),
+    findUsages: (name) => usages[name] ?? [],
+    renameCommit: (sha, message, options) => renameCommitMessage(root, sha, message, options),
+    listCommits: () => loadLiveCommits(root, scope),
+    searchProject: (query) => searchProject(root, query),
+    loadCommit: (sha) => loadCommitDiff(root, sha),
+    loadRange: (from, to) => loadRangeDiff(root, from, to),
+    port: params.port ?? 0,
+    host: params.host ?? SERVER.HOST,
+  });
+
+  return {
+    reviewId: meta.id,
+    url: page.url,
+    page,
+    outputDir,
+    repoRoot: root,
+    tree: allFiles,
+    files: files.length,
+    additions: stats.additions,
+    deletions: stats.deletions,
+    symbols: Object.keys(symbols).length,
+    meta,
+    getDispatch: () => dispatched,
+  };
+}
