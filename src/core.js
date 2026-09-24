@@ -224,3 +224,15 @@ export async function startReview(params) {
     getDispatch: () => dispatched,
   };
 }
+async function loadCommitDiff(root, sha) {
+  const resolved = await resolveCommit(root, sha);
+  if (!resolved) throw new Error(`Commit not found: ${sha}`);
+  const { files, stats } = toDiffSet(await commitDiff(root, resolved));
+  await attachGapMetadata(root, files, { ref: resolved });
+  return { files, stats, sha: resolved };
+}
+async function loadRangeDiff(root, from, to) {
+  const { files, stats } = toDiffSet(await diffBetween(root, from, to));
+  await attachGapMetadata(root, files, { ref: to });
+  return { files, stats, from, to };
+}
