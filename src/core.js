@@ -86,3 +86,14 @@ async function loadPushedShas(root) {
   const shas = await pushedShas(root).catch(() => new Set());
   return Array.from(shas);
 }
+function toCommitSummary(commit, pushedSet, headSha) {
+  return {
+    sha: commit.sha,
+    shortSha: commit.shortSha,
+    subject: commit.subject,
+    authorName: commit.authorName,
+    date: commit.date,
+    pushed: pushedSet.has(commit.sha),
+    isHead: commit.sha === headSha,
+  };
+}
