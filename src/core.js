@@ -247,3 +247,19 @@ async function loadLiveCommits(root, scope) {
   const pushedSet = new Set(pushedList);
   return commits.map((commit) => toCommitSummary(commit, pushedSet, headSha));
 }
+/** Renames the message of the newest local commit; refuses rewritten history by default. */
+async function renameCommitMessage(root, sha, message, { allowPushed = false } = {}) {
+  const trimmed = String(message ?? P.EMPTY).trim();
+  if (!trimmed) throw new Error("Commit message cannot be empty.");
+
+  const newSha = await renameCommit(root, sha, trimmed, { allowPushed });
+  const commit = await listCommits(root, { limit: GIT.MAX_COMMITS }).then(
+    (commits) => commits.find((item) => item.sha === newSha) ?? null,
+  );
+
+  return {
+    sha: newSha,
+    shortSha: newSha.slice(P.ZERO, GIT.SHORT_SHA_LENGTH),
+    subject: commit?.subject ?? trimmed,
+  };
+}
