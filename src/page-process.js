@@ -50,3 +50,20 @@ export function spawnPageProcess({ repoPath, mode, base, head, pr, prRepo, port,
 
   return { child, port };
 }
+/** A flag as the text an environment variable can carry. */
+function flag(value) {
+  if (value === undefined) return P.EMPTY;
+  return value ? "1" : "0";
+}
+/** Waits until the page process has registered itself. */
+export async function waitForPageRegistry(root, { timeoutMs = SERVER.PAGE_START_TIMEOUT_MS } = {}) {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    const entry = await findPageRegistry(root);
+    if (entry) return entry;
+    await delay(SERVER.PAGE_POLL_MS);
+  }
+
+  return null;
+}
