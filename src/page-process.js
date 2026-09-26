@@ -22,3 +22,31 @@ export function findFreePort() {
     });
   });
 }
+/** Starts the page process. */
+export function spawnPageProcess({ repoPath, mode, base, head, pr, prRepo, port, title, sessionId, commits, includeStaged, includeUntracked, symbols }) {
+  const args = [PAGE_SCRIPT, repoPath, String(port), mode];
+  if (base) args.push(base);
+  if (head) args.push(head);
+
+  const child = spawn(process.execPath, args, {
+    cwd: join(fileURLToPath(new URL(".", import.meta.url)), ".."),
+    detached: true,
+    stdio: "ignore",
+    windowsHide: true,
+    env: {
+      ...process.env,
+      OPENCODE_SESSION_ID: sessionId ?? process.env.OPENCODE_SESSION_ID ?? P.EMPTY,
+      PR_REVIEW_TITLE: title ?? P.EMPTY,
+      PR_REVIEW_PR: pr !== undefined && pr !== null && String(pr).trim() ? String(pr).trim() : P.EMPTY,
+      PR_REVIEW_PR_REPO: prRepo ?? P.EMPTY,
+      PR_REVIEW_COMMITS: commits?.length ? JSON.stringify(commits) : P.EMPTY,
+      PR_REVIEW_INCLUDE_STAGED: flag(includeStaged),
+      PR_REVIEW_INCLUDE_UNTRACKED: flag(includeUntracked),
+      PR_REVIEW_SYMBOLS: flag(symbols),
+    },
+  });
+
+  child.unref();
+
+  return { child, port };
+}
