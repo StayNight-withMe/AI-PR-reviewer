@@ -99,3 +99,13 @@ async function findRegistryIn(artifacts) {
 
   return null;
 }
+/** Writes the registry entry of the page process. */
+export async function writePageRegistry(outputDir, entry) {
+  await writeFile(join(outputDir, PAGE_REGISTRY), JSON.stringify(entry, null, SERVER.JSON_INDENT), SERVER.FILE_ENCODING);
+  return entry;
+}
+/** Removes the registry entry of a page that was stopped. */
+export async function removePageRegistry(path) {
+  await unlink(path).catch(() => undefined);
+}
+/** True when the process with this id is still running. */
