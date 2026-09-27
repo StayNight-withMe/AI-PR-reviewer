@@ -77,3 +77,25 @@ export async function findPageRegistry(root) {
   return findRegistryIn(join(artifactsRoot(), repoSlug(root)));
 }
 /** The newest live registry entry in one artifacts directory, or null. */
+async function findRegistryIn(artifacts) {
+  let folders = [];
+  try {
+    folders = await readdir(artifacts, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+
+  for (const folder of folders) {
+    if (!folder.isDirectory()) continue;
+
+    const path = join(artifacts, folder.name, PAGE_REGISTRY);
+    try {
+      const entry = JSON.parse(await readFile(path, "utf8"));
+      if (entry?.port && isAlive(entry.pid)) return { ...entry, registryPath: path };
+    } catch {
+    // A half-written registry file is not an error: the page is starting.
+    }
+  }
+
+  return null;
+}
