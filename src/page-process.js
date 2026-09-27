@@ -67,3 +67,13 @@ export async function waitForPageRegistry(root, { timeoutMs = SERVER.PAGE_START_
 
   return null;
 }
+/** The registry entry of a running page of the repository, if there is one. */
+export async function findPageRegistry(root) {
+  // New reviews live outside the checkout; `.pr-review/` is the legacy folder
+  // of an older version and is still scanned so an old page is found.
+  const legacy = await findRegistryIn(join(root, GIT.LEGACY_ARTIFACT_DIR));
+  if (legacy) return legacy;
+
+  return findRegistryIn(join(artifactsRoot(), repoSlug(root)));
+}
+/** The newest live registry entry in one artifacts directory, or null. */
