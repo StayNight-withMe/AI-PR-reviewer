@@ -119,3 +119,16 @@ export function isAlive(pid) {
   }
 }
 /** Stops the page process and removes its registry entry. */
+export async function stopPageProcess(entry) {
+  if (!entry) return;
+
+  if (entry.pid) {
+    try {
+      process.kill(entry.pid, "SIGTERM");
+    } catch {
+    // The process is already gone.
+    }
+  }
+
+  if (entry.registryPath) await removePageRegistry(entry.registryPath);
+}
