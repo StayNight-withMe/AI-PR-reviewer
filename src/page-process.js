@@ -109,3 +109,13 @@ export async function removePageRegistry(path) {
   await unlink(path).catch(() => undefined);
 }
 /** True when the process with this id is still running. */
+export function isAlive(pid) {
+  if (!pid) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+/** Stops the page process and removes its registry entry. */
