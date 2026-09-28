@@ -132,3 +132,13 @@ export async function stopPageProcess(entry) {
 
   if (entry.registryPath) await removePageRegistry(entry.registryPath);
 }
+/** Reads the state of the page: the last submitted review and the dispatch. */
+export async function fetchPageResult(entry) {
+  const response = await fetch(`${entry.url}${ROUTES.API_RESULT}`);
+  if (!response.ok) return null;
+
+  const payload = await response.json();
+  return payload?.ok ? payload : null;
+}
+/** ------------------------- cross-process page index ------------------------ */
+/** The page index, shared by every MCP process of this user. */
