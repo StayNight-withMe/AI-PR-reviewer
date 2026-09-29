@@ -169,3 +169,11 @@ export async function findIndexedPage(reviewId) {
 
   return null;
 }
+/** Forgets a reviewId in the index. */
+export async function forgetIndexedPage(reviewId) {
+  if (!reviewId?.trim?.()) return;
+  await rm(join(pageIndexDir(), `${reviewId}.json`), { force: true }).catch(() => undefined);
+}
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
