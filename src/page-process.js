@@ -156,3 +156,16 @@ export async function indexPage(entry) {
   } catch {
   }
 }
+/** The indexed page of a reviewId, when a live page is behind it. */
+export async function findIndexedPage(reviewId) {
+  if (!reviewId?.trim?.()) return null;
+
+  try {
+    const entry = JSON.parse(await readFile(join(pageIndexDir(), `${reviewId}.json`), "utf8"));
+    if (entry?.port && isAlive(entry.pid)) return entry;
+  } catch {
+  // No entry, or the process that wrote it is gone.
+  }
+
+  return null;
+}
