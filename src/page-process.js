@@ -142,3 +142,17 @@ export async function fetchPageResult(entry) {
 }
 /** ------------------------- cross-process page index ------------------------ */
 /** The page index, shared by every MCP process of this user. */
+export function pageIndexDir() {
+  return join(homedir(), SERVER.PAGE_INDEX_DIR_NAME, SERVER.PAGE_INDEX_PAGES);
+}
+/** Remembers a page under its reviewId, so any MCP process can find it. */
+export async function indexPage(entry) {
+  if (!entry?.reviewId?.trim?.()) return;
+
+  try {
+    const dir = pageIndexDir();
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, `${entry.reviewId}.json`), JSON.stringify(entry, null, SERVER.JSON_INDENT), SERVER.FILE_ENCODING);
+  } catch {
+  }
+}
