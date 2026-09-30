@@ -39,3 +39,16 @@ export async function readSettings(env = process.env) {
     return {};
   }
 }
+/** Writes the settings, keeping only the known keys with a correct type. */
+export async function writeSettings(patch, env = process.env) {
+  const current = await readSettings(env);
+  // Sanitize the patch BEFORE merging: a rejected value must not overwrite the
+  // good stored one (a typo in a number field would otherwise erase it).
+  const clean = sanitizeSettings(patch);
+  const merged = { ...current, ...clean };
+
+  const path = settingsPath(env);
+  await mkdir(join(path, ".."), { recursive: true }).catch(() => {});
+  await writeFile(path, JSON.stringify(merged, null, SERVER.JSON_INDENT), SERVER.FILE_ENCODING);
+  return merged;
+}

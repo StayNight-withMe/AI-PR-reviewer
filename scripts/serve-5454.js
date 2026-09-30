@@ -30,3 +30,29 @@ const result = await startReview({
   port,
   title: process.env.PR_REVIEW_TITLE || undefined,
 });
+console.log(`REVIEW_PAGE_URL=${result.url}`);
+console.log(`REVIEW_ID=${result.reviewId}`);
+console.log(`OUTPUT_DIR=${result.outputDir}`);
+console.log(`FILES=${result.files} ADD=${result.additions} DEL=${result.deletions} SYMBOLS=${result.symbols}`);
+console.log(`ARTIFACT_DIR=${result.outputDir}`);
+// The registry lets a restarted MCP server find this page again.
+await writePageRegistry(result.outputDir, {
+  reviewId: result.reviewId,
+  url: result.url,
+  port: result.page.port,
+  pid: process.pid,
+  repo: result.repoRoot,
+  branch: result.meta.branch,
+  base: result.meta.base,
+  head: result.meta.head,
+  mode: result.meta.mode,
+  pr: result.meta.pr ? result.meta.pr.number : null,
+  prUrl: result.meta.pr ? result.meta.pr.url : null,
+  requested: { mode, base: base ?? null, head: head ?? null, pr: prNumber ? Number(prNumber) : null },
+  outputDir: result.outputDir,
+  files: result.files,
+  additions: result.additions,
+  deletions: result.deletions,
+  symbols: result.symbols,
+  startedAt: new Date().toISOString(),
+});

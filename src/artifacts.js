@@ -21,3 +21,24 @@ export function repoSlug(rootPath) {
   return `${safe}-${hash}`;
 }
 /** The directory of one review of `root`. */
+export function reviewDir(root, reviewId, env = process.env) {
+  return join(artifactsRoot(env), repoSlug(root), reviewId);
+}
+/** The legacy in-repo artifacts directory (read-only fallback). */
+export function legacyReviewDir(root, reviewId) {
+  return join(root, GIT.LEGACY_ARTIFACT_DIR, reviewId);
+}
+/** Removes the legacy in-repo `.pr-review/` directory. */
+export async function removeLegacyArtifacts(root) {
+  const dir = join(root, GIT.LEGACY_ARTIFACT_DIR);
+  try {
+    const { readdir } = await import("node:fs/promises");
+    const entries = await readdir(dir, { withFileTypes: true });
+    const ours = entries.length > P.ZERO && entries.every((entry) => entry.isDirectory() && /^[0-9a-f]{6,}$/i.test(entry.name));
+    if (!ours) return false;
+    await rm(dir, { recursive: true, force: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
