@@ -56,3 +56,19 @@ await writePageRegistry(result.outputDir, {
   symbols: result.symbols,
   startedAt: new Date().toISOString(),
 });
+// Keep the process alive; review.json is written by POST /api/review.
+setInterval(() => {}, SERVER.KEEPALIVE_MS);
+process.on("SIGTERM", async () => {
+  await result.page.close();
+  process.exit(0);
+});
+/** A list from the environment; empty when it was not set. */
+function parseList(value) {
+  if (!value) return undefined;
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}

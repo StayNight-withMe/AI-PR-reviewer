@@ -52,3 +52,24 @@ export async function writeSettings(patch, env = process.env) {
   await writeFile(path, JSON.stringify(merged, null, SERVER.JSON_INDENT), SERVER.FILE_ENCODING);
   return merged;
 }
+/** Drops unknown keys and coerces known ones to their type. */
+export function sanitizeSettings(raw) {
+  const result = {};
+  if (!raw || typeof raw !== "object") return result;
+
+  for (const key of SETTING_KEYS) {
+    const value = raw[key];
+    if (value === undefined) continue;
+
+    if (NUMERIC_KEYS.has(key)) {
+      const number = Number(value);
+      if (Number.isFinite(number)) result[key] = number;
+    } else if (BOOLEAN_KEYS.has(key)) {
+      if (typeof value === "boolean") result[key] = value;
+    } else if (typeof value === P.TYPE_STRING && value.length <= P.MAX_SETTING_LENGTH) {
+      result[key] = value;
+    }
+  }
+
+  return result;
+}
