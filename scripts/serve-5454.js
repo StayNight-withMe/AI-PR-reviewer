@@ -72,3 +72,9 @@ function parseList(value) {
     return undefined;
   }
 }
+/** A flag from the environment; undefined when it was not set. */
+function parseFlag(value) {
+  if (value === "1") return true;
+  if (value === "0") return false;
+  return undefined;
+}

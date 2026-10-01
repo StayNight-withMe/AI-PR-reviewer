@@ -73,3 +73,4 @@ export function sanitizeSettings(raw) {
 
   return result;
 }
+void ARTIFACTS;
