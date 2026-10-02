@@ -21,3 +21,28 @@ export function sessionIdFromCall(extra) {
   const value = meta[AGENT.META_SESSION_KEY];
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
+/** The session that owns a review. */
+export function resolveSessionId(explicit, extra, env = process.env) {
+  return explicit?.trim() || sessionIdFromCall(extra) || currentSessionId(env);
+}
+/** Finds the real executable behind the `opencode` command. */
+export function resolveAgentBinary(env = process.env) {
+  const candidates = AGENT.BINARY_CANDIDATES.map((template) =>
+    normalizePath(
+      template
+        .replace(AGENT.ENV_PLACEHOLDER.APP_DATA, env.APPDATA || P.EMPTY)
+        .replace(AGENT.ENV_PLACEHOLDER.LOCAL_APP_DATA, env.LOCALAPPDATA || P.EMPTY)
+        .replace(AGENT.ENV_PLACEHOLDER.PROGRAM_FILES, env.ProgramFiles || P.EMPTY),
+    ),
+  );
+
+  for (const candidate of candidates) {
+    try {
+      if (existsSync(candidate)) return candidate;
+    } catch {
+      /** an unreadable candidate is simply skipped */
+    }
+  }
+
+  return null;
+}
