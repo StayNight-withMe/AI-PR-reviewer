@@ -46,3 +46,49 @@ export function resolveAgentBinary(env = process.env) {
 
   return null;
 }
+/** `%APPDATA%/npm/...` mixes separators; Node wants one style on Windows. */
+function normalizePath(value) {
+  return process.platform === AGENT.SHELL_PLATFORMS.WIN32
+    ? value.split(P.SLASH).join(P.BACKSLASH)
+    : value;
+}
+/** Builds the prompt the agent receives. */
+export function buildDispatchPrompt(review, meta, paths) {
+  const state = review?.reviewState ?? P.EMPTY;
+  const comments = Array.isArray(review?.comments) ? review.comments : [];
+  const body = String(review?.reviewBody ?? P.EMPTY).trim();
+
+  const lines = [
+    "A review was submitted from the review page. Start fixing the code now.",
+    P.EMPTY,
+    `Repo: ${meta?.repo ?? P.EMPTY}`,
+    `Branch: ${meta?.branch ?? P.EMPTY}`,
+    `Scope: ${meta?.mode ?? P.EMPTY}${meta?.base ? ` ${meta.base}...${meta.head ?? "HEAD"}` : P.EMPTY}`,
+    `Review state: ${state}`,
+    `Review JSON: ${paths?.jsonPath ?? P.EMPTY}`,
+    `Review Markdown: ${paths?.markdownPath ?? P.EMPTY}`,
+  ];
+
+  if (body) lines.push("", "Summary from the reviewer:", body);
+
+  if (comments.length) {
+    lines.push(P.EMPTY, `Inline comments (${comments.length}):`);
+    for (const comment of comments) {
+      const range = comment.lineEnd && comment.lineEnd !== comment.lineStart
+        ? `-${comment.lineEnd}`
+        : P.EMPTY;
+      const text = String(comment.body ?? P.EMPTY).replace(/\s+/g, " ").trim();
+      const done = comment.resolved === true ? " [already resolved]" : P.EMPTY;
+      lines.push(`- ${comment.path}:${comment.lineStart}${range} — ${text}${done}`);
+    }
+  } else {
+    lines.push(P.EMPTY, "No inline comments; use the summary and the diff.");
+  }
+
+  lines.push(
+    P.EMPTY,
+    "Read review.json for the full payload, apply the fixes, and report what changed.",
+  );
+
+  return lines.join("\n");
+}
