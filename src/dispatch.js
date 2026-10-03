@@ -92,3 +92,14 @@ export function buildDispatchPrompt(review, meta, paths) {
 
   return lines.join("\n");
 }
+/** Writes the dispatch prompt into the review's artifact directory and returns its absolute path. */
+export async function writeDispatchPrompt(outputDir, prompt) {
+  const file = join(outputDir, ARTIFACTS.DISPATCH_PROMPT);
+  await writeFile(file, prompt, "utf8");
+  return file;
+}
+/** Short instruction handed to the CLI; it points at the prompt file. */
+export function buildDispatchMessage(promptFile, root) {
+  const path = relativePath(root, promptFile).split(sep).join(P.SLASH);
+  return `Read ${path} and start fixing the code review described there.`;
+}
