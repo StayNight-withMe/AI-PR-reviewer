@@ -144,3 +144,61 @@ async function sessionExists(sessionId, { cwd, env = process.env } = {}) {
     });
   });
 }
+/** Sends the prompt straight into a session through the OpenCode API. */
+async function promptSessionViaApi(sessionId, message, { cwd, env = process.env } = {}) {
+  const binary = resolveAgentBinary(env);
+  if (!binary) return { started: false, reason: AGENT.ERROR_NO_BINARY };
+
+  if (!(await sessionExists(sessionId, { cwd, env }))) {
+    return { started: false, reason: AGENT.ERROR_SESSION_MISSING, sessionMissing: true };
+  }
+
+  const args = [
+    ...AGENT.ARGS.API,
+    AGENT.FLAG_PARAM,
+    AGENT.PARAM_SESSION.replace("{id}", sessionId),
+    "--data",
+    JSON.stringify({ [AGENT.BODY_FIELD]: message }),
+  ];
+
+  return new Promise((resolve) => {
+    let child;
+    try {
+      child = spawn(binary, args, {
+        cwd: cwd || process.cwd(),
+        stdio: ["ignore", "ignore", "pipe"],
+        windowsHide: true,
+        detached: false,
+        shell: false,
+      });
+    } catch (error) {
+      resolve({ started: false, reason: String(error.message) });
+      return;
+    }
+
+    let errors = "";
+    child.stderr.on("data", (chunk) => { errors += chunk; });
+
+    let settled = false;
+    const settle = (result) => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
+
+    child.once("error", (error) => settle({ started: false, reason: String(error.message) }));
+    child.once("exit", (code) => {
+      if (code === 0) {
+        settle({ started: true, binary: "api" });
+        return;
+      }
+      // A session that no longer exists must NOT fall back to the CLI: the CLI
+      // creates a new session for an unknown id and the turn disappears.
+      if (SESSION_MISSING.test(errors)) {
+        settle({ started: false, reason: AGENT.ERROR_SESSION_MISSING, sessionMissing: true });
+        return;
+      }
+      settle({ started: false, reason: AGENT.ERROR_API_FAILED });
+    });
+  });
+}
