@@ -103,3 +103,44 @@ export function buildDispatchMessage(promptFile, root) {
   const path = relativePath(root, promptFile).split(sep).join(P.SLASH);
   return `Read ${path} and start fixing the code review described there.`;
 }
+/** Live fix turns, keyed by session. */
+const inflight = new Map();
+/** Checks that a session really exists. */
+async function sessionExists(sessionId, { cwd, env = process.env } = {}) {
+  const binary = resolveAgentBinary(env);
+  if (!binary) return true;
+
+  const args = [
+    ...AGENT.ARGS.API_GET,
+    AGENT.FLAG_PARAM,
+    AGENT.PARAM_SESSION.replace("{id}", sessionId),
+  ];
+
+  return new Promise((resolve) => {
+    let child;
+    try {
+      child = spawn(binary, args, {
+        cwd: cwd || process.cwd(),
+        stdio: ["ignore", "ignore", "pipe"],
+        windowsHide: true,
+        detached: false,
+        shell: false,
+      });
+    } catch {
+      resolve(true);
+      return;
+    }
+
+    let errors = "";
+    child.stderr.on("data", (chunk) => { errors += chunk; });
+
+    child.once("error", () => resolve(true));
+    child.once("exit", (code) => {
+      if (code === 0) {
+        resolve(true);
+        return;
+      }
+      resolve(!SESSION_MISSING.test(errors));
+    });
+  });
+}
