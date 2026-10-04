@@ -271,3 +271,11 @@ export async function dispatchToSession(sessionId, message, { cwd, env = process
     setTimeout(() => settle({ started: true }), AGENT.SPAWN_GRACE_MS);
   });
 }
+/** Stops a superseded turn so two agents never edit the same review. */
+function stopTurn(turn) {
+  try {
+    turn.child.kill();
+  } catch {
+    /** already gone */
+  }
+}
