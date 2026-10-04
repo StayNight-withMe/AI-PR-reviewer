@@ -202,3 +202,72 @@ async function promptSessionViaApi(sessionId, message, { cwd, env = process.env 
     });
   });
 }
+/** Spawns the fix turn in the background. */
+export async function dispatchToSession(sessionId, message, { cwd, env = process.env, promptKey = message } = {}) {
+  if (!sessionId) {
+    return { started: false, reason: AGENT.ERROR_NO_SESSION };
+  }
+
+  const running = inflight.get(sessionId);
+  if (running) {
+    // Same review submitted twice, e.g. an impatient double click: keep one turn.
+    if (running.promptKey === promptKey) {
+      return { started: true, binary: running.binary, duplicate: true };
+    }
+    // A newer review supersedes the old one; the stale turn must not keep editing.
+    stopTurn(running);
+  }
+
+  const viaApi = await promptSessionViaApi(sessionId, message, { cwd, env });
+  if (viaApi.started) {
+    inflight.set(sessionId, { child: null, promptKey, binary: "api" });
+    return viaApi;
+  }
+  if (viaApi.sessionMissing) return viaApi;
+
+  const binary = resolveAgentBinary(env);
+  const args = [...AGENT.ARGS.RUN, AGENT.FLAG_SESSION, sessionId, message];
+  // A native binary avoids the shell entirely, which is what created the extra
+  // console window. The shim is only a fallback for unusual installations.
+  const command = binary || AGENT.BIN;
+  const needsShell = !binary && process.platform === AGENT.SHELL_PLATFORMS.WIN32;
+
+  return new Promise((resolve) => {
+    let child;
+    try {
+      child = spawn(command, args, {
+        cwd: cwd || process.cwd(),
+        stdio: "ignore",
+        windowsHide: true,
+        detached: false,
+        shell: needsShell,
+      });
+    } catch (error) {
+      resolve({ started: false, reason: String(error.message) });
+      return;
+    }
+
+    const turn = { child, promptKey, binary: binary ? "native" : "shim" };
+    inflight.set(sessionId, turn);
+    child.once("exit", () => {
+      if (inflight.get(sessionId) === turn) inflight.delete(sessionId);
+    });
+
+    let settled = false;
+    const settle = (result) => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
+
+    child.once("error", (error) => settle({ started: false, reason: String(error.message) }));
+    child.once("spawn", () => {
+      // The turn must outlive this HTTP request.
+      child.unref();
+      settle({ started: true, binary: binary ? "native" : "shim" });
+    });
+    // A spawn that neither errors nor emits "spawn" in this window is treated as
+    // started; the agent turn runs independently of the review page.
+    setTimeout(() => settle({ started: true }), AGENT.SPAWN_GRACE_MS);
+  });
+}
