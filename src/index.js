@@ -112,3 +112,64 @@ server.registerTool(
     };
   },
 );
+/** Opens the review page. */
+async function openReviewPage(args, extra) {
+  const repoPath = resolve(args.repoPath ?? process.cwd());
+  // user is in, while the environment belongs to whoever started this server.
+  const sessionId = resolveSessionId(args.sessionId, extra);
+
+  try {
+    const root = await resolveRepo(repoPath);
+    const running = await findPageRegistry(root);
+    // A page of this repository is already open for the same scope: reuse it
+    // instead of starting a second one on another port.
+    if (running && sameScope(running.requested, args)) {
+      // Reusing the page hands it to the caller: the owner file must move too,
+      // or the next submit would still go to the session that opened it first.
+      await writeReviewOwner(running.outputDir, sessionId);
+      await indexPage(running);
+      return { ...running, detached: true };
+    }
+
+    const port = await findFreePort();
+    spawnPageProcess({
+      repoPath: root,
+      mode: args.mode,
+      base: args.base,
+      head: args.head,
+      pr: args.pr,
+      prRepo: args.prRepo,
+      port,
+      title: args.title,
+      sessionId,
+      commits: args.commits,
+      includeStaged: args.includeStaged,
+      includeUntracked: args.includeUntracked,
+      symbols: args.symbols,
+    });
+
+    const registry = await waitForPageRegistry(root);
+    if (registry) {
+      await writeReviewOwner(registry.outputDir, sessionId);
+      await indexPage(registry);
+      return { ...registry, detached: true };
+    }
+  } catch {
+  // page inside this process.
+  }
+
+  const result = await startReview({ ...args, sessionId });
+  return {
+    reviewId: result.reviewId,
+    url: result.url,
+    outputDir: result.outputDir,
+    files: result.files,
+    additions: result.additions,
+    deletions: result.deletions,
+    symbols: result.symbols,
+    pr: result.meta.pr ? result.meta.pr.number : null,
+    prUrl: result.meta.pr ? result.meta.pr.url : null,
+    page: result.page,
+    detached: false,
+  };
+}
