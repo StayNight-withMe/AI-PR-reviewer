@@ -173,3 +173,15 @@ async function openReviewPage(args, extra) {
     detached: false,
   };
 }
+/** True when a running page shows the same scope as the request. */
+function sameScope(requested, args) {
+  if (!requested) return false;
+
+  const sameMode = (requested.mode ?? MODE.UNCOMMITTED) === (args.mode ?? MODE.UNCOMMITTED);
+  const sameBase = (requested.base ?? null) === (args.base ?? null);
+  const sameHead = (requested.head ?? null) === (args.head ?? null);
+  // Two PRs are different reviews even when their commits happen to match.
+  const samePr = (requested.pr ?? null) === (args.pr ?? null);
+
+  return sameMode && sameBase && sameHead && samePr;
+}
