@@ -185,3 +185,55 @@ function sameScope(requested, args) {
 
   return sameMode && sameBase && sameHead && samePr;
 }
+server.registerTool(
+  "await_review",
+  {
+    title: "Wait for the submitted review",
+    description:
+      "Blocks until the review page submits a review, then returns every inline comment plus paths to review.json and review.md.",
+    inputSchema: {
+      reviewId: z.string().describe("Identifier returned by start_review."),
+      timeoutSeconds: z.number().int().min(1).max(TOOLS.AWAIT_MAX_SECONDS).optional().describe(`Seconds to wait. Default ${TOOLS.AWAIT_DEFAULT_SECONDS}.`),
+    },
+  },
+  async ({ reviewId, timeoutSeconds }) => {
+    const review = await resolveReview(reviewId);
+
+    const timeoutMs = (timeoutSeconds ?? TOOLS.AWAIT_DEFAULT_SECONDS) * 1000;
+    const submitted = review.detached
+      ? await waitForSubmittedReview(review, timeoutMs)
+      : await review.page.waitForReview(timeoutMs);
+
+    if (!submitted) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Nothing submitted yet for ${reviewId}. The page is still open at ${review.url}.`,
+          },
+        ],
+      };
+    }
+
+    const payload = JSON.parse(await readFile(submitted.jsonPath, "utf8"));
+    const dispatch = submitted.dispatch;
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: [
+            `Review submitted (${payload.review.reviewState}).`,
+            `Inline comments: ${payload.review.comments.length}`,
+            `JSON: ${submitted.jsonPath}`,
+            `Markdown: ${submitted.markdownPath}`,
+            dispatch ? "Dispatch: requested (apply the fixes below)." : "Dispatch: not requested.",
+            "",
+            "--- Markdown ---",
+            submitted.markdown,
+          ].join("\n"),
+        },
+      ],
+    };
+  },
+);
