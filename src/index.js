@@ -237,3 +237,17 @@ server.registerTool(
     };
   },
 );
+/** Finds a review by id, wherever it was opened. */
+async function resolveReview(reviewId) {
+  const known = openReviews.get(reviewId);
+  if (known) return known;
+
+  const indexed = await findIndexedPage(reviewId);
+  if (indexed) {
+    const entry = { ...indexed, detached: true };
+    openReviews.set(reviewId, entry);
+    return entry;
+  }
+
+  throw new Error(`Unknown reviewId: ${reviewId}. Call start_review first.`);
+}
