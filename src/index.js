@@ -251,3 +251,28 @@ async function resolveReview(reviewId) {
 
   throw new Error(`Unknown reviewId: ${reviewId}. Call start_review first.`);
 }
+/** Waits for the review of a page that runs in its own process. */
+async function waitForSubmittedReview(review, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    const state = await fetchPageResult(review).catch(() => null);
+
+    if (state?.review) {
+      const jsonPath = join(review.outputDir, "review.json");
+      const markdownPath = join(review.outputDir, "review.md");
+      const payload = JSON.parse(await readFile(jsonPath, "utf8"));
+
+      return {
+        jsonPath,
+        markdownPath,
+        markdown: buildMarkdown(payload.meta, payload.review),
+        dispatch: state.dispatch ?? null,
+      };
+    }
+
+    await delay(SERVER.PAGE_RESULT_POLL_MS);
+  }
+
+  return null;
+}
