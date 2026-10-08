@@ -389,3 +389,54 @@ server.registerTool(
     };
   },
 );
+server.registerTool(
+  "resolve_comments",
+  {
+    title: "Resolve or reopen review comments",
+    description:
+      "Marks review comments as resolved (fixed) or open again, in the saved review. Use it after fixing " +
+      "what a comment asked for, so the reviewer sees the state on the page and in review.md.",
+    inputSchema: {
+      reviewId: z.string().describe("Identifier returned by start_review."),
+      ids: z.array(z.string()).optional().describe("Comment ids to change. Omit to change every comment."),
+      resolved: z.boolean().describe("true marks them resolved (fixed); false reopens them."),
+    },
+  },
+  async ({ reviewId, ids, resolved }) => {
+    const review = await resolveReview(reviewId);
+    const jsonPath = join(review.outputDir, "review.json");
+    const payload = JSON.parse(await readFile(jsonPath, "utf8"));
+
+    const comments = payload?.review?.comments ?? [];
+    if (!comments.length) {
+      return { content: [{ type: "text", text: "This review has no comments." }] };
+    }
+
+    const wanted = Array.isArray(ids) && ids.length ? new Set(ids.map(String)) : null;
+    const touched = [];
+    for (const comment of comments) {
+      if (wanted && !wanted.has(String(comment.id))) continue;
+      comment.resolved = resolved === true;
+      touched.push(String(comment.id));
+    }
+
+    if (!touched.length) {
+      return {
+        content: [{ type: "text", text: `No comment matched: ${(ids ?? []).join(", ")}.` }],
+        isError: true,
+      };
+    }
+    // Keep review.json and review.md in sync with the new state.
+    const markdown = buildMarkdown(payload.meta, payload.review);
+    await writeReviewFiles(review.outputDir, payload.meta, payload.review, markdown);
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `${resolved ? "Resolved" : "Reopened"} ${touched.length} comment(s): ${touched.join(", ")}.`,
+        },
+      ],
+    };
+  },
+);
