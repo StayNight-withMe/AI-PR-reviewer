@@ -306,3 +306,34 @@ server.registerTool(
     return { content: [{ type: "text", text: buildMarkdown(payload.meta, payload.review) }] };
   },
 );
+server.registerTool(
+  "list_review_scope",
+  {
+    title: "Inspect what can be reviewed",
+    description: "Lists branches or commits so you can choose a scope for start_review.",
+    inputSchema: {
+      repoPath: z.string().optional().describe("Repository path."),
+      kind: z.enum(["branches", "commits"]).describe("What to list."),
+      range: z.string().optional().describe("Git range for commits, e.g. origin/dev..HEAD."),
+      limit: z.number().int().min(1).max(TOOLS.SCOPE_LIST_MAX).optional().describe(`Max entries. Default ${TOOLS.SCOPE_LIST_DEFAULT}.`),
+    },
+  },
+  async ({ repoPath, kind, range, limit }) => {
+    const root = await resolveRepo(resolve(repoPath ?? process.cwd()));
+
+    if (kind === "branches") {
+      const branches = await listBranchHeads(root, await listBranches(root));
+      const text = branches
+        .slice(0, limit ?? TOOLS.SCOPE_LIST_DEFAULT)
+        .map((branch) => `${branch.name} (${branch.shortSha}) — ${branch.subject}`)
+        .join("\n");
+      return { content: [{ type: "text", text: text || "No branches found." }] };
+    }
+
+    const commits = await listCommits(root, { range, limit: limit ?? TOOLS.SCOPE_LIST_DEFAULT });
+    const text = commits
+      .map((c) => `${c.shortSha} ${c.date} ${c.authorName}: ${c.subject}`)
+      .join("\n");
+    return { content: [{ type: "text", text: text || "No commits found." }] };
+  },
+);
