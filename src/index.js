@@ -337,3 +337,55 @@ server.registerTool(
     return { content: [{ type: "text", text: text || "No commits found." }] };
   },
 );
+server.registerTool(
+  "list_pull_requests",
+  {
+    title: "List a repository's GitHub pull requests",
+    description:
+      "Lists the pull requests of a repository through the GitHub CLI, newest first, so you can pick one " +
+      "to review with start_review(mode=\"pr\", pr=NUMBER). Requires an authenticated gh.",
+    inputSchema: {
+      repoPath: z.string().optional().describe("Repository path. Defaults to the current working directory."),
+      state: z
+        .enum(GH.LIST_STATES)
+        .optional()
+        .describe("Which PRs to list: open (default), closed, merged or all."),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(GH.LIST_MAX_LIMIT)
+        .optional()
+        .describe(`Maximum entries. Default ${GH.LIST_DEFAULT_LIMIT}.`),
+      repo: z.string().optional().describe("owner/repo when the PRs live in another repository than the checkout."),
+    },
+  },
+  async ({ repoPath, state, limit, repo }) => {
+    const root = await resolveRepo(resolve(repoPath ?? process.cwd()));
+    const prs = await listPullRequests(root, { state, limit, repo });
+
+    if (!prs.length) {
+      return { content: [{ type: "text", text: "No pull requests found." }] };
+    }
+
+    const lines = prs.map((pr) => {
+      const draft = pr.draft ? " [draft]" : P.EMPTY;
+      const author = pr.author ? ` @${pr.author}` : P.EMPTY;
+      return `#${pr.number} ${pr.state}${draft} — ${pr.title}${author} (${pr.headRefName} → ${pr.baseRefName})\n   ${pr.url}`;
+    });
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: [
+            `${prs.length} pull request(s):`,
+            ...lines,
+            "",
+            'Review one with start_review({ mode: "pr", pr: <number> }) — add prRepo: "owner/repo" if the repository differs.',
+          ].join("\n"),
+        },
+      ],
+    };
+  },
+);
