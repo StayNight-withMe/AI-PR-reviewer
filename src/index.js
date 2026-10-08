@@ -276,3 +276,33 @@ async function waitForSubmittedReview(review, timeoutMs) {
 
   return null;
 }
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+server.registerTool(
+  "get_review",
+  {
+    title: "Read an exported review",
+    description: "Reads a saved review (by reviewId or an explicit review.json path) and returns it as Markdown.",
+    inputSchema: {
+      reviewId: z.string().optional().describe("Identifier returned by start_review."),
+      path: z.string().optional().describe("Path to review.json."),
+    },
+  },
+  async ({ reviewId, path }) => {
+    let target = path;
+    // Without an explicit path the reviewId is resolved across processes, so a
+    // review opened in another session is still readable here.
+    if (!target && reviewId) {
+      const review = await resolveReview(reviewId);
+      target = join(review.outputDir, "review.json");
+    }
+
+    if (!target) {
+      throw new Error("Provide either a valid reviewId or a path to review.json.");
+    }
+
+    const payload = JSON.parse(await readFile(target, "utf8"));
+    return { content: [{ type: "text", text: buildMarkdown(payload.meta, payload.review) }] };
+  },
+);
