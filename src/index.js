@@ -440,3 +440,21 @@ server.registerTool(
     };
   },
 );
+server.registerTool(
+  "close_review",
+  {
+    title: "Close a review page",
+    description: "Stops the local HTTP server for the given reviewId.",
+    inputSchema: { reviewId: z.string() },
+  },
+  async ({ reviewId }) => {
+    const entry = await resolveReview(reviewId);
+
+    if (entry.detached) await stopPageProcess(entry);
+    else await entry.page.close();
+
+    openReviews.delete(reviewId);
+    await forgetIndexedPage(reviewId);
+    return { content: [{ type: "text", text: `Closed review ${reviewId}.` }] };
+  },
+);
