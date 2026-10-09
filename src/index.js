@@ -458,3 +458,9 @@ server.registerTool(
     return { content: [{ type: "text", text: `Closed review ${reviewId}.` }] };
   },
 );
+const transport = new StdioServerTransport();
+await server.connect(transport);
+/** The MCP client owns stdin. */
+process.stdin.on("end", () => {
+  process.stderr.write("pr-review-mcp: stdin closed, the MCP client disconnected.\n");
+});
