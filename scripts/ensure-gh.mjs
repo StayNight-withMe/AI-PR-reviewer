@@ -18,3 +18,27 @@
  *   node scripts/ensure-gh.mjs             # report, install when possible
  *   node scripts/ensure-gh.mjs --check     # report only (CI / postinstall)
  *   node scripts/ensure-gh.mjs --check --never-fail   # postinstall: never fails
+ *   node scripts/ensure-gh.mjs --install   # install if missing
+ *   node scripts/ensure-gh.mjs --json      # machine-readable result
+ */
+import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
+import { promisify } from "node:util";
+import { GH } from "../src/config.js";
+const exec = promisify(execFile);
+const PACKAGE_MANAGERS = {
+  win32: [
+    { bin: "winget", args: ["install", "--id", "GitHub.cli", "-e", "--source", "winget", "--accept-source-agreements", "--accept-package-agreements"] },
+    { bin: "choco", args: ["install", "gh", "-y"] },
+    { bin: "scoop", args: ["install", "gh"] },
+  ],
+  darwin: [
+    { bin: "brew", args: ["install", "gh"] },
+  ],
+  linux: [
+    { bin: "apt-get", args: ["install", "-y", "gh"], sudo: true },
+    { bin: "dnf", args: ["install", "-y", "gh"], sudo: true },
+    { bin: "pacman", args: ["-S", "--noconfirm", "gh"], sudo: true },
+    { bin: "apk", args: ["add", "gh"], sudo: true },
+  ],
+};

@@ -35,3 +35,55 @@ const head = pick("head", CLI.ENV.HEAD, undefined);
 const prNumber = pick("pr", CLI.ENV.PR, undefined);
 const title = pick("title", CLI.ENV.TITLE, undefined);
 const jsonOnly = switches.has("json") || process.env[CLI.ENV.OPEN] === "0";
+const shouldOpen = switches.has("open") || process.env[CLI.ENV.OPEN] === "1";
+/** ---------------------------------- run ----------------------------------- */
+try {
+  const root = await resolveRepo(repoPath).catch(() => repoPath);
+  const branch = await currentBranch(root);
+
+  const result = await startReview({
+    repoPath: root,
+    mode,
+    base,
+    head,
+    pr: prNumber,
+    // A PR brings its own title; only a local scope falls back to the branch.
+    title: title ?? (mode === MODE.PR ? undefined : branch),
+    host: SERVER.HOST,
+    port: Number.isFinite(port) ? port : SERVER.DEFAULT_PORT,
+  });
+
+  const payload = {
+    ok: true,
+    url: result.url,
+    reviewId: result.reviewId,
+    port: result.page.port,
+    repo: root,
+    branch: result.meta.branch ?? branch,
+    mode,
+    base: result.meta.base,
+    head: result.meta.head,
+    pr: result.meta.pr ? result.meta.pr.number : null,
+    prUrl: result.meta.pr ? result.meta.pr.url : null,
+    files: result.files,
+    additions: result.additions,
+    deletions: result.deletions,
+    outputDir: result.outputDir,
+  };
+
+  process.stdout.write(CLI.READY_PREFIX + JSON.stringify(payload) + P.NEWLINE);
+
+  if (shouldOpen) openInBrowser(result.url);
+  // is stopped. Without the timer Node would exit and take the page with it.
+  setInterval(() => {}, SERVER.KEEPALIVE_MS);
+
+  for (const signal of ["SIGINT", "SIGTERM"]) {
+    process.on(signal, async () => {
+      await result.page.close();
+      process.exit(P.ZERO);
+    });
+  }
+} catch (error) {
+  process.stderr.write(`PR_REVIEW_ERROR ${error?.message ?? error}\n`);
+  process.exit(P.ONE);
+}

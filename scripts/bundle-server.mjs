@@ -18,3 +18,13 @@
  */
 import { cp, mkdir, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { APP } from "../src/config.js";
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+/** host key -> bundle directory, relative to the repository root. */
+const BUNDLES = {
+  vscode: "editors/vscode/server",
+  visualstudio: "editors/visualstudio/server",
+  jetbrains: "editors/jetbrains/server",
+};
+/** What the engine needs at run time. `assets/` is inside `src`. */
