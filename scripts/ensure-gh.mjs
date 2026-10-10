@@ -8,3 +8,13 @@
  *
  *   - a tool the user already has is never touched;
  *   - `--check` only reports (exit 0 = ready, 1 = missing), for CI and the
+ *     postinstall hook;
+ *   - `--install` is the only mode that changes the machine, and only when the
+ *     package manager reports success;
+ *   - a sandboxed or offline environment is not an error: it prints the exact
+ *     command the user can run later.
+ *
+ * Usage:
+ *   node scripts/ensure-gh.mjs             # report, install when possible
+ *   node scripts/ensure-gh.mjs --check     # report only (CI / postinstall)
+ *   node scripts/ensure-gh.mjs --check --never-fail   # postinstall: never fails

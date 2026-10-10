@@ -25,3 +25,13 @@ function parseArgs(argv) {
 
   return { flags, switches };
 }
+const { flags, switches } = parseArgs(process.argv.slice(P.TWO));
+const pick = (flag, envKey, fallback) => flags.get(flag) ?? process.env[envKey] ?? fallback;
+const repoPath = resolve(pick("repo", CLI.ENV.REPO, process.cwd()));
+const port = Number(pick("port", CLI.ENV.PORT, String(SERVER.DEFAULT_PORT)));
+const mode = pick("mode", CLI.ENV.MODE, CLI.DEFAULT_MODE);
+const base = pick("base", CLI.ENV.BASE, undefined);
+const head = pick("head", CLI.ENV.HEAD, undefined);
+const prNumber = pick("pr", CLI.ENV.PR, undefined);
+const title = pick("title", CLI.ENV.TITLE, undefined);
+const jsonOnly = switches.has("json") || process.env[CLI.ENV.OPEN] === "0";
