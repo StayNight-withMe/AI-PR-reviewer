@@ -52,3 +52,15 @@ async function ghPresent(binary) {
     return false;
   }
 }
+/** The first package manager that exists on this machine. */
+async function findPackageManager() {
+  const platform = process.platform === "win32"
+    ? "win32"
+    : process.platform === "darwin" ? "darwin" : "linux";
+  const candidates = PACKAGE_MANAGERS[platform] ?? [];
+
+  for (const candidate of candidates) {
+    if (await commandExists(candidate.bin)) return candidate;
+  }
+  return null;
+}

@@ -48,3 +48,33 @@ async function copyInto(destination) {
   const copied = await walk(join(destination, "src"));
   console.log(`  ${relative(ROOT, destination)} — ${copied} files, engine ${APP.VERSION}`);
 }
+async function walk(dir) {
+  let total = 0;
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    if (entry.isDirectory()) total += await walk(join(dir, entry.name));
+    else total += 1;
+  }
+  return total;
+}
+async function main() {
+  const args = process.argv.slice(2);
+
+  if (args.includes("--list")) {
+    for (const key of Object.keys(BUNDLES)) console.log(key);
+    return;
+  }
+
+  const names = args.length ? args : Object.keys(BUNDLES);
+  const unknown = names.filter((name) => !BUNDLES[name]);
+  if (unknown.length) {
+    console.error(`Unknown host(s): ${unknown.join(", ")}. Known: ${Object.keys(BUNDLES).join(", ")}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  console.log(`Bundling the ${APP.NAME} engine ${APP.VERSION} into editor integrations:`);
+  for (const name of names) {
+    await copyInto(join(ROOT, BUNDLES[name]));
+  }
+  console.log("Done. The integration now finds the server next to itself.");
+}
