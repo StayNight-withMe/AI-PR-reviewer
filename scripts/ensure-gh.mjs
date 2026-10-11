@@ -64,3 +64,13 @@ async function findPackageManager() {
   }
   return null;
 }
+async function commandExists(bin) {
+  try {
+    const probe = process.platform === "win32" ? "where" : "which";
+    await exec(probe, [bin], { windowsHide: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
+/** Installs `gh` with the platform manager; returns a result, never throws. */

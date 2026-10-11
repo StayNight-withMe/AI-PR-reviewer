@@ -78,3 +78,4 @@ async function main() {
   }
   console.log("Done. The integration now finds the server next to itself.");
 }
+await main();
