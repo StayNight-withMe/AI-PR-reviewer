@@ -28,3 +28,23 @@ const BUNDLES = {
   jetbrains: "editors/jetbrains/server",
 };
 /** What the engine needs at run time. `assets/` is inside `src`. */
+const INCLUDE = ["src", "package.json", "README.md"];
+async function copyInto(destination) {
+  await rm(destination, { recursive: true, force: true });
+  await mkdir(destination, { recursive: true });
+
+  for (const entry of INCLUDE) {
+    await cp(join(ROOT, entry), join(destination, entry), { recursive: true });
+  }
+
+  // A stamp makes it obvious which engine version a bundle carries, so a stale
+  // copy is caught instead of silently reviewing with an old page.
+  await writeFile(
+    join(destination, "BUNDLE.json"),
+    JSON.stringify({ name: APP.NAME, version: APP.VERSION, source: ROOT }, null, 2) + "\n",
+    "utf8",
+  );
+
+  const copied = await walk(join(destination, "src"));
+  console.log(`  ${relative(ROOT, destination)} — ${copied} files, engine ${APP.VERSION}`);
+}

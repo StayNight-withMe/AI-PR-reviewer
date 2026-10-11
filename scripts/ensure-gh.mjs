@@ -42,3 +42,13 @@ const PACKAGE_MANAGERS = {
     { bin: "apk", args: ["add", "gh"], sudo: true },
   ],
 };
+const DOCS_URL = "https://cli.github.com";
+/** True when the `gh` binary answers. */
+async function ghPresent(binary) {
+  try {
+    await exec(binary, ["--version"], { windowsHide: true, timeout: 15_000 });
+    return true;
+  } catch {
+    return false;
+  }
+}

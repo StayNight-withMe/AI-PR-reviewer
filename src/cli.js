@@ -87,3 +87,16 @@ try {
   process.stderr.write(`PR_REVIEW_ERROR ${error?.message ?? error}\n`);
   process.exit(P.ONE);
 }
+/** Opens the review page in the default browser of the running platform. */
+function openInBrowser(url) {
+  const platform = process.platform;
+  const command = platform === "win32" ? "cmd" : platform === "darwin" ? "open" : "xdg-open";
+  const args = platform === "win32" ? ["/c", "start", P.EMPTY, url] : [url];
+
+  try {
+    const child = spawn(command, args, { detached: true, stdio: "ignore", windowsHide: true });
+    child.unref();
+  } catch {
+  // A headless session has no browser; the extension still gets the URL.
+  }
+}
