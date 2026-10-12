@@ -74,3 +74,22 @@ async function commandExists(bin) {
   }
 }
 /** Installs `gh` with the platform manager; returns a result, never throws. */
+async function install(packageManager) {
+  const command = packageManager.sudo ? "sudo" : packageManager.bin;
+  const args = packageManager.sudo ? [packageManager.bin, ...packageManager.args] : packageManager.args;
+
+  try {
+    await exec(command, args, {
+      windowsHide: true,
+      timeout: 10 * 60_000,
+      maxBuffer: 32 * 1024 * 1024,
+    });
+    return { installed: true, via: packageManager.bin };
+  } catch (error) {
+    return {
+      installed: false,
+      via: packageManager.bin,
+      error: String(error.stderr ?? error.message ?? error).trim().slice(0, 400),
+    };
+  }
+}
