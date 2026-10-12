@@ -153,3 +153,24 @@ function suggestionForPlatform() {
   if (platform === "darwin") return "brew install gh";
   return "sudo apt-get install gh";
 }
+function report(result, { json }) {
+  if (json) {
+    process.stdout.write(JSON.stringify(result) + "\n");
+    return;
+  }
+
+  if (result.present) {
+    console.log(`GitHub CLI: ${result.gh} is installed${result.installed ? ` (installed via ${result.via})` : ""}.`);
+    if (!result.authenticated) {
+      console.log("Not logged in. Run: gh auth login");
+      console.log("(mode=pr needs an authenticated gh; branch/commits reviews do not.)");
+    }
+    return;
+  }
+
+  console.log(`GitHub CLI: not found${result.installed ? " (install did not succeed)" : ""}.`);
+  console.log(`Pull requests (mode=pr) need it. Install from ${DOCS_URL}`);
+  if (result.suggestion) console.log(`  ${result.suggestion}`);
+  if (result.error) console.log(`  last error: ${result.error}`);
+  console.log("Local reviews (uncommitted, branch, commits, range, all) work without it.");
+}
