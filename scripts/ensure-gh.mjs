@@ -93,3 +93,49 @@ async function install(packageManager) {
     };
   }
 }
+async function main() {
+  const argv = new Set(process.argv.slice(2));
+  const json = argv.has("--json");
+  const checkOnly = argv.has("--check");
+  const forceInstall = argv.has("--install");
+  const neverFail = argv.has("--never-fail");
+  const binary = process.env[GH.ENV_BIN]?.trim() || GH.BIN;
+
+  const present = await ghPresent(binary);
+  const result = {
+    gh: binary,
+    present,
+    authenticated: false,
+    installed: false,
+    via: null,
+    suggestion: null,
+  };
+
+  if (present) {
+    result.authenticated = await ghAuthenticated(binary);
+  } else if (!checkOnly) {
+    // --install, or the default mode: try the platform manager.
+    const manager = await findPackageManager();
+    if (manager) {
+      const outcome = await install(manager);
+      result.installed = outcome.installed;
+      result.via = outcome.via ?? null;
+      if (outcome.error) result.error = outcome.error;
+      if (outcome.installed) {
+        result.present = await ghPresent(binary);
+        if (result.present) result.authenticated = await ghAuthenticated(binary);
+      }
+    } else {
+      result.suggestion = suggestionForPlatform();
+    }
+  } else if (checkOnly && !present) {
+    result.suggestion = suggestionForPlatform();
+  }
+
+  if (!present && forceInstall && !result.installed) {
+    result.suggestion = result.suggestion ?? suggestionForPlatform();
+  }
+
+  report(result, { json });
+  process.exitCode = result.present || neverFail ? 0 : 1;
+}
