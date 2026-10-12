@@ -139,3 +139,17 @@ async function main() {
   report(result, { json });
   process.exitCode = result.present || neverFail ? 0 : 1;
 }
+async function ghAuthenticated(binary) {
+  try {
+    await exec(binary, ["auth", "status"], { windowsHide: true, timeout: 20_000 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+function suggestionForPlatform() {
+  const platform = process.platform;
+  if (platform === "win32") return "winget install --id GitHub.cli -e";
+  if (platform === "darwin") return "brew install gh";
+  return "sudo apt-get install gh";
+}
