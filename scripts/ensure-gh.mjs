@@ -174,3 +174,7 @@ function report(result, { json }) {
   if (result.error) console.log(`  last error: ${result.error}`);
   console.log("Local reviews (uncommitted, branch, commits, range, all) work without it.");
 }
+main().catch((error) => {
+  console.error("ensure-gh failed:", error.message);
+  process.exitCode = 1;
+});
