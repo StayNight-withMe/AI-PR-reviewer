@@ -11,3 +11,13 @@ export function ghBinary(env = process.env) {
   if (configured && configured.trim()) return configured.trim();
   return GH.BIN;
 }
+/** File extensions of a script that must be run with the Node binary. */
+const NODE_SCRIPT = /\.(?:mjs|cjs|js)$/i;
+/** The command and leading arguments that run `gh`. */
+export function ghCommand(env = process.env) {
+  const binary = ghBinary(env);
+  return NODE_SCRIPT.test(binary)
+    ? { file: process.execPath, prefix: [binary] }
+    : { file: binary, prefix: [] };
+}
+/** True when the configured `gh` exists or is resolvable on PATH. */
