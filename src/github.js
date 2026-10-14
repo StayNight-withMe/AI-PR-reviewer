@@ -21,3 +21,45 @@ export function ghCommand(env = process.env) {
     : { file: binary, prefix: [] };
 }
 /** True when the configured `gh` exists or is resolvable on PATH. */
+export function hasGh(env = process.env) {
+  const binary = ghBinary(env);
+  if (binary !== GH.BIN) return existsSync(binary);
+  return true;
+// resolved by the shell; a missing binary fails at spawn with a clear error
+}
+/** Runs `gh` and returns its stdout. */
+async function gh(repoPath, args, { allowFailure = true } = {}) {
+  const { file, prefix } = ghCommand();
+  try {
+    const { stdout } = await exec(file, [...prefix, ...args], {
+      cwd: repoPath,
+      maxBuffer: GIT.MAX_BUFFER,
+      windowsHide: true,
+      encoding: "utf8",
+      env: { ...process.env, GH_PAGER: P.EMPTY, GH_PROMPT_DISABLED: "1" },
+    });
+    return { ok: true, stdout };
+  } catch (error) {
+    if (error.code === GIT.ENOENT) {
+      const failure = new Error(GH.ERROR_NO_BIN);
+      if (allowFailure) return { ok: false, error: failure, missingBinary: true };
+      throw failure;
+    }
+
+    const stderr = String(error.stderr ?? error.message ?? P.EMPTY).trim();
+    // A configured wrapper script that does not exist: node starts, cannot load
+
+    // logged-out user.
+    if (/cannot find module|no such file|ENOENT/i.test(stderr)) {
+      const failure = new Error(GH.ERROR_NO_BIN);
+      if (allowFailure) return { ok: false, error: failure, missingBinary: true, stderr };
+      throw failure;
+    }
+
+    const failure = /auth|login|authentication/i.test(stderr)
+      ? new Error(`${GH.ERROR_NOT_AUTHED} (${stderr})`)
+      : new Error(stderr || GH.ERROR_NO_PR);
+    if (allowFailure) return { ok: false, error: failure, stderr };
+    throw failure;
+  }
+}
