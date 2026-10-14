@@ -63,3 +63,24 @@ async function gh(repoPath, args, { allowFailure = true } = {}) {
     throw failure;
   }
 }
+/** Reads one pull request. */
+export async function viewPullRequest(repoPath, selector = {}) {
+  await assertAuthenticated(repoPath);
+
+  const args = [...GH.ARGS_VIEW];
+  if (selector.number !== undefined && selector.number !== null && String(selector.number).trim()) {
+    args.push(String(selector.number).trim());
+  }
+  args.push(...GH.ARGS_JSON, GH.FIELDS.join(P.COMMA));
+  if (selector.repo) args.push(...GH.ARGS_REPO, selector.repo);
+
+  const result = await gh(repoPath, args, { allowFailure: false });
+
+  let parsed;
+  try {
+    parsed = JSON.parse(result.stdout);
+  } catch {
+    throw new Error(GH.ERROR_BAD_JSON);
+  }
+  return normalizePullRequest(parsed);
+}
