@@ -119,3 +119,16 @@ export function normalizePullRequestSummary(raw) {
     updatedAt: String(raw?.updatedAt ?? P.EMPTY),
   };
 }
+function clampLimit(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= P.ZERO) return GH.LIST_DEFAULT_LIMIT;
+  return Math.min(Math.floor(number), GH.LIST_MAX_LIMIT);
+}
+/** Verifies that `gh` is logged in, and turns a failure into the actionable message the page shows. */
+async function assertAuthenticated(repoPath) {
+  const result = await gh(repoPath, GH.ARGS_AUTH_STATUS, { allowFailure: true });
+  if (result.ok) return;
+  // A missing binary is a different problem than a logged-out user.
+  if (result.missingBinary) throw result.error;
+  throw new Error(GH.ERROR_NOT_AUTHED);
+}
