@@ -104,3 +104,18 @@ export async function listPullRequests(repoPath, options = {}) {
 
   return Array.isArray(parsed) ? parsed.map(normalizePullRequestSummary) : [];
 }
+/** Maps one `gh pr list` entry onto the fields the agent shows. */
+export function normalizePullRequestSummary(raw) {
+  const number = Number(raw?.number);
+  return {
+    number: Number.isFinite(number) ? number : null,
+    title: String(raw?.title ?? P.EMPTY),
+    state: String(raw?.state ?? P.EMPTY),
+    draft: raw?.isDraft === true,
+    headRefName: String(raw?.headRefName ?? P.EMPTY),
+    baseRefName: String(raw?.baseRefName ?? P.EMPTY),
+    url: String(raw?.url ?? P.EMPTY),
+    author: String(raw?.author?.login ?? P.EMPTY),
+    updatedAt: String(raw?.updatedAt ?? P.EMPTY),
+  };
+}
