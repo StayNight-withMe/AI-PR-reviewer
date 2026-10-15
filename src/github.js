@@ -84,3 +84,23 @@ export async function viewPullRequest(repoPath, selector = {}) {
   }
   return normalizePullRequest(parsed);
 }
+/** Lists the pull requests of a repository, newest first. */
+export async function listPullRequests(repoPath, options = {}) {
+  await assertAuthenticated(repoPath);
+
+  const state = GH.LIST_STATES.includes(options.state) ? options.state : GH.LIST_STATES[P.ZERO];
+  const limit = clampLimit(options.limit);
+
+  const args = [...GH.ARGS_LIST, "--state", state, "--limit", String(limit), ...GH.ARGS_JSON, GH.LIST_FIELDS.join(P.COMMA)];
+  if (options.repo) args.push(...GH.ARGS_REPO, options.repo);
+
+  const result = await gh(repoPath, args, { allowFailure: false });
+  let parsed;
+  try {
+    parsed = JSON.parse(result.stdout);
+  } catch {
+    throw new Error(GH.ERROR_BAD_JSON);
+  }
+
+  return Array.isArray(parsed) ? parsed.map(normalizePullRequestSummary) : [];
+}
