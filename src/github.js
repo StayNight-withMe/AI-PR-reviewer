@@ -132,3 +132,23 @@ async function assertAuthenticated(repoPath) {
   if (result.missingBinary) throw result.error;
   throw new Error(GH.ERROR_NOT_AUTHED);
 }
+/** Maps the `gh pr view --json` payload onto the fields the page uses. */
+export function normalizePullRequest(raw) {
+  const number = Number(raw?.number);
+  return {
+    number: Number.isFinite(number) ? number : null,
+    title: String(raw?.title ?? P.EMPTY),
+    url: String(raw?.url ?? P.EMPTY),
+    state: String(raw?.state ?? P.EMPTY),
+    draft: raw?.isDraft === true,
+    baseRefName: String(raw?.baseRefName ?? P.EMPTY),
+    headRefName: String(raw?.headRefName ?? P.EMPTY),
+    baseOid: String(raw?.baseRefOid ?? P.EMPTY),
+    headOid: String(raw?.headRefOid ?? P.EMPTY),
+    author: String(raw?.author?.login ?? P.EMPTY),
+    body: String(raw?.body ?? P.EMPTY),
+    additions: Number(raw?.additions ?? P.ZERO),
+    deletions: Number(raw?.deletions ?? P.ZERO),
+    changedFiles: Number(raw?.changedFiles ?? P.ZERO),
+  };
+}
