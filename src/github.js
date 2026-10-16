@@ -152,3 +152,39 @@ export function normalizePullRequest(raw) {
     changedFiles: Number(raw?.changedFiles ?? P.ZERO),
   };
 }
+/** Makes sure both commits of the PR exist locally, then returns their SHAs. */
+export async function ensurePullRequestCommits(repoPath, pr, { remote = GH.DEFAULT_REMOTE } = {}) {
+  const base = await ensureBase(repoPath, pr, remote);
+  if (!base) throw new Error(`${GH.ERROR_FETCH_FAILED}cannot resolve base ${pr.baseRefName}.`);
+
+  if (pr.headOid && (await commitExists(repoPath, pr.headOid))) {
+    return { base, head: pr.headOid, fetched: false };
+  }
+
+  const localRef = `${GH.HEAD_REF_PREFIX}${pr.number ?? "head"}`;
+  // Prefer the canonical pull ref: it works even when the source branch lives
+  // on a fork, where `remote/branch` does not exist.
+  const pullRef = GH.HEAD_REF_TEMPLATE.replace("{number}", String(pr.number ?? P.EMPTY));
+  const attempts = [
+    [remote, pullRef],
+    [remote, `${pr.headRefName}`],
+  ];
+
+  for (const [from, ref] of attempts) {
+    if (!ref) continue;
+    const fetched = await git(repoPath, [...GH.ARGS_FETCH, from, `${ref}:${localRef}`]);
+    if (fetched.ok) {
+      const sha = await revParse(repoPath, localRef);
+      if (sha) {
+        // A fetched ref may disagree with the SHA gh reported (the PR moved
+        // between the two calls). The reported head is the one to review.
+        if (pr.headOid && (await commitExists(repoPath, pr.headOid))) {
+          return { base, head: pr.headOid, fetched: true };
+        }
+        return { base, head: sha, fetched: true };
+      }
+    }
+  }
+
+  throw new Error(`${GH.ERROR_FETCH_FAILED}${pr.headRefName || pr.number || "the head"}.`);
+}
