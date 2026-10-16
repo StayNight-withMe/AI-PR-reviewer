@@ -188,3 +188,29 @@ export async function ensurePullRequestCommits(repoPath, pr, { remote = GH.DEFAU
 
   throw new Error(`${GH.ERROR_FETCH_FAILED}${pr.headRefName || pr.number || "the head"}.`);
 }
+/** The base commit, fetched into a PRIVATE ref when it is not present locally. */
+async function ensureBase(repoPath, pr, remote) {
+  if (pr.baseOid && (await commitExists(repoPath, pr.baseOid))) return pr.baseOid;
+  // A fetch into a private ref: no remote-tracking branch is touched.
+  const localRef = `${GH.BASE_REF_PREFIX}${pr.number ?? "base"}`;
+  const targets = [];
+  if (pr.baseOid) targets.push(pr.baseOid);
+  if (pr.baseRefName) targets.push(pr.baseRefName);
+
+  for (const ref of targets) {
+    if (!ref) continue;
+    const fetched = await git(repoPath, [...GH.ARGS_FETCH, remote, `${ref}:${localRef}`]);
+    if (!fetched.ok) continue;
+    const sha = await revParse(repoPath, localRef);
+    if (sha) return sha;
+  }
+  // Last resort: an already-present remote-tracking branch or local branch.
+  if (pr.baseRefName) {
+    for (const ref of [`${remote}/${pr.baseRefName}`, pr.baseRefName]) {
+      const sha = await revParse(repoPath, ref);
+      if (sha) return sha;
+    }
+  }
+
+  return null;
+}
