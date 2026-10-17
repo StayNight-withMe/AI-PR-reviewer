@@ -224,3 +224,12 @@ async function revParse(repoPath, ref) {
   const { ok, stdout } = await git(repoPath, [...GIT.ARGS.REV_PARSE_COMMIT, `${ref}${GIT.COMMIT_SUFFIX}`]);
   return ok ? stdout.trim() : null;
 }
+/** A stable review-id fragment for a PR, distinct from any branch review. */
+export function pullRequestScope(pr) {
+  return `${GH.SCOPE_PREFIX}${pr.number ?? P.EMPTY}`;
+}
+/** A human title for the page header, e.g. */
+export function pullRequestTitle(pr) {
+  const number = pr.number ? `${GH.TITLE_PREFIX}${pr.number}` : GH.TITLE_PREFIX.trim();
+  return pr.title ? `${number}: ${pr.title}` : number;
+}
