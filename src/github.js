@@ -214,3 +214,13 @@ async function ensureBase(repoPath, pr, remote) {
 
   return null;
 }
+async function commitExists(repoPath, sha) {
+// `rev-parse --verify` only checks that the string looks like an object name;
+  // really looks the object up, which is what "already fetched" means here.
+  const { ok } = await git(repoPath, [...GIT.ARGS.CAT_FILE_EXISTS, sha]);
+  return ok;
+}
+async function revParse(repoPath, ref) {
+  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.REV_PARSE_COMMIT, `${ref}${GIT.COMMIT_SUFFIX}`]);
+  return ok ? stdout.trim() : null;
+}
