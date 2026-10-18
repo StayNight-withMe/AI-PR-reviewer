@@ -218,3 +218,45 @@ a.pr-badge:hover { background: color-mix(in srgb, var(--accent, #58a6ff) 15%, tr
 .gh-tab:hover { color: var(--fg); }
 .gh-tab.active { color: var(--fg); border-bottom-color: #f78166; font-weight: 600; }
 .tab-count { background: var(--bg-overlay); border: 1px solid var(--border); border-radius: 999px; padding: 0 6px; font-size: 11px; font-weight: 500; }
+/** -------------------------------- layout ------------------------------- */
+.gh-layout {
+  display: grid;
+  grid-template-columns: var(--tree-width, 320px) 6px minmax(0, 1fr) 300px;
+  grid-template-rows: minmax(0, 1fr);
+  max-width: 2100px;
+  margin: 0 auto;
+  align-items: stretch;
+  min-height: calc(100vh - 100px);
+}
+/** Narrower screens keep all four tracks. */
+@media (max-width: 1440px) { .gh-layout { grid-template-columns: var(--tree-width, 320px) 6px minmax(0, 1fr) 260px; } }
+@media (max-width: 900px) { .gh-layout { grid-template-columns: 1fr; } body .gh-tree, body .tree-resizer, body .gh-sidebar { display: none; } }
+/** Drag handle between the tree and the diff pane. */
+.tree-resizer {
+  position: sticky; top: 99px; height: calc(100vh - 100px);
+  width: 6px; cursor: col-resize; background: transparent;
+  border-left: 1px solid var(--border-subtle); border-right: 1px solid var(--border-subtle);
+  transition: background-color var(--speed) var(--ease);
+}
+.tree-resizer:hover, .tree-resizer.is-dragging { background: var(--accent-emphasis); }
+body.is-resizing-tree { cursor: col-resize; user-select: none; }
+/** Collapsed tree: a small chevron in the same column brings it back. */
+/** Collapsed tree: width goes to zero but the element stays in the grid, so the remaining columns… */
+.gh-layout.tree-hidden { grid-template-columns: 0 0 minmax(0, 1fr) 300px; }
+.gh-layout.tree-hidden > .gh-tree {
+  visibility: hidden; overflow: hidden;
+  min-width: 0; width: 0; padding: 0; border-right: none;
+}
+.gh-layout.tree-hidden > .tree-resizer { visibility: hidden; border: none; }
+@media (max-width: 1440px) { .gh-layout.tree-hidden { grid-template-columns: 0 0 minmax(0, 1fr) 260px; } }
+.tree-reveal {
+  position: fixed; left: 0; top: 50%; z-index: 60;
+  transform: translateY(-50%);
+  width: 14px; height: 44px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); border-left: none;
+  border-radius: 0 6px 6px 0;
+  background: var(--bg-overlay); color: var(--fg-muted);
+  cursor: pointer; padding: 0; font-size: 13px; line-height: 1;
+  transition: background-color var(--speed) var(--ease), color var(--speed) var(--ease), width var(--speed) var(--ease);
+}
