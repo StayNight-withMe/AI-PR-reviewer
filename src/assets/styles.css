@@ -167,3 +167,54 @@ a.pr-badge:hover { background: color-mix(in srgb, var(--accent, #58a6ff) 15%, tr
   background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
   text-decoration: none;
 }
+.search-hit:hover { background: var(--bg-subtle); }
+.search-hit-path {
+  grid-area: path;
+  font-family: ui-monospace, monospace; font-size: 10.5px; color: var(--accent-fg);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.search-hit-line {
+  grid-area: line;
+  font-size: 10.5px; color: var(--fg-subtle); font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.search-hit-text {
+  grid-area: text;
+  font-family: ui-monospace, monospace; font-size: 11.5px; color: var(--fg-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.search-hit-text mark { background: rgba(210, 153, 34, 0.3); color: var(--fg); border-radius: 2px; }
+.search-empty { padding: 12px; }
+.gh-input, .gh-textarea {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 12px;
+  outline: none;
+  transition: border-color var(--speed) var(--ease), box-shadow var(--speed) var(--ease);
+}
+.gh-input:focus, .gh-textarea:focus { border-color: var(--accent-emphasis); box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.28); }
+.gh-textarea { width: 100%; resize: vertical; min-height: 76px; line-height: 1.55; padding: 8px 10px; }
+/** -------------------------------- tabs --------------------------------- */
+.gh-tabs {
+  position: sticky;
+  top: 58px;
+  z-index: 50;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  display: flex;
+  gap: 2px;
+}
+.gh-tab {
+  border: none; background: none; color: var(--fg-muted);
+  padding: 9px 12px; font-size: 13px; cursor: pointer;
+  border-bottom: 2px solid transparent;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: color var(--speed) var(--ease), border-color var(--speed) var(--ease);
+}
+.gh-tab:hover { color: var(--fg); }
+.gh-tab.active { color: var(--fg); border-bottom-color: #f78166; font-weight: 600; }
+.tab-count { background: var(--bg-overlay); border: 1px solid var(--border); border-radius: 999px; padding: 0 6px; font-size: 11px; font-weight: 500; }
