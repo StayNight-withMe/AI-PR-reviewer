@@ -260,3 +260,44 @@ body.is-resizing-tree { cursor: col-resize; user-select: none; }
   cursor: pointer; padding: 0; font-size: 13px; line-height: 1;
   transition: background-color var(--speed) var(--ease), color var(--speed) var(--ease), width var(--speed) var(--ease);
 }
+.tree-reveal:hover { background: var(--accent-emphasis); color: #fff; width: 18px; }
+.tree-reveal[hidden] { display: none; }
+/** The sidebar can be hidden on demand, not only by breakpoint. */
+body.no-sidebar .gh-layout { grid-template-columns: var(--tree-width, 320px) 6px minmax(0, 1fr); }
+body.no-sidebar .gh-sidebar { display: none; }
+body.no-sidebar .gh-layout.tree-hidden { grid-template-columns: 0 0 minmax(0, 1fr); }
+.inline-file-host.hidden { display: none; }
+.inline-file-host { margin-top: 12px; }
+.inline-file-host .diff-file { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.inline-file-host .diff-file-header { position: sticky; top: 0; }
+.inline-open .js-close-inline {
+  border: none; background: transparent; color: var(--fg-muted);
+  font-size: 16px; line-height: 1; cursor: pointer;
+  width: 22px; height: 22px; border-radius: 4px; flex: none;
+}
+.inline-open .js-close-inline:hover { background: var(--bg-overlay); color: var(--fg); }
+/** "unchanged" is a long word for a fixed pill; let it size to its content. */
+.inline-open .status-pill {
+  width: auto; flex: none; padding: 0 7px; height: 18px;
+  background: var(--bg-overlay); color: var(--fg-muted); font-weight: 500;
+}
+/** --------------------------------- tree -------------------------------- */
+.icon-btn {
+  border: none; background: transparent; color: var(--fg-subtle);
+  width: 22px; height: 22px; flex: none; border-radius: 4px;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; padding: 0; opacity: 0;
+  transition: opacity var(--speed) var(--ease), color var(--speed) var(--ease), background-color var(--speed) var(--ease);
+}
+.diff-file-header:hover .icon-btn { opacity: 1; }
+/** The more-actions trigger is a primary affordance of the header: it stays visible without… */
+.icon-btn.js-file-menu { opacity: 1; color: var(--fg-muted); }
+.icon-btn:hover { color: var(--fg); background: var(--bg-overlay); }
+.icon-btn svg { display: block; }
+/** Large-file placeholder: collapsed by default, one click to render. */
+.deferred-note {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  padding: 16px 18px; color: var(--fg-muted);
+}
+.deferred-title { font-size: 12px; font-weight: 600; color: var(--fg); }
+.deferred-text { font-size: 12px; }
