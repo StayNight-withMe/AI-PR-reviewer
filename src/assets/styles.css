@@ -362,3 +362,45 @@ a.tree-row { text-decoration: none; }
 .tree-indent {
   flex: none; width: var(--tree-indent, 16px); height: 22px; position: relative;
 }
+.tree-indent::before {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 50%;
+  width: 1px; background: var(--border-subtle);
+}
+.tree-row:hover .tree-indent::before { background: var(--border); }
+.tree-chevron {
+  width: 16px; height: 16px; flex: none; display: inline-flex;
+  align-items: center; justify-content: center;
+  color: var(--fg-muted);
+  border-radius: 3px;
+  transition: transform 120ms var(--ease), color var(--speed) var(--ease), background-color var(--speed) var(--ease);
+}
+.tree-chevron .tree-svg { width: 16px; height: 16px; display: block; }
+.tree-chevron:hover { color: var(--fg); background: var(--bg-overlay); }
+.tree-row.dir:hover .tree-chevron { color: var(--fg); }
+.tree-chevron.collapsed { transform: rotate(-90deg); }
+.tree-chevron.leaf { visibility: hidden; }
+.tree-icon { width: 16px; height: 16px; flex: none; display: inline-flex; align-items: center; justify-content: center; color: var(--fg-muted); }
+.tree-icon .tree-svg { width: 16px; height: 16px; display: block; fill: currentColor; }
+.tree-icon .tree-doc-path { fill: var(--fg-muted); }
+.tree-icon .tree-folder-path { fill: var(--fg-subtle); }
+.tree-icon.folder .tree-svg { fill: var(--fg-muted); }
+.tree-label {
+  overflow: hidden; text-overflow: ellipsis; flex: 1 1 auto; min-width: 0;
+  font-size: 12.5px;
+}
+.tree-status { font-size: 10px; font-weight: 700; color: var(--fg-subtle); opacity: 0.7; }
+/** Added = green, modified = yellow, deleted = red, renamed = yellow. */
+.tree-row.status-added .tree-label { color: var(--success); }
+.tree-row.status-added .tree-icon .tree-doc-path { fill: var(--success); }
+.tree-row.status-added .tree-status { color: var(--success); }
+.tree-row.status-modified .tree-label { color: var(--attention); }
+.tree-row.status-modified .tree-icon { color: var(--attention); }
+.tree-row.status-modified .tree-icon .tree-doc-path { fill: var(--attention); }
+.tree-row.status-modified .tree-status { color: var(--attention); }
+.tree-row.status-renamed .tree-label, .tree-row.status-renamed .tree-status { color: var(--attention); }
+.tree-row.status-renamed .tree-icon .tree-doc-path { fill: var(--attention); }
+.tree-row.status-deleted .tree-label { color: var(--danger); text-decoration: line-through; }
+.tree-row.status-deleted .tree-icon .tree-doc-path { fill: var(--danger); }
+.tree-row.status-deleted .tree-status { color: var(--danger); }
+.tree-row.is-viewed { opacity: 0.55; }
+.tree-row.is-viewed .tree-label { text-decoration: line-through; text-decoration-color: var(--fg-subtle); }
