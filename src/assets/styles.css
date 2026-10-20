@@ -404,3 +404,53 @@ a.tree-row { text-decoration: none; }
 .tree-row.status-deleted .tree-status { color: var(--danger); }
 .tree-row.is-viewed { opacity: 0.55; }
 .tree-row.is-viewed .tree-label { text-decoration: line-through; text-decoration-color: var(--fg-subtle); }
+.tree-comment-count {
+  background: var(--accent-emphasis); color: #fff; border-radius: 999px;
+  font-size: 10px; font-weight: 600; padding: 0 5px; min-width: 16px; text-align: center; line-height: 16px;
+}
+/** --------------------------------- main -------------------------------- */
+.gh-main { min-width: 0; padding: 12px 20px 60px; }
+.gh-sticky-toolbar {
+  position: sticky; top: 99px; z-index: 30;
+  background: var(--bg); padding: 8px 0 6px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 12px;
+}
+.toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.toolbar .gh-input { width: 260px; padding: 4px 10px; }
+#filter-input { width: 300px; }
+.progress-track { height: 4px; margin-top: 8px; background: var(--border-subtle); border-radius: 2px; overflow: hidden; }
+.progress-fill { height: 100%; width: 0; background: var(--success); transition: width 120ms var(--ease); }
+.diff-view-bar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 8px 12px; margin-bottom: 12px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.view-label { font-weight: 600; font-family: ui-monospace, monospace; font-size: 12px; }
+/** ------------------------------ diff file ------------------------------ */
+.diff-file {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  background: var(--bg);
+
+  /** `overflow`, `contain` and `content-visibility` on this element would create a containing block… */
+}
+.diff-file.flash { border-color: var(--accent-emphasis); }
+/** The header must stay visible while a long file is scrolled, so the reviewer can press "Viewed"… */
+.diff-file-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px;
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+
+  position: sticky;
+  top: var(--diff-header-top, 99px);
+  z-index: 20;
+  border-radius: var(--radius) var(--radius) 0 0;
+  /** A sticky header over long code needs an opaque background, or the rows underneath show through… */
+  box-shadow: 0 1px 0 var(--border);
+}
