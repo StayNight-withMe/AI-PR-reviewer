@@ -498,3 +498,46 @@ a.tree-row { text-decoration: none; }
   transition: background-color var(--speed) var(--ease), border-color var(--speed) var(--ease);
 }
 .viewed-wrap:hover { background: color-mix(in srgb, var(--bg-overlay) 70%, var(--fg) 14%); }
+.viewed-box {
+  width: 16px; height: 16px; flex: none; border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: transparent;
+  transition: background-color var(--speed) var(--ease), border-color var(--speed) var(--ease), color var(--speed) var(--ease);
+}
+.viewed-wrap.checked .viewed-box { background: var(--accent-emphasis); border-color: var(--accent-emphasis); color: #fff; }
+.viewed-wrap span:last-child { font-size: 12px; color: var(--fg-muted); }
+/** ------------------------------- diff body ------------------------------- */
+.diff-body {
+  /** The perf hints live here, not on `.diff-file`: on the section they would create a containing… */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 1200px;
+  contain: layout style paint;
+}
+.diff-file.collapsed .diff-body { display: none; }
+.diff-file.is-viewed .diff-body { opacity: 0.85; }
+/** -------------------------------- hunks -------------------------------- */
+.diff-hunk-header {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--diff-hunk);
+  color: var(--fg-muted);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.diff-hunk:first-child .diff-hunk-header { border-top: none; }
+.hunk-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/** The control spans the gutter and both line-number columns: one wide blue target that is… */
+.hunk-expander {
+  background: transparent;
+  border: none;
+  height: 24px;
+}
+.hunk-expander .diff-expander-table { table-layout: fixed; background: transparent; }
+.expander-cell {
+  padding: 0 !important; height: 24px; position: relative;
+  background: var(--diff-hunk-num);
+}
