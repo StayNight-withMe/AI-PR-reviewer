@@ -541,3 +541,53 @@ a.tree-row { text-decoration: none; }
   padding: 0 !important; height: 24px; position: relative;
   background: var(--diff-hunk-num);
 }
+.hunk-expander-btn {
+  border: none; background: transparent; color: var(--fg);
+  width: 100%; height: 24px; display: inline-flex; flex-direction: row;
+  align-items: center; justify-content: center; gap: 4px;
+  padding: 0; cursor: pointer; border-radius: 0;
+  transition: filter var(--speed) var(--ease);
+}
+.hunk-expander-btn:hover { filter: brightness(1.5); }
+.hunk-expander-svg { display: block; width: 11px; height: 11px; }
+/** Dotted rules running the full width of the block, as GitHub draws them. */
+.hunk-expander-btn::before,
+.hunk-expander-btn::after {
+  content: ""; display: block; flex: 1 1 auto; height: 1px;
+  background-image: linear-gradient(to right, currentColor 1px, transparent 1px);
+  background-size: 2px 1px; opacity: 0.45;
+}
+/** -------------------------------- table -------------------------------- */
+.diff-table {
+  width: 100%;
+  /** `separate` avoids the browser recalculating every cell boundary on zoom; with `collapse` a… */
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px; line-height: 20px;
+  table-layout: fixed;
+}
+.diff-table td { padding: 0; vertical-align: top; }
+.diff-table .c-gutter { width: var(--gutter-col); }
+.diff-table .c-num { width: var(--num-col); }
+/** A file with no deletions has nothing on the left, so the column is gone. */
+.diff-table.no-old-side, .diff-table.split.no-old-side { width: 100%; }
+.diff-gutter {
+  width: var(--gutter-col); position: relative;
+  background: var(--bg);
+  user-select: none;
+  cursor: pointer;
+}
+.diff-gutter::after {
+  content: ""; position: absolute; inset: 0;
+  border-right: 1px solid var(--border-subtle);
+  pointer-events: none;
+}
+/** Expander cell: the arrow must stay clickable and must not start a drag. */
+.expander-cell::after { border-right: 1px solid var(--border-subtle); }
+.hunk-expander-btn { position: relative; z-index: 1; }
+/** The sign uses the plain text colour: a red `-` on the red gutter tint was invisible, which is… */
+.gutter-sign {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600; line-height: 1;
+  color: var(--fg-muted); pointer-events: none;
+}
