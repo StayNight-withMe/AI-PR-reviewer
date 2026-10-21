@@ -687,3 +687,52 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
   border: 1px solid var(--border); overflow: hidden; background: var(--bg-subtle);
   cursor: zoom-in;
 }
+.attach-chip img { display: block; max-height: 120px; max-width: 240px; object-fit: cover; }
+.attach-remove {
+  position: absolute; top: 2px; right: 2px;
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--bg); color: var(--danger);
+  font-size: 12px; line-height: 1; cursor: pointer; padding: 0;
+  opacity: 0; transition: opacity var(--speed);
+}
+.attach-chip:hover .attach-remove { opacity: 1; }
+.comment-attachments { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 12px 12px; }
+.file-comment-banner { padding: 8px 12px 4px; border-bottom: 1px solid var(--border-subtle); background: var(--bg-subtle); }
+.file-comment-banner .comment-box { margin: 0 0 8px; }
+/** ------------------------------- sidebar ------------------------------- */
+.gh-sidebar {
+  position: sticky; top: 99px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  padding: 12px 16px 40px 0;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.sidebar-section { padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-subtle); }
+.sidebar-section h2 { font-size: 12px; font-weight: 600; margin: 0 0 10px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.review-state { display: flex; align-items: center; gap: 8px; font-size: 12px; margin-bottom: 8px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; }
+.dot-comment { background: var(--fg-subtle); }
+.dot-approve { background: var(--success); }
+.dot-request { background: var(--danger); }
+.comment-summary-item {
+  display: flex; flex-direction: column; gap: 2px; width: 100%;
+  text-align: left; background: none; border: none; border-top: 1px solid var(--border-subtle);
+  padding: 8px 4px; cursor: pointer; font: inherit; color: inherit;
+  transition: background-color var(--speed);
+}
+.comment-summary-item:first-of-type { border-top: none; }
+.comment-summary-item:hover { background: var(--bg-overlay); }
+.comment-summary-path { font-family: ui-monospace, monospace; font-size: 11px; color: var(--accent-fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.comment-summary-text { color: var(--fg); font-size: 12px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+/** Resolved review comments keep their place but stop competing for attention. */
+.comment-summary-item.is-resolved { opacity: 0.55; }
+.comment-summary-item.is-resolved .comment-summary-text { text-decoration: line-through; }
+.comment-box.is-resolved { opacity: 0.62; background: var(--bg-subtle); }
+.comment-box.is-resolved .comment-body { text-decoration: line-through; text-decoration-color: var(--fg-subtle); }
+.resolved-pill {
+  margin-left: 8px; padding: 0 7px; border-radius: 999px;
+  font-size: 10px; font-weight: 600;
+  color: var(--success); background: rgba(63, 185, 80, 0.16);
+  border: 1px solid rgba(63, 185, 80, 0.4);
+  white-space: nowrap;
+}
