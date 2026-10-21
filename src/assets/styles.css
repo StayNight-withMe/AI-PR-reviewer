@@ -591,3 +591,47 @@ a.tree-row { text-decoration: none; }
   font-size: 12px; font-weight: 600; line-height: 1;
   color: var(--fg-muted); pointer-events: none;
 }
+.diff-gutter.gutter-sign-add .gutter-sign,
+.diff-gutter.gutter-sign-del .gutter-sign { color: var(--fg); }
+.line-plus {
+  position: absolute; inset: 1px;
+  border: none; background: transparent; color: var(--accent-fg);
+  font-size: 15px; font-weight: 700; line-height: 1;
+  cursor: pointer; opacity: 0; border-radius: 3px;
+  transition: opacity var(--speed) var(--ease), background-color var(--speed);
+}
+.diff-table tr:hover .line-plus,
+.viewer-table tr:hover .line-plus { opacity: 1; }
+.diff-table tr:hover .gutter-sign { opacity: 0; }
+.line-plus:hover { background: var(--accent-emphasis); color: #fff; }
+.diff-table tr:hover .diff-gutter { background: var(--bg-subtle); }
+.diff-num {
+  color: var(--fg-subtle);
+  text-align: right;
+  padding: 0 4px !important;
+  user-select: none;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  border-right: 1px solid var(--border-subtle);
+  transition: color var(--speed);
+}
+.diff-num:hover { color: var(--accent-fg); }
+.diff-code { padding: 0 12px !important; white-space: pre-wrap; overflow-wrap: anywhere; }
+/** Only the code cells carry the row tint: painting the <tr> as well stacked two translucent… */
+.diff-table tr.row-add > td.diff-code { background: var(--diff-add); }
+.diff-table tr.row-del > td.diff-code { background: var(--diff-del); }
+.diff-table tr.row-add > td.diff-gutter,
+.diff-table tr.row-add > td.diff-num { background: var(--diff-add-strong); }
+.diff-table tr.row-del > td.diff-gutter,
+.diff-table tr.row-del > td.diff-num { background: var(--diff-del-strong); }
+.row-empty > td, .row-empty .diff-num, .row-empty .diff-gutter { background: var(--bg-subtle); }
+/** split view: colour per cell, both sides independent */
+.cell-add { background: var(--diff-add); }
+.cell-del { background: var(--diff-del); }
+.cell-empty { background: var(--bg-subtle); }
+/** stronger background over the characters that actually changed */
+.wm { background: var(--diff-add-word); border-radius: 2px; }
+.cell-del .wm { background: var(--diff-del-word); }
+[data-theme="light"] .wm { background: var(--diff-add-word); }
+[data-theme="light"] .cell-del .wm { background: var(--diff-del-word); }
+td.diff-num.cell-add { background: var(--diff-add-strong); }
