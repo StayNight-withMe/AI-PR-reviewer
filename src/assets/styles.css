@@ -736,3 +736,43 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
   border: 1px solid rgba(63, 185, 80, 0.4);
   white-space: nowrap;
 }
+.tree-comment-count.is-resolved { color: var(--success); background: rgba(63, 185, 80, 0.16); }
+.empty-state { color: var(--fg-muted); font-size: 12px; }
+/** --------------------------- scope picker (commits) --------------------- */
+.scope-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-subtle);
+  position: sticky; top: 99px; z-index: 20;
+}
+.scope-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.scope-label { font-size: 12px; font-weight: 600; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.scope-bar select.gh-input { max-width: 260px; }
+/** ------------------------------- commits ------------------------------- */
+.commit-item {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 12px 14px; border-bottom: 1px solid var(--border-subtle);
+  background: none; text-align: left; font: inherit; color: inherit;
+  transition: background-color var(--speed) var(--ease), padding-left var(--speed) var(--ease);
+}
+.commit-item:hover { background: var(--bg-subtle); }
+.commit-item.is-selected { background: color-mix(in srgb, var(--accent-emphasis) 10%, transparent); }
+.commit-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--fg-subtle); flex: none; }
+.commit-item:hover .commit-dot, .commit-item.is-selected .commit-dot { background: var(--accent-emphasis); }
+.commit-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.commit-subject {
+  font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  cursor: pointer; text-align: left;
+}
+.commit-subject:hover { color: var(--accent-fg); text-decoration: underline; }
+.commit-meta { font-size: 11px; color: var(--fg-muted); }
+.commit-rename {
+  flex: none; font-size: 11px; padding: 2px 8px; border-radius: 5px;
+  border: 1px solid var(--border); background: var(--bg-overlay); color: var(--fg-muted);
+  cursor: pointer; opacity: 0; transition: opacity var(--speed) var(--ease);
+}
+.commit-item:hover .commit-rename { opacity: 1; }
+.commit-rename:hover { color: var(--fg); border-color: var(--fg-subtle); }
+/** Pushed commits are greyed out; rewriting needs an explicit opt-in. */
+.commit-item.is-pushed .commit-subject { color: var(--fg-muted); }
