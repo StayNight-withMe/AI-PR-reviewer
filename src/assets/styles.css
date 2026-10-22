@@ -776,3 +776,43 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
 .commit-rename:hover { color: var(--fg); border-color: var(--fg-subtle); }
 /** Pushed commits are greyed out; rewriting needs an explicit opt-in. */
 .commit-item.is-pushed .commit-subject { color: var(--fg-muted); }
+.commit-item.is-pushed .commit-dot { background: var(--fg-subtle); opacity: 0.65; }
+.commit-item.is-pushed .commit-rename { color: var(--fg-subtle); }
+.commit-item.is-pushed.is-unlockable .commit-rename { cursor: pointer; }
+.commit-unlock {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--fg-subtle); flex: none; cursor: pointer;
+  opacity: 0.55; transition: opacity var(--speed) var(--ease), color var(--speed) var(--ease);
+}
+.commit-item:hover .commit-unlock, .commit-unlock.checked { opacity: 1; }
+.commit-item:hover .commit-unlock { color: var(--fg-muted); }
+.commit-unlock input { width: 13px; height: 13px; accent-color: var(--attention); cursor: pointer; }
+.commit-lock { font-size: 11px; color: var(--fg-subtle); flex: none; }
+.commit-open { font-size: 12px; color: var(--accent-fg); opacity: 0; transition: opacity var(--speed); cursor: pointer; flex: none; }
+.commit-item:hover .commit-open { opacity: 1; }
+.js-rename-input { flex: 1; min-width: 0; padding: 2px 6px; font-size: 12.5px; }
+/** ---------------------------- commit picker ---------------------------- */
+.commit-picker-modal { width: min(640px, 96vw); }
+.commit-picker-body { max-height: 62vh; overflow: auto; padding: 0; }
+.commit-picker-hint { padding: 10px 16px; border-bottom: 1px solid var(--border-subtle); }
+.commit-picker-list { display: flex; flex-direction: column; }
+.commit-pick {
+  display: flex; align-items: flex-start; gap: 10px; padding: 9px 16px;
+  border-bottom: 1px solid var(--border-subtle); cursor: pointer; font-size: 12.5px;
+}
+.commit-pick:hover { background: var(--bg-subtle); }
+.commit-pick.checked { background: color-mix(in srgb, var(--accent-emphasis) 9%, transparent); }
+.commit-pick-box { margin-top: 3px; width: 15px; height: 15px; flex: none; accent-color: var(--accent-emphasis); cursor: pointer; }
+.commit-pick-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.commit-pick-title { font-weight: 500; overflow-wrap: anywhere; }
+.commit-pick-meta { font-size: 11px; color: var(--fg-muted); }
+.commit-pick-sha { font-family: ui-monospace, monospace; font-size: 11px; color: var(--fg-muted); flex: none; }
+/** --------------------------- settings popover -------------------------- */
+.settings-pop {
+  position: fixed; top: 62px; right: 16px; z-index: 90;
+  width: 290px; padding: 14px;
+  background: var(--bg-overlay);
+  border: 1px solid var(--border); border-radius: 8px;
+  box-shadow: var(--shadow);
+  display: none;
+}
