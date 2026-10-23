@@ -864,3 +864,44 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
   display: flex; gap: 10px; align-items: center;
   z-index: 60;
 }
+.action-bar .status { color: var(--fg-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+/** ------------------------------ modals/toast --------------------------- */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(1, 4, 9, 0.72); z-index: 200; display: none; align-items: flex-start; justify-content: center; padding-top: 8vh; }
+.modal-backdrop.show { display: flex; }
+.modal { width: min(600px, 92vw); background: var(--bg); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); }
+.modal-header { padding: 13px 16px; border-bottom: 1px solid var(--border); font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+.modal-body { padding: 14px 16px; }
+.modal-footer { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; background: var(--bg-subtle); }
+.radio-card { display: flex; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; cursor: pointer; transition: border-color var(--speed), background var(--speed); }
+.radio-card:hover { background: var(--bg-subtle); }
+.radio-card.selected { border-color: var(--accent-emphasis); background: rgba(31, 111, 235, 0.08); }
+.radio-card input { margin-top: 2px; }
+.toast {
+  position: fixed; bottom: 66px; left: 50%; transform: translateX(-50%);
+  background: var(--bg-overlay); color: var(--fg);
+  border: 1px solid var(--border);
+  padding: 9px 16px; border-radius: var(--radius);
+  font-size: 13px; box-shadow: var(--shadow); z-index: 300;
+  opacity: 0; pointer-events: none;
+  transition: opacity 120ms var(--ease), transform 120ms var(--ease);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(-2px); }
+.toast.error { border-color: var(--danger); color: var(--danger); }
+.lightbox { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); z-index: 400; display: none; align-items: center; justify-content: center; }
+.lightbox.show { display: flex; }
+.lightbox img { max-width: 90vw; max-height: 86vh; border-radius: 8px; }
+.lightbox-close { position: absolute; top: 14px; right: 20px; background: none; border: none; color: #fff; font-size: 32px; cursor: pointer; }
+/** --------------------------- syntax: GitHub ---------------------------- */
+.hljs { background: transparent !important; color: var(--fg); }
+/** hljs -> GitHub prettylights mapping, from the pl-* rules in… */
+.hljs-comment, .hljs-quote { color: #9198a1; font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-doctag, .hljs-formula { color: #ff7b72; }
+.hljs-section, .hljs-name, .hljs-deletion, .hljs-subst { color: #ffa198; }
+.hljs-literal, .hljs-number, .hljs-tag .hljs-attr, .hljs-template-variable, .hljs-variable, .hljs-attribute { color: #79c0ff; }
+.hljs-string, .hljs-regexp, .hljs-addition, .hljs-meta .hljs-string { color: #a5d6ff; }
+.hljs-attr, .hljs-selector-attr, .hljs-selector-pseudo, .hljs-template-tag { color: #79c0ff; }
+/** Types, class names and members are plain text on GitHub (pl-smi/pl-s1). */
+.hljs-type, .hljs-class .hljs-title, .hljs-title.class_, .hljs-built_in, .hljs-property { color: var(--fg); }
+.hljs-title, .hljs-title.function_, .hljs-function .hljs-title { color: #d2a8ff; }
+.hljs-params { color: var(--fg); }
+.hljs-symbol, .hljs-bullet, .hljs-link, .hljs-meta { color: #79c0ff; }
