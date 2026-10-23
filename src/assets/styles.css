@@ -905,3 +905,53 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
 .hljs-title, .hljs-title.function_, .hljs-function .hljs-title { color: #d2a8ff; }
 .hljs-params { color: var(--fg); }
 .hljs-symbol, .hljs-bullet, .hljs-link, .hljs-meta { color: #79c0ff; }
+.hljs-selector-id, .hljs-selector-class { color: #d2a8ff; }
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: 600; }
+.hljs-punctuation, .hljs-operator { color: var(--fg); }
+/** Type names, class names and interface names are plain text on GitHub. */
+.hljs-plain, .hljs-plain * { color: var(--fg) !important; }
+[data-theme="light"] .hljs-comment, [data-theme="light"] .hljs-quote { color: #6e7781; }
+[data-theme="light"] .hljs-keyword, [data-theme="light"] .hljs-doctag, [data-theme="light"] .hljs-formula { color: #cf222e; }
+[data-theme="light"] .hljs-section, [data-theme="light"] .hljs-name { color: #b35900; }
+[data-theme="light"] .hljs-literal, [data-theme="light"] .hljs-number, [data-theme="light"] .hljs-variable, [data-theme="light"] .hljs-attribute { color: #0550ae; }
+[data-theme="light"] .hljs-string, [data-theme="light"] .hljs-regexp { color: #0a3069; }
+[data-theme="light"] .hljs-attr, [data-theme="light"] .hljs-selector-attr { color: #0550ae; }
+[data-theme="light"] .hljs-type, [data-theme="light"] .hljs-built_in, [data-theme="light"] .hljs-property { color: var(--fg); }
+[data-theme="light"] .hljs-title, [data-theme="light"] .hljs-title.function_ { color: #8250df; }
+[data-theme="light"] .hljs-punctuation, [data-theme="light"] .hljs-operator { color: #1f2328; }
+/** symbol links: normal code colour, subtle dotted underline like GitHub */
+.sym-link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: color-mix(in srgb, var(--fg-muted) 70%, transparent);
+  text-underline-offset: 3px;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.sym-link:hover { background: rgba(68, 147, 248, 0.14); text-decoration-style: solid; text-decoration-color: var(--accent-fg); }
+body.no-symlinks .sym-link { text-decoration: none; pointer-events: none; }
+/** GitHub colours C# like this: keywords/strings/comments from hljs, constants and literals blue,… */
+.sym-call { color: var(--sym-call); }
+/** Kept as no-ops so older markup and tests still resolve to the body colour. */
+.sym-type, .sym-value { color: inherit; }
+.sym-pop {
+  position: fixed; z-index: 150; width: 560px; max-width: 92vw;
+  max-height: 360px; display: flex; flex-direction: column;
+  background: var(--bg-overlay); border: 1px solid var(--border); border-radius: 8px;
+  box-shadow: var(--shadow); overflow: hidden;
+  animation: popIn 100ms var(--ease);
+}
+.sym-pop-head { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--border-subtle); font-size: 12px; }
+.sym-pop-body { flex: 1 1 auto; max-height: 320px; overflow: auto; padding: 6px; }
+.sym-def, .sym-use {
+  display: flex; align-items: center; gap: 8px; justify-content: space-between;
+  padding: 5px 8px; border-radius: 4px; font-size: 12px; color: var(--fg);
+}
+.sym-def:hover, .sym-use:hover { background: var(--bg-subtle); text-decoration: none; }
+.sym-path {
+  font-family: ui-monospace, monospace; font-size: 11.5px; color: var(--accent-fg);
+  white-space: normal; word-break: normal; overflow-wrap: normal;
+  text-align: left; flex: 1 1 auto; min-width: 0;
+}
