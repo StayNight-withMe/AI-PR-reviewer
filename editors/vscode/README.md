@@ -28,3 +28,13 @@ The extension looks for the server at `<extension>/server/src/cli.js`. From the
 repository root, one script copies the engine into every host that ships one:
 ```sh
 node scripts/bundle-server.mjs vscode
+```
+It copies `src/` (including `assets/`), `package.json` and a `BUNDLE.json`
+version stamp — but not `node_modules`, which the launcher does not need.
+During development, skip the copy and point `prReview.cliPath` at the checkout.
+## How it talks to the server
+It runs the engine and reads one line from stdout:
+```
+PR_REVIEW_READY {"url":"http://127.0.0.1:54321/","reviewId":"...","port":54321,...}
+```
+`session.ts` parses that line; the webview shows the URL in an iframe. The

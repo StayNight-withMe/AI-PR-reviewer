@@ -28,3 +28,13 @@ Helix's agent can call the review server as an MCP server. Point it at
 `src/index.js`:
 ```toml
 # in the MCP configuration the agent reads
+[[mcp.servers]]
+name = "pr-review"
+command = "node"
+args = ["/path/to/pr-review-mcp/src/index.js"]
+```
+The agent then uses `start_review`, `await_review`, `get_review`,
+`list_review_scope` and `close_review` exactly as in any other MCP client.
+## 3. Scope
+The default is **the current branch against its base** (`--mode branch`), which
+is what a pull request is about — not the whole project.

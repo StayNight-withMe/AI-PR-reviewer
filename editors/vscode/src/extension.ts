@@ -70,3 +70,39 @@ async function openReview(context: vscode.ExtensionContext): Promise<void> {
     },
   );
 }
+/** Shows the page in the place the user configured. */
+async function showReview(
+  context: vscode.ExtensionContext,
+  info: ReviewInfo,
+  showIn: string,
+): Promise<void> {
+  if (showIn === "external") {
+    await vscode.env.openExternal(vscode.Uri.parse(info.url));
+    return;
+  }
+
+  if (showIn === "simpleBrowser") {
+    await vscode.commands.executeCommand("simpleBrowser.show", info.url);
+    return;
+  }
+
+  if (panel) {
+    panel.reveal();
+    panel.webview.html = webviewHtml(info.url);
+    return;
+  }
+
+  panel = vscode.window.createWebviewPanel(VIEW_TYPE, reviewTitle(info), vscode.ViewColumn.Active, {
+    enableScripts: true,
+    retainContextWhenHidden: true,
+    localResourceRoots: [],
+  });
+
+  panel.webview.html = webviewHtml(info.url);
+  // Closing the tab is the user's "I am done": stop the server with it, so no
+  // orphan Node process keeps holding the port and the artifact directory.
+  panel.onDidDispose(() => {
+    panel = undefined;
+    void closeReview();
+  }, null, context.subscriptions);
+}

@@ -28,3 +28,8 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <VSCTCompile Include="PrReviewPackage.vsct">
+      <ResourceName>Menus.ctmenu</ResourceName>
+    </VSCTCompile>
+  </ItemGroup>
+</Project>

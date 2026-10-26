@@ -28,3 +28,13 @@ from the repository root before building:
 node scripts/bundle-server.mjs            # every host
 node scripts/bundle-server.mjs --list     # which hosts are known
 ```
+During development, skip the copy and point `PR_REVIEW_CLI` at the checkout:
+```
+PR_REVIEW_CLI=Z:\Alpha Dev\pr-review-mcp\src\cli.js
+```
+## How it talks to the server
+The engine prints one machine-readable line when the page is ready:
+```
+PR_REVIEW_READY {"url":"http://127.0.0.1:54321/","reviewId":"...","port":54321,
+                 "branch":"...","additions":120,"deletions":34,...}
+```

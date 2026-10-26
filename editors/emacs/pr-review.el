@@ -35,3 +35,14 @@ next to this file (../server/src/cli.js) is used, then a checkout on
   "Base ref for a branch review.  Nil lets the server pick origin/dev, ..."
   :type '(choice (const :tag "Server default" nil) string)
   :group 'pr-review)
+(defvar pr-review--process nil "The running review server process.")
+(defvar pr-review--url nil "The URL of the open review.")
+(defconst pr-review--ready-prefix "PR_REVIEW_READY ")
+(defconst pr-review--error-prefix "PR_REVIEW_ERROR ")
+(defun pr-review--resolve-cli ()
+  "Return the engine path, or nil when it cannot be found."
+  (or pr-review-cli-path
+      (let* ((here (file-name-directory (or load-file-name buffer-file-name)))
+             (bundled (expand-file-name "../server/src/cli.js" here)))
+        (when (file-exists-p bundled) bundled))
+      (locate-library "server/src/cli.js")))

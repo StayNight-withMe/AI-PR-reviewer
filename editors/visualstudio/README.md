@@ -28,3 +28,13 @@ The `.vsix` lands in `bin\Release\net48\`. Double-click it to install.
 ## Bundle the server into the VSIX
 The extension looks for the server at
 `<extension install dir>\server\src\cli.js`. From the repository root, one
+script adds the engine to this project's `server\` folder:
+```sh
+node scripts/bundle-server.mjs visualstudio
+```
+It copies `src\` (including `assets\`), `package.json` and a `BUNDLE.json` version
+stamp — but not `node_modules`, which the launcher does not need. To ship the
+files inside the `.vsix`, include them in the project:
+```xml
+<ItemGroup>
+  <Content Include="server\**\*" />

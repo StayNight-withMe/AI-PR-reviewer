@@ -28,3 +28,13 @@ def _find_repo_root(start):
         if parent == directory:
             break
         directory = parent
+    return start
+def _resolve_cli():
+    """The configured engine path, else the copy bundled next to this plugin."""
+    configured = _setting("cli_path", "")
+    if configured:
+        return configured
+    here = os.path.dirname(os.path.abspath(__file__))
+    bundled = os.path.join(here, "server", "src", "cli.js")
+    if os.path.isfile(bundled):
+        return bundled

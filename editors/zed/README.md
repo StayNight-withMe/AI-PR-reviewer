@@ -45,3 +45,13 @@ opens in the system browser.
     "reveal_target": "center"
   }
 ]
+```
+`--open` launches the default browser, so the page opens in a tab and the menu
+of the review (files, commits, comments) is available right away. Drop `--open`
+if you would rather keep it inside Zed: the task prints the URL and Zed links
+it, or serve the page and use the "Open in browser" affordance.
+## 3. Scope
+The default scope is **the current branch against its base** (`--mode branch`),
+not the whole project, so the review shows only what this branch changed. Pass
+`--base origin/main` (or any ref) to pin the base, or `--mode uncommitted` to
+review the working tree instead.

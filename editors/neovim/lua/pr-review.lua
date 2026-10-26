@@ -33,3 +33,13 @@ local function resolve_cli()
   -- The bundled copy ships at <plugin>/server/src/cli.js, next to this file.
   local here = debug.getinfo(1, "S").source:sub(2)
   local dir = vim.fn.fnamemodify(here, ":h")
+  local bundled = dir .. "/../server/src/cli.js"
+  if vim.fn.filereadable(bundled) == 1 then
+    return vim.fn.fnamemodify(bundled, ":p")
+  end
+  for _, root in ipairs(vim.api.nvim_list_runtime_paths()) do
+    local candidate = root .. "/server/src/cli.js"
+    if vim.fn.filereadable(candidate) == 1 then
+      return candidate
+    end
+  end

@@ -30,3 +30,4 @@ The engine prints one machine-readable line when the page is ready:
 PR_REVIEW_READY {"url":"http://127.0.0.1:54321/","branch":"feature/login",...}
 ```
 `on_line` parses it and opens `url`; `PR_REVIEW_ERROR <message>` on stderr is
+shown as an error notification.

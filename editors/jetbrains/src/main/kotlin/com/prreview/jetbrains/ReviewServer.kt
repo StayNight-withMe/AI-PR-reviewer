@@ -175,3 +175,14 @@ fun bundledCli(): File? {
     val home = System.getProperty("user.home") ?: return null
     return File(home, ".pr-review-mcp/server/src/cli.js").takeIf { it.isFile }
 }
+private fun locateFrom(codeSource: java.net.URI?): File? {
+    if (codeSource == null) return null
+    var directory = File(codeSource).let { if (it.isFile) it.parentFile else it }
+    // Walk up a few levels: out/production/classes, out/classes, lib, ...
+    repeat(6) {
+        val candidate = File(directory, "server/src/cli.js")
+        if (candidate.isFile) return candidate
+        directory = directory.parentFile ?: return null
+    }
+    return null
+}

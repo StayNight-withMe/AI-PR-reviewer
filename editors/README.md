@@ -28,3 +28,13 @@ with `--base`. Other modes exist for completeness:
 | `commits` | one net diff of the chosen commits |
 | `all` | every commit of the branch |
 | `pr` | a **GitHub pull request** (`--pr <n>`), read through the GitHub CLI |
+## The shared contract
+The integrations never parse the page. They run the engine and read one line:
+```jsonc
+// stdout, one line
+PR_REVIEW_READY {"ok":true,"url":"http://127.0.0.1:54321/","reviewId":"...","port":54321,
+                 "repo":"...","branch":"feature/login","mode":"branch","base":"origin/dev",
+                 "head":"HEAD","files":42,"additions":1200,"deletions":340,"outputDir":"..."}
+```
+On failure, `PR_REVIEW_ERROR <message>` goes to stderr and the process exits
+non-zero. `GET /api/version` reports `{name, version, protocol}` so a host can
