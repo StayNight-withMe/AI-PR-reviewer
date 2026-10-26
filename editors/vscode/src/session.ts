@@ -8,3 +8,20 @@
 import { ChildProcessWithoutNullStreams, spawn } from "child_process";
 import * as readline from "readline";
 /** The one line the server prints when the page is up. */
+const READY_PREFIX = "PR_REVIEW_READY ";
+const ERROR_PREFIX = "PR_REVIEW_ERROR ";
+const START_TIMEOUT_MS = 60_000;
+export interface ReviewInfo {
+  url: string;
+  reviewId: string;
+  port: number;
+  repo: string;
+  branch: string;
+  mode: string;
+  base: string | null;
+  head: string | null;
+  files: number;
+  additions: number;
+  deletions: number;
+  outputDir: string;
+}

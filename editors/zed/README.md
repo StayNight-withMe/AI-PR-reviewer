@@ -17,3 +17,13 @@ Add the review server to Zed's `context_servers` in `settings.json`:
     }
   }
 }
+```
+On macOS or Linux replace the path with the checkout location, for example
+`/home/me/pr-review-mcp/src/index.js`. The agent can then call `start_review`,
+`await_review`, `get_review`, `list_review_scope` and `close_review` exactly as
+in any other MCP client.
+## 2. Task (opens the page for the human)
+Add a task to `.zed/tasks.json` in the repository you review (or to the global
+tasks file). Press the task keybinding and the review of the current branch
+opens in the system browser.
+```json

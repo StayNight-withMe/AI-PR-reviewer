@@ -8,3 +8,13 @@ duplicated: this project only starts the bundled Node server and shows its URL.
 - The window title shows the branch and the change size, e.g.
   `PR Review: feature/login (+120 / -34)`.
 - Closing Visual Studio stops the server; the page disappears with it.
+Scope is **the current branch against its base** by default — the review shows
+only what this branch changed, not the whole project.
+## Requirements
+- Visual Studio 2022 (17.x) with the **Visual Studio extension development**
+  workload (it provides the VSIX build targets).
+- Node.js on `PATH`, or `PR_REVIEW_NODE` pointing at `node.exe`.
+## Build
+The project builds to a DLL with the .NET SDK:
+```powershell
+dotnet build

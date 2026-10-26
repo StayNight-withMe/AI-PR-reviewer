@@ -8,3 +8,13 @@
     same page the MCP server and the AI use, so a comment written here reaches
     the agent. The review engine is bundled: no separate checkout is needed.
   ]]></description>
+  <depends>com.intellij.modules.platform</depends>
+  <actions>
+    <action id="PrReview.Open"
+            class="com.prreview.jetbrains.OpenReviewAction"
+            text="Open Review of the Current Branch"
+            description="Build and open a review of the current branch">
+      <add-to-group group-id="ToolsMenu" anchor="last"/>
+      <keyboard-shortcut keymap="$default" first-keystroke="control alt R"/>
+    </action>
+    <action id="PrReview.Stop"

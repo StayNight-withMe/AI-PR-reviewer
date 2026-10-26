@@ -13,3 +13,13 @@ repositories {
         defaultRepositories()
     }
 }
+dependencies {
+    intellijPlatform {
+        // Build against the community platform; the plugin only uses base APIs,
+        // so it runs in every JetBrains IDE from 2023.3 up.
+        create(IntelliJPlatformType.IntellijIdeaCommunity, "2023.3.5")
+        pluginVerifier()
+        zipSigner()
+        testFramework(TestFrameworkType.Platform)
+    }
+}

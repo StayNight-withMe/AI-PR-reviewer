@@ -8,3 +8,13 @@ one the MCP server and the AI use, so a comment written here reaches the agent.
 ## Settings
 | Setting | Default | Meaning |
 | --- | --- | --- |
+| `prReview.mode` | `branch` | What a click reviews. `branch` is the current branch against its base. |
+| `prReview.base` | *(empty)* | Base ref for the branch review; empty lets the server pick. |
+| `prReview.showIn` | `webview` | `webview` (editor tab), `simpleBrowser`, or `external` (system browser). |
+| `prReview.nodePath` | `node` | Node.js executable that runs the server. |
+| `prReview.cliPath` | *(empty)* | Path to `src/cli.js`; empty uses the copy bundled in the extension. |
+## Build and run
+```sh
+npm install
+npm run compile
+```

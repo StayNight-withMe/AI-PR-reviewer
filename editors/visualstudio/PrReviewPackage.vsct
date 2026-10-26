@@ -8,3 +8,13 @@
           <ButtonText>PR Review</ButtonText>
         </Strings>
       </Menu>
+    </Menus>
+    <Groups>
+      <Group guid="guidPrReviewCmdSet" id="PrReviewGroup" priority="0x0600">
+        <Parent guid="guidPrReviewCmdSet" id="PrReviewMenu" />
+      </Group>
+    </Groups>
+    <Buttons>
+      <Button guid="guidPrReviewCmdSet" id="OpenReview" priority="0x0100" type="Button">
+        <Parent guid="guidPrReviewCmdSet" id="PrReviewGroup" />
+        <Strings>

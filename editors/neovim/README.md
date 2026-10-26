@@ -10,3 +10,13 @@ require("pr-review").setup({
   -- cli_path = "/home/me/pr-review-mcp/src/cli.js", -- optional
   mode = "branch",
 })
+```
+With a plugin manager, point it at this folder and call `setup()`.
+## Commands
+- `:PrReview` — build and open the review of the current branch (default).
+- `:PrReviewStop` — stop the running server; the page does not outlive it.
+## Options
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `cli_path` | bundled copy, then a checkout | Path to `src/cli.js`. |
+| `mode` | `branch` | `branch`, `uncommitted`, `range`, `commits` or `all`. |

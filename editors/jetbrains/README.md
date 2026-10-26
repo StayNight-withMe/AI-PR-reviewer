@@ -8,3 +8,13 @@ reaches the agent. The engine is bundled, so no separate checkout is required.
 - **Tools → Stop the Review Server** stops it; the page does not outlive it.
 - Scope is **the current branch against its base**, the same default as every
   other host.
+## Requirements
+- A JetBrains IDE 2023.3 (build 233) or newer.
+- Node.js on `PATH`, or `PR_REVIEW_NODE` pointing at `node.exe`.
+## Build
+The plugin builds with the Gradle IntelliJ Platform plugin:
+```sh
+cd editors/jetbrains
+./gradlew buildPlugin
+```
+The installable zip lands in `build/distributions/`. Install it with

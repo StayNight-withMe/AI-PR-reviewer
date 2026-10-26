@@ -8,3 +8,18 @@
 ;
 ;     (require 'pr-review)
 ;     (global-set-key (kbd "C-c r") #'pr-review-open)
+;
+; in your init file. M-x pr-review-open opens the review,
+; M-x pr-review-stop stops the server.
+(require 'json)
+(require 'subprocess)
+(require 'url-util)
+(defgroup pr-review nil
+  "Open a GitHub-style review of the current branch."
+  :group 'tools)
+(defcustom pr-review-cli-path nil
+  "Path to the review engine (src/cli.js).  When nil the copy bundled
+next to this file (../server/src/cli.js) is used, then a checkout on
+`load-path'."
+  :type '(choice (const :tag "Bundled" nil) file)
+  :group 'pr-review)

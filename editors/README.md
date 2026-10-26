@@ -8,3 +8,13 @@ scope or the page.
         │  src/cli.js  (the engine)   │   scope -> diff -> page -> localhost
         └──────────────┬──────────────┘
               prints:  │  PR_REVIEW_READY {"url":..., "reviewId":...}
+        ┌──────────────┼──────────────┬──────────────┬───────────────┐
+        │              │              │              │               │
+   VS Code        Visual Studio   JetBrains       Zed         Neovim
+   (Webview)      (WebView2)      (browser)  (MCP + task)   (Lua + MCP)
+        │              │              │              │               │
+   Sublime        Emacs          Helix       MCP clients (agent)
+   (Python)       (Lisp)         (task+MCP)
+```
+## Scope: the current branch, not the whole project
+A click reviews **the current branch against its base** (`--mode branch`). The
