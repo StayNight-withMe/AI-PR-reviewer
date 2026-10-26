@@ -23,3 +23,15 @@ next to this file (../server/src/cli.js) is used, then a checkout on
 `load-path'."
   :type '(choice (const :tag "Bundled" nil) file)
   :group 'pr-review)
+(defcustom pr-review-node-path "node"
+  "Node.js executable that runs the review server."
+  :type 'string
+  :group 'pr-review)
+(defcustom pr-review-mode "branch"
+  "What a review covers: branch, uncommitted, range, commits or all."
+  :type 'string
+  :group 'pr-review)
+(defcustom pr-review-base nil
+  "Base ref for a branch review.  Nil lets the server pick origin/dev, ..."
+  :type '(choice (const :tag "Server default" nil) string)
+  :group 'pr-review)

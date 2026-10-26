@@ -18,3 +18,10 @@
       <keyboard-shortcut keymap="$default" first-keystroke="control alt R"/>
     </action>
     <action id="PrReview.Stop"
+            class="com.prreview.jetbrains.StopReviewAction"
+            text="Stop the Review Server"
+            description="Stop the running review server">
+      <add-to-group group-id="ToolsMenu" anchor="last"/>
+    </action>
+  </actions>
+</idea-plugin>

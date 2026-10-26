@@ -18,3 +18,13 @@ only what this branch changed, not the whole project.
 The project builds to a DLL with the .NET SDK:
 ```powershell
 dotnet build
+```
+To produce the installable **`.vsix`**, use MSBuild from a machine with the
+extension-development workload:
+```powershell
+msbuild PrReview.VisualStudio.csproj /p:Configuration=Release
+```
+The `.vsix` lands in `bin\Release\net48\`. Double-click it to install.
+## Bundle the server into the VSIX
+The extension looks for the server at
+`<extension install dir>\server\src\cli.js`. From the repository root, one

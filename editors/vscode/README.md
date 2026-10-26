@@ -18,3 +18,13 @@ one the MCP server and the AI use, so a comment written here reaches the agent.
 npm install
 npm run compile
 ```
+Then press **F5** in VS Code with this folder open to launch an Extension
+Development Host, or package it:
+```sh
+npx vsce package
+```
+## Bundle the server into the VSIX
+The extension looks for the server at `<extension>/server/src/cli.js`. From the
+repository root, one script copies the engine into every host that ships one:
+```sh
+node scripts/bundle-server.mjs vscode

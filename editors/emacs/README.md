@@ -18,3 +18,12 @@ Add `pr-review.el` to your `load-path` and put in your init file:
 | `pr-review-node-path` | `node` | Node.js executable. |
 | `pr-review-mode` | `branch` | `branch`, `uncommitted`, `range`, `commits` or `all`. |
 | `pr-review-base` | *(engine default)* | Base ref for a branch review. |
+## Requirements
+Emacs 27+ and Node.js on `PATH`.
+## How it talks to the server
+The engine prints one machine-readable line when the page is ready:
+```
+PR_REVIEW_READY {"url":"http://127.0.0.1:54321/","branch":"feature/login",...}
+```
+`pr-review--on-line` parses it with `json-read-from-string` and opens `url`;
+`PR_REVIEW_ERROR <message>` is shown with `message`.

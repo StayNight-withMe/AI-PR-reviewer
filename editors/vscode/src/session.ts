@@ -25,3 +25,13 @@ export interface ReviewInfo {
   deletions: number;
   outputDir: string;
 }
+export interface LaunchOptions {
+  nodePath: string;
+  cliPath: string;
+  cwd: string;
+  mode: string;
+  base?: string;
+  title?: string;
+  /** How long to wait for the ready line. Overridable so tests stay fast. */
+  startTimeoutMs?: number;
+}

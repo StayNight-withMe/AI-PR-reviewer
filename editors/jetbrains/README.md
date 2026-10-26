@@ -18,3 +18,13 @@ cd editors/jetbrains
 ./gradlew buildPlugin
 ```
 The installable zip lands in `build/distributions/`. Install it with
+*Settings → Plugins → ⚙ → Install Plugin from Disk…*.
+During development, open this folder in IntelliJ IDEA and run the
+`runIde` Gradle task.
+## Bundle the server into the plugin
+The plugin looks for the engine at `<plugin>/server/src/cli.js`. Copy it there
+from the repository root before building:
+```sh
+node scripts/bundle-server.mjs            # every host
+node scripts/bundle-server.mjs --list     # which hosts are known
+```

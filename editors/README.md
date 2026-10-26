@@ -18,3 +18,13 @@ scope or the page.
 ```
 ## Scope: the current branch, not the whole project
 A click reviews **the current branch against its base** (`--mode branch`). The
+server resolves the base itself (`origin/dev`, `origin/main`, …) or you pin it
+with `--base`. Other modes exist for completeness:
+| `--mode` | What it reviews |
+| --- | --- |
+| `branch` (default) | the current branch vs its base — what a PR is about |
+| `uncommitted` | staged + unstaged + untracked working tree |
+| `range` | an explicit `--base`…`--head` |
+| `commits` | one net diff of the chosen commits |
+| `all` | every commit of the branch |
+| `pr` | a **GitHub pull request** (`--pr <n>`), read through the GitHub CLI |

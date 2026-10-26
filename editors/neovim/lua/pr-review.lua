@@ -23,3 +23,13 @@ local defaults = {
   -- Where to open the review: "browser" (default) or "none" (only echo the URL).
   open = "browser",
 }
+local config = vim.deepcopy(defaults)
+local state = { job = nil, url = nil }
+--- Finds the engine: the configured path, the bundled copy, or a checkout.
+local function resolve_cli()
+  if config.cli_path and config.cli_path ~= "" then
+    return config.cli_path
+  end
+  -- The bundled copy ships at <plugin>/server/src/cli.js, next to this file.
+  local here = debug.getinfo(1, "S").source:sub(2)
+  local dir = vim.fn.fnamemodify(here, ":h")

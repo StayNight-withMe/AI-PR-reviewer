@@ -18,3 +18,9 @@ command palette:
 | `mode` | `branch` | `branch`, `uncommitted`, `range`, `commits` or `all`. |
 | `base` | *(engine default)* | Base ref for a branch review. |
 | `open` | `browser` | `browser`, or `none` to only show the URL in the status bar. |
+## Bundle the server (optional)
+Sublime can ship the engine too. From the repository root:
+```sh
+node scripts/bundle-server.mjs --list   # which hosts support bundling
+```
+or simply leave `cli_path` empty and set it to your checkout once.

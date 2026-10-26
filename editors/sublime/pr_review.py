@@ -18,3 +18,13 @@ ERROR_PREFIX = "PR_REVIEW_ERROR "
 _settings = sublime.load_settings("pr-review.sublime-settings")
 def _setting(name, default):
     return _settings.get(name, default)
+def _find_repo_root(start):
+    """The nearest ancestor that holds a .git entry, or the start folder."""
+    directory = start
+    while directory:
+        if os.path.isdir(os.path.join(directory, ".git")) or os.path.isfile(os.path.join(directory, ".git")):
+            return directory
+        parent = os.path.dirname(directory)
+        if parent == directory:
+            break
+        directory = parent

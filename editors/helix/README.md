@@ -18,3 +18,13 @@ On Windows use the full path to `node.exe` if it is not on `PATH`:
 C-r = ':sh "C:\\Program Files\\nodejs\\node.exe" Z:\\Alpha Dev\\pr-review-mcp\\src\\cli.js --repo %{cwd} --mode branch --open'
 ```
 Other scopes are the same flags every host uses:
+| Want | Add |
+| --- | --- |
+| the working tree | `--mode uncommitted` |
+| an explicit base | `--base origin/main` |
+| a pinned base + head | `--mode range --base origin/main --head HEAD` |
+## 2. MCP server (for the agent)
+Helix's agent can call the review server as an MCP server. Point it at
+`src/index.js`:
+```toml
+# in the MCP configuration the agent reads

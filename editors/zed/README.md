@@ -27,3 +27,21 @@ Add a task to `.zed/tasks.json` in the repository you review (or to the global
 tasks file). Press the task keybinding and the review of the current branch
 opens in the system browser.
 ```json
+[
+  {
+    "label": "PR Review: current branch",
+    "command": "node",
+    "args": [
+      "Z:\\Alpha Dev\\pr-review-mcp\\src\\cli.js",
+      "--repo",
+      "$ZED_WORKTREE_ROOT",
+      "--mode",
+      "branch",
+      "--open"
+    ],
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "no_focus",
+    "reveal_target": "center"
+  }
+]

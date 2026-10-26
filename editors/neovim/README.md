@@ -20,3 +20,13 @@ With a plugin manager, point it at this folder and call `setup()`.
 | --- | --- | --- |
 | `cli_path` | bundled copy, then a checkout | Path to `src/cli.js`. |
 | `mode` | `branch` | `branch`, `uncommitted`, `range`, `commits` or `all`. |
+| `base` | *(engine default)* | Base ref for a branch review. |
+| `open` | `browser` | `browser`, or `none` to only echo the URL. |
+## Requirements
+Neovim 0.10+ (for `vim.system`). Node.js on `PATH`.
+## How it talks to the server
+The engine prints one machine-readable line when the page is ready:
+```
+PR_REVIEW_READY {"url":"http://127.0.0.1:54321/","branch":"feature/login",...}
+```
+`on_line` parses it and opens `url`; `PR_REVIEW_ERROR <message>` on stderr is

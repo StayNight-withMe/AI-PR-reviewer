@@ -161,3 +161,17 @@ object ReviewServer {
         return bundledCli()
     }
 }
+/**
+ * Finds the bundled engine next to the plugin.
+ *
+ * Mirrors VS Code's `resolveCliPath`: the plugin ships `server/src/cli.js`
+ * beside its classes, so it works without a separate checkout of the engine.
+ */
+fun bundledCli(): File? {
+    val fromClasses = locateFrom(ReviewServer::class.java.protectionDomain?.codeSource?.location?.toURI())
+    if (fromClasses != null) return fromClasses
+
+    // A development checkout: ~/.pr-review-mcp/server/src/cli.js.
+    val home = System.getProperty("user.home") ?: return null
+    return File(home, ".pr-review-mcp/server/src/cli.js").takeIf { it.isFile }
+}
