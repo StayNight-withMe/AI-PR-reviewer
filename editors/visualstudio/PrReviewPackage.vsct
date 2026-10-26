@@ -8,27 +8,3 @@
           <ButtonText>PR Review</ButtonText>
         </Strings>
       </Menu>
-    </Menus>
-    <Groups>
-      <Group guid="guidPrReviewCmdSet" id="PrReviewGroup" priority="0x0600">
-        <Parent guid="guidPrReviewCmdSet" id="PrReviewMenu" />
-      </Group>
-    </Groups>
-    <Buttons>
-      <Button guid="guidPrReviewCmdSet" id="OpenReview" priority="0x0100" type="Button">
-        <Parent guid="guidPrReviewCmdSet" id="PrReviewGroup" />
-        <Strings>
-          <ButtonText>Open review of the current branch</ButtonText>
-        </Strings>
-      </Button>
-    </Buttons>
-  </Commands>
-  <Symbols>
-    <GuidSymbol name="guidPrReviewPackage" value="{b7a1c6e2-3f4d-4a9b-8c21-5de6f0a1b2c3}" />
-    <GuidSymbol name="guidPrReviewCmdSet" value="{1c2e9f34-7a5b-4d68-9e01-2b3c4d5e6f70}">
-      <IDSymbol name="PrReviewMenu" value="0x1020" />
-      <IDSymbol name="PrReviewGroup" value="0x1030" />
-      <IDSymbol name="OpenReview" value="0x0100" />
-    </GuidSymbol>
-  </Symbols>
-</CommandTable>

@@ -8,28 +8,3 @@
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
-    <!-- A VSIX package is produced by the VSSDK build tools on a machine with
-         the "Visual Studio extension development" workload installed. -->
-    <GeneratePkgDefFile>true</GeneratePkgDefFile>
-    <IncludeAssemblyInVSIXContainer>true</IncludeAssemblyInVSIXContainer>
-    <IncludeDebugSymbolsInVSIXContainer>false</IncludeDebugSymbolsInVSIXContainer>
-    <CreateVsixContainer>true</CreateVsixContainer>
-    <DeployExtension>false</DeployExtension>
-  </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="Microsoft.VisualStudio.Shell.15.0" Version="17.9.37000" />
-    <PackageReference Include="Microsoft.VisualStudio.Shell.Framework" Version="17.9.37000" />
-    <PackageReference Include="Microsoft.VisualStudio.Shell.Interop" Version="17.9.37000" />
-    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2210.55" />
-    <PackageReference Include="System.Text.Json" Version="8.0.5" />
-    <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.9.3168">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
-  <ItemGroup>
-    <VSCTCompile Include="PrReviewPackage.vsct">
-      <ResourceName>Menus.ctmenu</ResourceName>
-    </VSCTCompile>
-  </ItemGroup>
-</Project>
