@@ -38,3 +38,14 @@ files inside the `.vsix`, include them in the project:
 ```xml
 <ItemGroup>
   <Content Include="server\**\*" />
+</ItemGroup>
+```
+During development, skip the copy and point the package at a checkout instead:
+```powershell
+$env:PR_REVIEW_CLI = "Z:\Alpha Dev\pr-review-mcp\src\cli.js"
+```
+## How it talks to the server
+The server prints one machine-readable line when the page is ready:
+```
+PR_REVIEW_READY {"url":"http://127.0.0.1:54321/","reviewId":"...","port":54321,"branch":"...",
+                 "additions":120,"deletions":34,...}

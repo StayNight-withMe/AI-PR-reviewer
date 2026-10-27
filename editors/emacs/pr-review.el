@@ -46,3 +46,21 @@ next to this file (../server/src/cli.js) is used, then a checkout on
              (bundled (expand-file-name "../server/src/cli.js" here)))
         (when (file-exists-p bundled) bundled))
       (locate-library "server/src/cli.js")))
+(defun pr-review--repo-root ()
+  "The nearest ancestor holding a .git entry, or `default-directory'."
+  (locate-dominating-file default-directory ".git"))
+(defun pr-review--on-line (line)
+  "Handle one line of engine output."
+  (cond
+   ((string-prefix-p pr-review--ready-prefix line)
+    (let* ((json-object-type 'alist)
+           (payload (json-read-from-string
+                     (substring line (length pr-review--ready-prefix)))))
+      (setq pr-review--url (alist-get 'url payload))
+      (message "PR Review: %s (+%s / -%s)"
+               (or (alist-get 'branch payload) "review")
+               (or (alist-get 'additions payload) 0)
+               (or (alist-get 'deletions payload) 0))
+      (when pr-review--url (browse-url pr-review--url))))
+   ((string-prefix-p pr-review--error-prefix line)
+    (message "PR Review: %s" (substring line (length pr-review--error-prefix))))))

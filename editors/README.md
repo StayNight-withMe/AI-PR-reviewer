@@ -38,3 +38,13 @@ PR_REVIEW_READY {"ok":true,"url":"http://127.0.0.1:54321/","reviewId":"...","por
 ```
 On failure, `PR_REVIEW_ERROR <message>` goes to stderr and the process exits
 non-zero. `GET /api/version` reports `{name, version, protocol}` so a host can
+refuse an incompatible engine instead of failing silently.
+## The pieces
+| Folder | Host | Artifact | Where it opens |
+| --- | --- | --- | --- |
+| [`vscode/`](vscode/README.md) | VS Code | VSIX | a Webview tab (default), Simple Browser, or system browser |
+| [`visualstudio/`](visualstudio/README.md) | Visual Studio 2022 | VSIX (C# + WebView2) | a dockable tool window |
+| [`jetbrains/`](jetbrains/README.md) | JetBrains IDEs | plugin zip (Kotlin) | the system browser |
+| [`neovim/`](neovim/) | Neovim | Lua module | the system browser |
+| [`sublime/`](sublime/) | Sublime Text | Python plugin | the system browser |
+| [`emacs/`](emacs/) | Emacs | Lisp package | the system browser |

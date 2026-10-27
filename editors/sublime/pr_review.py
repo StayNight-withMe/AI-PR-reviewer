@@ -38,3 +38,13 @@ def _resolve_cli():
     bundled = os.path.join(here, "server", "src", "cli.js")
     if os.path.isfile(bundled):
         return bundled
+    return None
+class PrReviewState:
+    """Owns the one running engine process."""
+    process = None
+    url = None
+def _read_stdout(process):
+    for raw in iter(process.stdout.readline, b""):
+        line = raw.decode("utf-8", "replace").strip()
+        if not line:
+            continue

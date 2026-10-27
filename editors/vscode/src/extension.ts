@@ -106,3 +106,15 @@ async function showReview(
     void closeReview();
   }, null, context.subscriptions);
 }
+function reviewTitle(info: ReviewInfo): string {
+  const branch = info.branch || "review";
+  return `Review: ${branch} (+${info.additions} / -${info.deletions})`;
+}
+/** Stops the server and closes the tab. */
+async function closeReview(): Promise<void> {
+  panel?.dispose();
+  panel = undefined;
+  statusItem?.hide();
+  await vscode.commands.executeCommand("setContext", CONTEXT_ACTIVE, false);
+  await session?.stop();
+}

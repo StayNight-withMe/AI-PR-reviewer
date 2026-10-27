@@ -43,3 +43,13 @@ local function resolve_cli()
       return candidate
     end
   end
+  return nil
+end
+--- The repository root: the nearest ancestor that holds `.git`.
+local function repo_root()
+  local found = vim.fs.find(".git", { upward = true, path = vim.fn.getcwd() })[1]
+  if found then
+    return vim.fn.fnamemodify(found, ":h")
+  end
+  return vim.fn.getcwd()
+end

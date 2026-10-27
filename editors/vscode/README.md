@@ -38,3 +38,4 @@ It runs the engine and reads one line from stdout:
 PR_REVIEW_READY {"url":"http://127.0.0.1:54321/","reviewId":"...","port":54321,...}
 ```
 `session.ts` parses that line; the webview shows the URL in an iframe. The
+process is kept alive for the tab and killed when the tab closes.

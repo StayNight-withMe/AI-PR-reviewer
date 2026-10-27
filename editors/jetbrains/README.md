@@ -38,3 +38,5 @@ The engine prints one machine-readable line when the page is ready:
 PR_REVIEW_READY {"url":"http://127.0.0.1:54321/","reviewId":"...","port":54321,
                  "branch":"...","additions":120,"deletions":34,...}
 ```
+`ReviewServer` reads that line and opens the `url` in the system browser. A
+launch error arrives on the same channel as `PR_REVIEW_ERROR <message>`.
