@@ -63,3 +63,13 @@ local function open_browser(url)
   else
     cmd = { "xdg-open", url }
   end
+  vim.system(cmd, { detach = true })
+end
+--- Handles one line of engine output.
+local function on_line(line)
+  if not line or line == "" then
+    return
+  end
+  local prefix = "PR_REVIEW_READY "
+  if line:sub(1, #prefix) == prefix then
+    local ok, payload = pcall(vim.json.decode, line:sub(#prefix + 1))

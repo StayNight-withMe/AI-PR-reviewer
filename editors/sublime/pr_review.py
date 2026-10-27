@@ -58,3 +58,13 @@ def _read_stdout(process):
             )
             sublime.status_message("PR Review: %s" % summary)
             if _setting("open", "browser") == "browser" and PrReviewState.url:
+                webbrowser.open(PrReviewState.url)
+        elif line.startswith(ERROR_PREFIX):
+            sublime.error_message("PR Review: %s" % line[len(ERROR_PREFIX):])
+class PrReviewOpenCommand(sublime_plugin.WindowCommand):
+    """Builds and opens the review of the current branch."""
+    def run(self):
+        if PrReviewState.process is not None:
+            if PrReviewState.url:
+                webbrowser.open(PrReviewState.url)
+            return

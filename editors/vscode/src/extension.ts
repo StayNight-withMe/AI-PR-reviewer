@@ -139,3 +139,13 @@ function webviewHtml(url: string): string {
 </body>
 </html>`;
 }
+/**
+ * Finds the review server.
+ *
+ * A configured path wins; otherwise the copy shipped inside the extension is
+ * used, so the extension works without a separate checkout of the repository.
+ */
+function resolveCliPath(context: vscode.ExtensionContext, configured: string): string {
+  if (configured.trim()) return configured.trim();
+  return join(context.extensionPath, "server", "src", "cli.js");
+}

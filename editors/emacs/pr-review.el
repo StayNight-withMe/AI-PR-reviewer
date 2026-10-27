@@ -95,3 +95,12 @@ next to this file (../server/src/cli.js) is used, then a checkout on
                              (pr-review--on-line line)))
                  :sentinel #'pr-review--sentinel))
           (message "PR Review: building the review of %s..." repo))))))
+;;;###autoload
+(defun pr-review-stop ()
+  "Stop the running review server."
+  (interactive)
+  (when pr-review--process
+    (delete-process pr-review--process)
+    (setq pr-review--process nil pr-review--url nil)
+    (message "PR Review: stopped")))
+(provide 'pr-review)

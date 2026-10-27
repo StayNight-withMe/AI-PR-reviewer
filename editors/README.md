@@ -58,3 +58,13 @@ works without a separate checkout. One script copies it into every host's
 `server/` folder:
 ```sh
 node scripts/bundle-server.mjs            # every host
+node scripts/bundle-server.mjs --list     # which hosts ship a bundle
+node scripts/bundle-server.mjs jetbrains  # just one
+```
+`src/index.js` is the only file that needs `node_modules` (the MCP SDK and zod);
+the launcher `src/cli.js` and the whole page run without it, so bundles stay
+small. Each copy gets a `BUNDLE.json` stamp naming the engine version, and the
+editor test refuses a stale bundle.
+## Why some hosts have no bundled extension
+- **Zed** extensions are WebAssembly and cannot start a process; Zed uses the
+  engine as an MCP server and a task instead.
