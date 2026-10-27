@@ -64,3 +64,34 @@ next to this file (../server/src/cli.js) is used, then a checkout on
       (when pr-review--url (browse-url pr-review--url))))
    ((string-prefix-p pr-review--error-prefix line)
     (message "PR Review: %s" (substring line (length pr-review--error-prefix))))))
+(defun pr-review--sentinel (process _event)
+  "Clear state when the engine process ends."
+  (when (eq process pr-review--process)
+    (setq pr-review--process nil pr-review--url nil)))
+;;;###autoload
+(defun pr-review-open ()
+  "Build and open the review of the current branch."
+  (interactive)
+  (if pr-review--process
+      (when pr-review--url (browse-url pr-review--url))
+    (let ((cli (pr-review--resolve-cli)))
+      (if (null cli)
+          (message "PR Review: src/cli.js not found; set `pr-review-cli-path'")
+        (let* ((repo (pr-review--repo-root))
+               (args (append (list pr-review-node-path cli
+                                   "--repo" repo
+                                   "--mode" pr-review-mode
+                                   "--json")
+                             (when pr-review-base
+                               (list "--base" pr-review-base)))))
+          (setq pr-review--process
+                (make-process
+                 :name "pr-review"
+                 :command args
+                 :noquery t
+                 :connection-type 'pipe
+                 :filter (lambda (_proc output)
+                           (dolist (line (split-string output "\n" t))
+                             (pr-review--on-line line)))
+                 :sentinel #'pr-review--sentinel))
+          (message "PR Review: building the review of %s..." repo))))))

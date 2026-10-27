@@ -48,3 +48,13 @@ def _read_stdout(process):
         line = raw.decode("utf-8", "replace").strip()
         if not line:
             continue
+        if line.startswith(READY_PREFIX):
+            payload = json.loads(line[len(READY_PREFIX):])
+            PrReviewState.url = payload.get("url")
+            summary = "%s (+%s / -%s)" % (
+                payload.get("branch") or "review",
+                payload.get("additions", 0),
+                payload.get("deletions", 0),
+            )
+            sublime.status_message("PR Review: %s" % summary)
+            if _setting("open", "browser") == "browser" and PrReviewState.url:

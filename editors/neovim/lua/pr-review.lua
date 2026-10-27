@@ -53,3 +53,13 @@ local function repo_root()
   end
   return vim.fn.getcwd()
 end
+--- Opens a URL in the system browser, per platform.
+local function open_browser(url)
+  local cmd
+  if vim.fn.has("win32") == 1 then
+    cmd = { "cmd", "/c", "start", "", url }
+  elseif vim.fn.has("mac") == 1 then
+    cmd = { "open", url }
+  else
+    cmd = { "xdg-open", url }
+  end

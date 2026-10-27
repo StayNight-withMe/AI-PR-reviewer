@@ -48,3 +48,13 @@ refuse an incompatible engine instead of failing silently.
 | [`neovim/`](neovim/) | Neovim | Lua module | the system browser |
 | [`sublime/`](sublime/) | Sublime Text | Python plugin | the system browser |
 | [`emacs/`](emacs/) | Emacs | Lisp package | the system browser |
+| [`zed/`](zed/README.md) | Zed | MCP server + task | the system browser |
+| [`helix/`](helix/README.md) | Helix | pipe command + MCP | the system browser |
+The three browser-only hosts (Neovim, Sublime, Helix) are complete with no
+build step: they spawn the engine and open its URL.
+## Bundling the engine
+VS Code, Visual Studio and JetBrains ship the engine **inside** the plugin so it
+works without a separate checkout. One script copies it into every host's
+`server/` folder:
+```sh
+node scripts/bundle-server.mjs            # every host

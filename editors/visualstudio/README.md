@@ -49,3 +49,6 @@ The server prints one machine-readable line when the page is ready:
 ```
 PR_REVIEW_READY {"url":"http://127.0.0.1:54321/","reviewId":"...","port":54321,"branch":"...",
                  "additions":120,"deletions":34,...}
+```
+`ServerRunner` reads that line and hands the URL to the WebView. A launch error
+is reported on the same channel as `PR_REVIEW_ERROR <message>`.

@@ -118,3 +118,24 @@ async function closeReview(): Promise<void> {
   await vscode.commands.executeCommand("setContext", CONTEXT_ACTIVE, false);
   await session?.stop();
 }
+/**
+ * The page is a local HTTP app, so the webview must be allowed to reach it.
+ * A plain iframe is enough: the page owns its own routing and comments.
+ */
+function webviewHtml(url: string): string {
+  const nonce = String(Date.now());
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'none'; frame-src ${url}; style-src 'nonce-${nonce}';" />
+  <style nonce="${nonce}">
+    html, body, iframe { margin: 0; padding: 0; border: 0; width: 100%; height: 100vh; }
+  </style>
+</head>
+<body>
+  <iframe src="${url}" title="PR Review"></iframe>
+</body>
+</html>`;
+}
