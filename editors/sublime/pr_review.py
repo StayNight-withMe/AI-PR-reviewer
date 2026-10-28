@@ -83,3 +83,13 @@ class PrReviewOpenCommand(sublime_plugin.WindowCommand):
             "--mode", _setting("mode", "branch"),
             "--json",
         ]
+        base = _setting("base", "")
+        if base:
+            command += ["--base", base]
+        try:
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )

@@ -83,3 +83,13 @@ local function on_line(line)
     )
     if config.open == "browser" then
       open_browser(payload.url)
+    else
+      vim.notify("pr-review: " .. payload.url)
+    end
+  elseif line:sub(1, 15) == "PR_REVIEW_ERROR" then
+    vim.notify("pr-review: " .. line, vim.log.levels.ERROR)
+  end
+end
+--- Starts the engine and opens the review.
+function M.open()
+  if state.job then

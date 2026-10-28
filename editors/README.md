@@ -78,3 +78,12 @@ Two suites cover everything that does not need a GUI editor:
 ```sh
 npm run test:editors          # bundles launch, serve a page, stop; VS Code session
 npm run test:editors:configs  # JSON/TOML/Lua/Lisp/Kotlin config files
+```
+`test:editors` drives the compiled VS Code `ReviewSession`, runs each bundled
+engine and checks `GET /api/version` answers; `test:editors:configs` validates
+every host config without its editor. Both run in `npm run test:all`.
+## Adding a host
+Point it at `src/cli.js`, pass `--repo`, `--mode branch` and `--json`, read the
+`PR_REVIEW_READY` line, and show the URL in whatever surface the host offers.
+Add the host to the table above, to `BUNDLES` in `scripts/bundle-server.mjs` if
+it ships a copy, and to the two test suites. Nothing else is needed.
