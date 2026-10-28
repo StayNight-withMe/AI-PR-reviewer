@@ -68,3 +68,18 @@ class PrReviewOpenCommand(sublime_plugin.WindowCommand):
             if PrReviewState.url:
                 webbrowser.open(PrReviewState.url)
             return
+        cli = _resolve_cli()
+        if not cli:
+            sublime.error_message(
+                "PR Review: src/cli.js was not found. Set \"cli_path\" in "
+                "pr-review.sublime-settings."
+            )
+            return
+        repo = _find_repo_root(os.getcwd())
+        command = [
+            _setting("node_path", "node"),
+            cli,
+            "--repo", repo,
+            "--mode", _setting("mode", "branch"),
+            "--json",
+        ]

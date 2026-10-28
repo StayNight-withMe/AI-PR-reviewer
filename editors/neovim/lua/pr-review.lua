@@ -73,3 +73,13 @@ local function on_line(line)
   local prefix = "PR_REVIEW_READY "
   if line:sub(1, #prefix) == prefix then
     local ok, payload = pcall(vim.json.decode, line:sub(#prefix + 1))
+    if not ok or not payload.url then
+      vim.notify("pr-review: unreadable reply", vim.log.levels.ERROR)
+      return
+    end
+    state.url = payload.url
+    vim.notify(
+      string.format("pr-review: %s (+%d / -%d)", payload.branch or "review", payload.additions or 0, payload.deletions or 0)
+    )
+    if config.open == "browser" then
+      open_browser(payload.url)

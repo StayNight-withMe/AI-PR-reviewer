@@ -68,3 +68,13 @@ editor test refuses a stale bundle.
 ## Why some hosts have no bundled extension
 - **Zed** extensions are WebAssembly and cannot start a process; Zed uses the
   engine as an MCP server and a task instead.
+- **Helix** has no plugin system that can spawn a process; it uses a pipe
+  command and an MCP server, the same two surfaces as Zed.
+- **Neovim / Sublime / Emacs** do have process APIs, so they ship real plugins
+  that spawn the engine; they do not need a bundle because the user points
+  them at their checkout once.
+## Testing the integrations
+Two suites cover everything that does not need a GUI editor:
+```sh
+npm run test:editors          # bundles launch, serve a page, stop; VS Code session
+npm run test:editors:configs  # JSON/TOML/Lua/Lisp/Kotlin config files
