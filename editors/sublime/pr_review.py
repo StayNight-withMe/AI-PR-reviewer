@@ -93,3 +93,13 @@ class PrReviewOpenCommand(sublime_plugin.WindowCommand):
                 stderr=subprocess.PIPE,
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             )
+        except OSError as error:
+            sublime.error_message("PR Review: could not start the server: %s" % error)
+            return
+        PrReviewState.process = process
+        threading.Thread(target=_read_stdout, args=(process,), daemon=True).start()
+class PrReviewStopCommand(sublime_plugin.WindowCommand):
+    """Stops the running engine; the page does not outlive it."""
+    def run(self):
+        process = PrReviewState.process
+        if process is None:

@@ -93,3 +93,13 @@ end
 --- Starts the engine and opens the review.
 function M.open()
   if state.job then
+    if state.url and config.open == "browser" then
+      open_browser(state.url)
+    end
+    return
+  end
+  local cli = resolve_cli()
+  if not cli then
+    vim.notify("pr-review: src/cli.js not found; set cli_path in setup()", vim.log.levels.ERROR)
+    return
+  end
