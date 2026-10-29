@@ -139,3 +139,13 @@ function M.stop()
   state.job = nil
   state.url = nil
   vim.notify("pr-review: stopped")
+end
+function M.setup(opts)
+  config = vim.tbl_deep_extend("force", vim.deepcopy(defaults), opts or {})
+  vim.api.nvim_create_user_command("PrReview", function()
+    M.open()
+  end, { desc = "Open a review of the current branch" })
+  vim.api.nvim_create_user_command("PrReviewStop", function()
+    M.stop()
+  end, { desc = "Stop the running review server" })
+end
