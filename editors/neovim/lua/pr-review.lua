@@ -129,3 +129,13 @@ function M.open()
       state.job = nil
     end)
   end)
+end
+--- Stops the running engine (and the page does not outlive it).
+function M.stop()
+  if not state.job then
+    return
+  end
+  state.job:kill("sigterm")
+  state.job = nil
+  state.url = nil
+  vim.notify("pr-review: stopped")
