@@ -103,3 +103,8 @@ class PrReviewStopCommand(sublime_plugin.WindowCommand):
     def run(self):
         process = PrReviewState.process
         if process is None:
+            return
+        process.terminate()
+        PrReviewState.process = None
+        PrReviewState.url = None
+        sublime.status_message("PR Review: stopped")

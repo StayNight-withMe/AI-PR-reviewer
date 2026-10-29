@@ -103,3 +103,29 @@ function M.open()
     vim.notify("pr-review: src/cli.js not found; set cli_path in setup()", vim.log.levels.ERROR)
     return
   end
+  local cmd = { "node", cli, "--repo", repo_root(), "--mode", config.mode, "--json" }
+  if config.base and config.base ~= "" then
+    table.insert(cmd, "--base")
+    table.insert(cmd, config.base)
+  end
+  state.job = vim.system(cmd, {
+    text = true,
+    stdout = function(_, data)
+      if data then
+        for _, line in ipairs(vim.split(data, "\n")) do
+          on_line(line)
+        end
+      end
+    end,
+    stderr = function(_, data)
+      if data and data ~= "" then
+        vim.schedule(function()
+          vim.notify("pr-review: " .. data, vim.log.levels.ERROR)
+        end)
+      end
+    end,
+  }, function()
+    vim.schedule(function()
+      state.job = nil
+    end)
+  end)
