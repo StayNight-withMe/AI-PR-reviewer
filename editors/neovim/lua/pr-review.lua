@@ -149,3 +149,4 @@ function M.setup(opts)
     M.stop()
   end, { desc = "Stop the running review server" })
 end
+return M
