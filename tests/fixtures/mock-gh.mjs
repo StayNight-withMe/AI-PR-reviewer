@@ -8,3 +8,13 @@
  * real GitHub account.
  *
  * The database shape:
+ *   {
+ *     "auth": true,                       // false => auth status fails
+ *     "pullRequests": { "7": { ...fields in `gh pr view --json` shape } },
+ *     "default": "7"                      // used when no number is given
+ *   }
+ *
+ * A field missing from a PR entry is simply absent from the output, so the
+ * engine's tolerance of a sparse payload is exercised too.
+ *
+ * Exit codes mirror gh: 0 on success, 1 on "no pull request", 2 on a bad call.

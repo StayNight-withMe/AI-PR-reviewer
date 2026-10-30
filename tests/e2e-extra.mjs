@@ -216,3 +216,4 @@ async function main() {
   console.log(`\n${results.length - failed.length}/${results.length} passed`);
   process.exit(failed.length ? 1 : 0);
 }
+main().catch((e) => { console.error("crashed:", e.message); process.exit(2); });

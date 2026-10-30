@@ -8,3 +8,13 @@
  *
  * Run: node tests/pr-mode.mjs
  */
+import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
+import { createPrFixture, pullRequestPayload, PR_NUMBER, FORK_PR_NUMBER, REMOTE_PR_NUMBER, FORK_ONLY_PR_NUMBER } from "./fixtures/pr-fixture.mjs";
+import { buildReview, startReview } from "../src/core.js";
+import { MODE, ROUTES, GH } from "../src/config.js";

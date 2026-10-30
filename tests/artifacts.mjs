@@ -8,3 +8,18 @@
  */
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
+import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { promisify } from "node:util";
+import { startReview } from "../src/core.js";
+import { artifactsRoot, repoSlug, reviewDir } from "../src/artifacts.js";
+import { MODE } from "../src/config.js";
+const exec = promisify(execFile);
+const failures = [];
+function check(name, fn) {
+  return Promise.resolve().then(fn).then(
+    () => console.log(`PASS ${name}`),
+    (error) => { failures.push(`${name}: ${error.message}`); console.log(`FAIL ${name} — ${error.message}`); },
+  );
+}

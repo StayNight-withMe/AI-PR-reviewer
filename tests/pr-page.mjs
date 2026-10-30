@@ -8,3 +8,13 @@
  * Run: node tests/pr-page.mjs
  */
 import assert from "node:assert/strict";
+import { Builder, By, until } from "selenium-webdriver";
+import firefox from "selenium-webdriver/firefox.js";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { createPrFixture, pullRequestPayload, PR_NUMBER } from "./fixtures/pr-fixture.mjs";
+import { startReview } from "../src/core.js";
+import { MODE, GH } from "../src/config.js";
+const ROOT = dirname(fileURLToPath(import.meta.url));

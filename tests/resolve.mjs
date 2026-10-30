@@ -8,3 +8,13 @@
  * Also checks that a re-review after a code change is a NEW review: the old
  * "Viewed" flags must not carry over, which was a stale-state bug.
  *
+ * Run: node tests/resolve.mjs
+ */
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { Builder, By, until } from "selenium-webdriver";
+import firefox from "selenium-webdriver/firefox.js";
+import { buildReview, startReview } from "../src/core.js";
+import { MODE } from "../src/config.js";

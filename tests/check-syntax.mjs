@@ -45,3 +45,12 @@ const report = await driver.executeScript(`
     return out;
   })();
 `);
+let weak = 0;
+for (const r of report) {
+  const ok = r.distinct >= 2;
+  if (!ok) weak += 1;
+  console.log(`${ok ? "OK  " : "WEAK"} ${r.path} [${r.language}] — ${r.spans} spans, ${r.distinct} colours`);
+}
+console.log(weak ? `\n${weak} weak` : "\nAll files highlighted correctly");
+await driver.quit();
+process.exit(weak ? 1 : 0);

@@ -8,3 +8,13 @@
  *
  * Two rules are checked here: the calling session (sent in the MCP call
  * metadata) wins over the environment, and the owner recorded next to the
+ * review can be rewritten so a reused page follows the new caller.
+ */
+import assert from "node:assert/strict";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { currentSessionId, resolveSessionId, sessionIdFromCall } from "../src/dispatch.js";
+import { readReviewOwner, writeReviewOwner } from "../src/models/owner.js";
+import { AGENT } from "../src/config.js";
+const failures = [];

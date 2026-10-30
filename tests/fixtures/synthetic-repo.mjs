@@ -8,3 +8,13 @@
  * empty commit, a few hundred generated files and a file large enough to make
  * the folding policy matter.
  *
+ * The history is deterministic: same commits, same dates, same content on
+ * every run, so the expectations in the tests stay stable.
+ */
+import { execFile } from "node:child_process";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { promisify } from "node:util";
+import { resolveGitBinary } from "../../src/git.js";
+const exec = promisify(execFile);

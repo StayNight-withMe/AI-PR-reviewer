@@ -8,3 +8,13 @@ Run: python tests/editors_configs.py
 import json
 import re
 import sys
+from pathlib import Path
+ROOT = Path(__file__).resolve().parent.parent
+FAILURES = []
+def check(name, fn):
+    try:
+        fn()
+        print(f"PASS {name}")
+    except Exception as error:  # noqa: BLE001 - report every failure, do not stop
+        FAILURES.append(f"{name}: {error}")
+        print(f"FAIL {name} — {error}")

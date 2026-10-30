@@ -18,3 +18,23 @@ import { buildProjectTree } from "../src/models/tree.js";
 import { sortLikeTree } from "../src/models/order.js";
 import { repoLabel } from "../src/models/repo.js";
 import { reviewId } from "../src/render.js";
+import { DIFF, GIT, MODE, P, ROUTES } from "../src/config.js";
+const exec = promisify(execFile);
+const SAMPLE = `diff --git a/src/App.cs b/src/App.cs
+index 111..222 100644
+--- a/src/App.cs
++++ b/src/App.cs
+@@ -1,3 +1,4 @@ namespace Demo
+ using System;
+-public void Old() {}
++public void New() {}
++public void Extra() {}
+ }
+diff --git a/src/Removed.cs b/src/Removed.cs
+deleted file mode 100644
+--- a/src/Removed.cs
++++ /dev/null
+@@ -1,2 +0,0 @@
+-class Gone {}
+-}
+`;

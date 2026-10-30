@@ -8,3 +8,23 @@
  */
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { test } from "node:test";
+import { promisify } from "node:util";
+import { ensurePullRequestCommits, normalizePullRequest, pullRequestScope, pullRequestTitle } from "../src/github.js";
+import { GIT, GH } from "../src/config.js";
+const exec = promisify(execFile);
+async function makeRepo() {
+  const root = await mkdtemp(join(tmpdir(), "pr-review-gh-unit-"));
+  const git = (...args) => exec(GIT.BIN, args, { cwd: root });
+  await git("init", "--initial-branch", "main");
+  await git("config", "user.email", "test@example.com");
+  await git("config", "user.name", "Test");
+  await mkdir(join(root, "src"), { recursive: true });
+  await writeFile(join(root, "src/a.txt"), "a\n");
+  await git("add", "-A");
+  await git("commit", "-m", "base");
+  return { root, git };
+}
