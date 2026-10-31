@@ -28,3 +28,16 @@ async function makeRepo() {
   await git("commit", "-m", "base");
   return { root, git };
 }
+const sha = async (git) => (await git("rev-parse", "HEAD")).stdout.trim();
+test("normalizePullRequest maps the gh payload", () => {
+  const pr = normalizePullRequest({
+    number: 42, title: "T", url: "U", state: "OPEN", isDraft: true,
+    baseRefName: "main", headRefName: "feat", baseRefOid: "b", headRefOid: "h",
+    author: { login: "me" }, body: "B", additions: 1, deletions: 2, changedFiles: 3,
+  });
+  assert.deepEqual(pr, {
+    number: 42, title: "T", url: "U", state: "OPEN", draft: true,
+    baseRefName: "main", headRefName: "feat", baseOid: "b", headOid: "h",
+    author: "me", body: "B", additions: 1, deletions: 2, changedFiles: 3,
+  });
+});

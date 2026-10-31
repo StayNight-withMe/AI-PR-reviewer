@@ -18,3 +18,19 @@ import { splitLines } from "../src/fileview.js";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createSyntheticRepo, FEATURE, MAIN } from "./fixtures/synthetic-repo.mjs";
+const PAUSE = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+/** The review must stay usable; these are the limits of the timings. */
+const LIMIT_REVIEW_BUILD_MS = 15_000;
+const LIMIT_PAGE_LOAD_MS = 20_000;
+const failures = [];
+function check(name, fn) {
+  return Promise.resolve()
+    .then(fn)
+    .then(
+      () => console.log(`PASS ${name}`),
+      (error) => {
+        failures.push(`${name}: ${error.message}`);
+        console.log(`FAIL ${name} — ${error.message}`);
+      },
+    );
+}

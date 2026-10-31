@@ -330,3 +330,7 @@ async function main() {
   console.log(`\n${results.length - failed.length}/${results.length} passed`);
   process.exit(failed.length ? 1 : 0);
 }
+main().catch((err) => {
+  console.error("E2E crashed:", err.message);
+  process.exit(2);
+});

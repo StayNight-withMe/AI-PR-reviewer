@@ -18,3 +18,14 @@ import { currentSessionId, resolveSessionId, sessionIdFromCall } from "../src/di
 import { readReviewOwner, writeReviewOwner } from "../src/models/owner.js";
 import { AGENT } from "../src/config.js";
 const failures = [];
+function check(name, fn) {
+  return Promise.resolve()
+    .then(fn)
+    .then(
+      () => console.log(`PASS ${name}`),
+      (error) => {
+        failures.push(`${name}: ${error.message}`);
+        console.log(`FAIL ${name} — ${error.message}`);
+      },
+    );
+}

@@ -18,3 +18,13 @@ def check(name, fn):
     except Exception as error:  # noqa: BLE001 - report every failure, do not stop
         FAILURES.append(f"{name}: {error}")
         print(f"FAIL {name} — {error}")
+def load_json(rel):
+    with open(ROOT / rel, encoding="utf-8") as handle:
+        return json.load(handle)
+def balanced(text, pairs):
+    """A depth check that ignores pairs inside strings and comments."""
+    stack = []
+    for char in text:
+        if char in pairs:
+            stack.append(pairs[char])
+        elif char in ")]}":

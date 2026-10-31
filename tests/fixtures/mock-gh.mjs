@@ -18,3 +18,14 @@
  * engine's tolerance of a sparse payload is exercised too.
  *
  * Exit codes mirror gh: 0 on success, 1 on "no pull request", 2 on a bad call.
+ */
+import { readFile } from "node:fs/promises";
+const argv = process.argv.slice(2);
+function fail(message, code = 1) {
+  process.stderr.write(`${message}\n`);
+  process.exit(code);
+}
+if (argv[0] === "--version") {
+  process.stdout.write("gh version 0.0.0-mock (mock)\n");
+  process.exit(0);
+}

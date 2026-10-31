@@ -18,3 +18,19 @@ import { fileURLToPath } from "node:url";
 import { createPrFixture, pullRequestPayload, PR_NUMBER, FORK_PR_NUMBER, REMOTE_PR_NUMBER, FORK_ONLY_PR_NUMBER } from "./fixtures/pr-fixture.mjs";
 import { buildReview, startReview } from "../src/core.js";
 import { MODE, ROUTES, GH } from "../src/config.js";
+import { viewPullRequest, pullRequestScope, ghCommand, listPullRequests } from "../src/github.js";
+const exec = promisify(execFile);
+const ROOT = dirname(fileURLToPath(import.meta.url));
+const MOCK_GH = join(ROOT, "fixtures", "mock-gh.mjs");
+const failures = [];
+function check(name, fn) {
+  return Promise.resolve()
+    .then(fn)
+    .then(
+      () => console.log(`PASS ${name}`),
+      (error) => {
+        failures.push(`${name}: ${error.message}`);
+        console.log(`FAIL ${name} — ${error.message}`);
+      },
+    );
+}

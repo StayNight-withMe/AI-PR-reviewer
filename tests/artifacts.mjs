@@ -23,3 +23,15 @@ function check(name, fn) {
     (error) => { failures.push(`${name}: ${error.message}`); console.log(`FAIL ${name} — ${error.message}`); },
   );
 }
+async function makeRepo() {
+  const root = await mkdtemp(join(tmpdir(), "artifacts-"));
+  const git = (...a) => exec("git", a, { cwd: root });
+  await git("init", "--initial-branch", "main");
+  await git("config", "user.email", "t@e.com");
+  await git("config", "user.name", "T");
+  await writeFile(join(root, "a.txt"), "one\n");
+  await git("add", "-A");
+  await git("commit", "-m", "init");
+  await writeFile(join(root, "a.txt"), "two\n");
+  return root;
+}

@@ -18,3 +18,16 @@ import { fileURLToPath } from "node:url";
 import { CLI, GIT, ROUTES } from "../src/config.js";
 const exec = promisify(execFile);
 const ROOT = dirname(fileURLToPath(import.meta.url));
+const CLI_SCRIPT = join(ROOT, "..", "src", "cli.js");
+const failures = [];
+function check(name, fn) {
+  return Promise.resolve()
+    .then(fn)
+    .then(
+      () => console.log(`PASS ${name}`),
+      (error) => {
+        failures.push(`${name}: ${error.message}`);
+        console.log(`FAIL ${name} — ${error.message}`);
+      },
+    );
+}

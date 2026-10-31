@@ -31,3 +31,15 @@ test("settings round-trip through the file", async () => {
     await clean();
   }
 });
+test("a partial write keeps the other stored keys", async () => {
+  await clean();
+  try {
+    await writeSettings({ theme: "dark", hideViewed: true });
+    const after = await writeSettings({ treeIndent: 30 });
+    assert.equal(after.treeIndent, 30);
+    assert.equal(after.theme, "dark", "an unrelated setting was lost");
+    assert.equal(after.hideViewed, true, "an unrelated setting was lost");
+  } finally {
+    await clean();
+  }
+});

@@ -18,3 +18,16 @@ import { execFile, spawn } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { promisify } from "node:util";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { APP, CLI, GIT, ROUTES } from "../src/config.js";
+const exec = promisify(execFile);
+const ROOT = dirname(fileURLToPath(import.meta.url));
+const PROJECT = join(ROOT, "..");
+/** True when `artifact` is missing or older than `source`. */
+function isStale(artifact, source) {
+  if (!existsSync(artifact)) return true;
+  if (!existsSync(source)) return false;
+  return statSync(artifact).mtimeMs < statSync(source).mtimeMs;
+}

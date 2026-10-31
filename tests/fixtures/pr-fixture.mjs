@@ -18,3 +18,13 @@
  *   fork:    A ─ B ─ G1       (head of a second PR from a "fork"; #8)
  *
  * The PR #7 head also changes a file whose name holds a space, adds a file,
+ * deletes a file and edits a file with a trailing newline, so the review sees
+ * the shapes that matter.
+ */
+import { execFile } from "node:child_process";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { promisify } from "node:util";
+import { resolveGitBinary } from "../../src/git.js";
+const exec = promisify(execFile);

@@ -18,3 +18,17 @@ import { Builder, By, until } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox.js";
 import { buildReview, startReview } from "../src/core.js";
 import { MODE } from "../src/config.js";
+import { createPrFixture, pullRequestPayload, PR_NUMBER } from "./fixtures/pr-fixture.mjs";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { GH } from "../src/config.js";
+import { buildMarkdown } from "../src/render.js";
+const ROOT = dirname(fileURLToPath(import.meta.url));
+const PAUSE = (ms) => new Promise((r) => setTimeout(r, ms));
+const failures = [];
+function check(name, fn) {
+  return Promise.resolve().then(fn).then(
+    () => console.log(`PASS ${name}`),
+    (error) => { failures.push(`${name}: ${error.message}`); console.log(`FAIL ${name} — ${error.message}`); },
+  );
+}

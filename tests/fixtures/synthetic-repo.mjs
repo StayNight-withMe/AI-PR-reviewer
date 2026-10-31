@@ -18,3 +18,13 @@ import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { resolveGitBinary } from "../../src/git.js";
 const exec = promisify(execFile);
+/** The authors and the branches of the synthetic history. */
+const AUTHORS = [
+  { name: "Анна Ковалёва", email: "anna@example.com" },
+  { name: "Bob Stone", email: "bob@example.com" },
+  { name: "Дмитрий 🎯", email: "dmitry@example.com" },
+];
+const MAIN = "main";
+const FEATURE = "feature/synthetic";
+/** The first commit of the synthetic history. */
+const START_DATE = "2026-09-14T09:00:00+03:00";

@@ -22,3 +22,21 @@ async function collectFiles(dir) {
   }
   return files;
 }
+test("every config constant referenced by source code exists", async () => {
+  const files = await collectFiles(SRC);
+  const missing = [];
+
+  for (const file of files) {
+    if (file.endsWith(join("assets", "constants.js"))) continue;
+    const text = await readFile(file, "utf8");
+
+    for (const match of text.matchAll(USAGE)) {
+      const [, namespace, key] = match;
+      const bag = CONFIG[namespace];
+      if (!bag) { missing.push(`${namespace} (namespace) in ${file}`); continue; }
+      if (!(key in bag)) missing.push(`${namespace}.${key} in ${file}`);
+    }
+  }
+
+  assert.deepEqual(missing, [], `missing constants:\n${missing.join("\n")}`);
+});

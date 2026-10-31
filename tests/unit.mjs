@@ -38,3 +38,15 @@ deleted file mode 100644
 -class Gone {}
 -}
 `;
+test("parseDiff reads both files and counts additions/deletions", () => {
+  const files = parseDiff(SAMPLE);
+  assert.equal(files.length, 2);
+
+  const [changed, removed] = files;
+  assert.equal(changed.path, "src/App.cs");
+  assert.equal(changed.status, DIFF.STATUS.MODIFIED);
+  assert.equal(changed.additions, 2);
+  assert.equal(changed.deletions, 1);
+  assert.equal(removed.status, DIFF.STATUS.DELETED);
+  assert.equal(removed.deletions, 2);
+});

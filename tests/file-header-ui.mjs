@@ -18,3 +18,14 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createPrFixture, pullRequestPayload, PR_NUMBER } from "./fixtures/pr-fixture.mjs";
+import { startReview } from "../src/core.js";
+import { MODE, GH } from "../src/config.js";
+const ROOT = dirname(fileURLToPath(import.meta.url));
+const PAUSE = (ms) => new Promise((r) => setTimeout(r, ms));
+const failures = [];
+function check(name, fn) {
+  return Promise.resolve().then(fn).then(
+    () => console.log(`PASS ${name}`),
+    (error) => { failures.push(`${name}: ${error.message}`); console.log(`FAIL ${name} — ${error.message}`); },
+  );
+}
