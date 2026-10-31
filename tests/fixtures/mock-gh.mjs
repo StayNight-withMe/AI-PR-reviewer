@@ -29,3 +29,41 @@ if (argv[0] === "--version") {
   process.stdout.write("gh version 0.0.0-mock (mock)\n");
   process.exit(0);
 }
+if (argv[0] === "auth" && argv[1] === "status") {
+  const db = await loadDb();
+  if (db.auth === false) fail("You are not logged into any GitHub hosts. Run gh auth login.", 1);
+  process.stdout.write("mock (logged in)\n");
+  process.exit(0);
+}
+if (argv[0] === "pr" && argv[1] === "list") {
+  const db = await loadDb();
+  const jsonIndex = argv.indexOf("--json");
+  if (jsonIndex === -1) fail("expected --json", 2);
+
+  const stateIndex = argv.indexOf("--state");
+  const state = stateIndex === -1 ? "open" : String(argv[stateIndex + 1]).toLowerCase();
+  const limitIndex = argv.indexOf("--limit");
+  const limit = limitIndex === -1 ? 30 : Number(argv[limitIndex + 1]);
+
+  const all = Object.values(db.pullRequests ?? {});
+  const wanted = all.filter((pr) => {
+    if (state === "all") return true;
+    const value = String(pr.state ?? "").toLowerCase();
+    // `gh` maps merged PRs to state MERGED.
+    if (state === "merged") return value === "merged";
+    if (state === "closed") return value === "closed" || value === "merged";
+    return value === "open";
+  }).slice(0, Number.isFinite(limit) ? limit : 30);
+
+  const fields = String(argv[jsonIndex + 1] ?? "").split(",").map((f) => f.trim()).filter(Boolean);
+  const payload = wanted.map((pr) => {
+    const entry = {};
+    for (const field of fields) {
+      if (Object.prototype.hasOwnProperty.call(pr, field)) entry[field] = pr[field];
+    }
+    return entry;
+  });
+
+  process.stdout.write(JSON.stringify(payload) + "\n");
+  process.exit(0);
+}

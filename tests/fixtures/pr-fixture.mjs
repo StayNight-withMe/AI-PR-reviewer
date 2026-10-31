@@ -28,3 +28,13 @@ import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { resolveGitBinary } from "../../src/git.js";
 const exec = promisify(execFile);
+/** PR #7: the main subject of the tests. */
+export const PR_NUMBER = 7;
+/** PR #8: a second PR whose head comes from another branch. */
+export const FORK_PR_NUMBER = 8;
+/** PR #9: the head exists only on the remote, so a review must fetch it. */
+export const REMOTE_PR_NUMBER = 9;
+/** PR #10: the head is published ONLY as refs/pull/10/head, never as a branch. */
+export const FORK_ONLY_PR_NUMBER = 10;
+const AUTHOR = { name: "Test Author", email: "author@example.com" };
+const START = "2026-01-05T10:00:00+00:00";

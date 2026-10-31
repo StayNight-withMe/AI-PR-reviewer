@@ -29,3 +29,15 @@ function check(name, fn) {
       },
     );
 }
+const CALLER = "ses_caller0000X9NWwt6AM3uGwx";
+const INHERITED = "ses_inherited0ffe2JWJYfmaAXZH1U";
+const meta = { _meta: { [AGENT.META_SESSION_KEY]: CALLER } };
+await check("the session of the call is read from the call metadata", () => {
+  assert.equal(sessionIdFromCall(meta), CALLER);
+});
+await check("no metadata means no session, not a guess", () => {
+  assert.equal(sessionIdFromCall(undefined), null);
+  assert.equal(sessionIdFromCall({}), null);
+  assert.equal(sessionIdFromCall({ _meta: {} }), null);
+  assert.equal(sessionIdFromCall({ _meta: { [AGENT.META_SESSION_KEY]: "  " } }), null);
+});

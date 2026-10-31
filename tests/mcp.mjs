@@ -30,3 +30,43 @@ function check(name, fn) {
       },
     );
 }
+/** A minimal MCP client over the stdio transport. */
+function createClient() {
+  const child = spawn(process.execPath, [SERVER], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
+  const pending = new Map();
+  let nextId = 1;
+
+  const reader = createInterface({ input: child.stdout });
+  reader.on("line", (line) => {
+    if (!line.trim()) return;
+    let message;
+    try {
+      message = JSON.parse(line);
+    } catch {
+      return;
+    }
+    const entry = pending.get(message.id);
+    if (!entry) return;
+    pending.delete(message.id);
+    entry.resolve(message);
+  });
+
+  const request = (method, params) =>
+    new Promise((resolve, reject) => {
+      const id = nextId;
+      nextId += 1;
+      pending.set(id, { resolve, reject });
+      child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id, method, params })}\n`);
+      setTimeout(() => {
+        if (!pending.has(id)) return;
+        pending.delete(id);
+        reject(new Error(`timeout waiting for ${method}`));
+      }, 60_000);
+    });
+
+  const notify = (method, params) => {
+    child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", method, params })}\n`);
+  };
+
+  return { child, request, notify };
+}

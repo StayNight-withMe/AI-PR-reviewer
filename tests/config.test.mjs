@@ -40,3 +40,14 @@ test("every config constant referenced by source code exists", async () => {
 
   assert.deepEqual(missing, [], `missing constants:\n${missing.join("\n")}`);
 });
+test("no duplicated route paths", () => {
+  const routes = Object.values(CONFIG.ROUTES);
+  assert.equal(new Set(routes).size, routes.length);
+});
+test("client constants mirror server constants", async () => {
+  const text = await readFile(join(SRC, "assets", "constants.js"), "utf8");
+
+  for (const route of Object.values(CONFIG.ROUTES).filter((value) => value.startsWith("/api/"))) {
+    assert.ok(text.includes(route), `client constants missing ${route}`);
+  }
+});

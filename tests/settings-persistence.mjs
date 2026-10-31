@@ -28,3 +28,13 @@ function check(name, fn) {
 const fixture = await createPrFixture();
 const dbDir = await mkdtemp(join(tmpdir(), "ghdb-"));
 const dbPath = join(dbDir, "db.json");
+await writeFile(dbPath, JSON.stringify({ auth: true, default: String(PR_NUMBER), pullRequests: { [PR_NUMBER]: pullRequestPayload(fixture, PR_NUMBER) } }));
+process.env[GH.ENV_BIN] = join(ROOT, "fixtures", "mock-gh.mjs");
+process.env.MOCK_GH_DB = dbPath;
+// Start from a clean settings file so the run does not depend on the machine.
+const { settingsPath } = await import("../src/settings-store.js");
+await (await import("node:fs/promises")).rm(settingsPath(), { force: true });
+const first = await startReview({ repoPath: fixture.repo, mode: MODE.PR, pr: PR_NUMBER, port: 0, symbols: false, dispatchEnabled: false });
+const driver = await new Builder()
+  .forBrowser("firefox")
+  .setFirefoxOptions(new firefox.Options().addArguments("-headless").windowSize({ width: 1200, height: 900 }))

@@ -34,3 +34,13 @@ function check(name, fn) {
       },
     );
 }
+const fixture = await createPrFixture();
+/** Points the engine at the mock gh and its database. */
+async function useMockGh(db) {
+  const dir = await mkdtemp(join(tmpdir(), "pr-review-ghdb-"));
+  const path = join(dir, "db.json");
+  await writeFile(path, JSON.stringify(db), "utf8");
+  process.env[GH.ENV_BIN] = MOCK_GH;
+  process.env.MOCK_GH_DB = path;
+  return { dir, path };
+}

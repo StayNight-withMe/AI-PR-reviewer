@@ -41,3 +41,17 @@ test("normalizePullRequest maps the gh payload", () => {
     author: "me", body: "B", additions: 1, deletions: 2, changedFiles: 3,
   });
 });
+test("normalizePullRequestSummary maps a list entry", async () => {
+  const { normalizePullRequestSummary } = await import("../src/github.js");
+  const summary = normalizePullRequestSummary({
+    number: 12, title: "Fix", state: "OPEN", isDraft: true,
+    headRefName: "feat", baseRefName: "main", url: "https://github.com/a/b/pull/12",
+    author: { login: "octocat" }, updatedAt: "2026-01-01T00:00:00Z",
+  });
+  assert.deepEqual(summary, {
+    number: 12, title: "Fix", state: "OPEN", draft: true,
+    headRefName: "feat", baseRefName: "main",
+    url: "https://github.com/a/b/pull/12", author: "octocat",
+    updatedAt: "2026-01-01T00:00:00Z",
+  });
+});

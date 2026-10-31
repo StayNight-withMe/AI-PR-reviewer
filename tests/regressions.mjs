@@ -1237,3 +1237,8 @@ try {
 } finally {
   await driver.quit();
 }
+if (failures.length) {
+  console.error(`\n${failures.length} regression(s) failed:\n${failures.join("\n")}`);
+  process.exit(1);
+}
+console.log("\nAll regressions passed");

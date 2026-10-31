@@ -50,3 +50,33 @@ test("parseDiff reads both files and counts additions/deletions", () => {
   assert.equal(removed.status, DIFF.STATUS.DELETED);
   assert.equal(removed.deletions, 2);
 });
+test("parseDiff assigns correct line numbers per side", () => {
+  const [file] = parseDiff(SAMPLE);
+  const rows = file.hunks[0].rows;
+
+  assert.deepEqual(rows.map((r) => r.kind), ["ctx", "del", "add", "add", "ctx"]);
+  assert.deepEqual(rows.map((r) => r.oldLine), [1, 2, null, null, 3]);
+  assert.deepEqual(rows.map((r) => r.newLine), [1, null, 2, 3, 4]);
+});
+test("parseDiff detects renames", () => {
+  const text = `diff --git a/old/Name.cs b/new/Name.cs
+similarity index 90%
+rename from old/Name.cs
+rename to new/Name.cs
+`;
+  const [file] = parseDiff(text);
+  assert.equal(file.status, DIFF.STATUS.RENAMED);
+  assert.equal(file.oldPath, "old/Name.cs");
+  assert.equal(file.path, "new/Name.cs");
+});
+test("diffStats sums all files", () => {
+  assert.deepEqual(diffStats(parseDiff(SAMPLE)), { additions: 2, deletions: 3 });
+});
+test("languageFor maps extensions", () => {
+  assert.equal(languageFor("A.cs"), DIFF.LANGUAGE.CSHARP);
+  assert.equal(languageFor("A.csproj"), DIFF.LANGUAGE.XML);
+  assert.equal(languageFor("Dockerfile"), DIFF.LANGUAGE.DOCKERFILE);
+  assert.equal(languageFor("Makefile"), DIFF.LANGUAGE.MAKEFILE);
+  assert.equal(languageFor(".gitignore"), DIFF.LANGUAGE.PROPERTIES);
+  assert.equal(languageFor("noext"), DIFF.LANGUAGE.PLAINTEXT);
+});

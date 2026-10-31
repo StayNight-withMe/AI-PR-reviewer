@@ -29,3 +29,13 @@ function check(name, fn) {
     (error) => { failures.push(`${name}: ${error.message}`); console.log(`FAIL ${name} — ${error.message}`); },
   );
 }
+const fixture = await createPrFixture();
+const dbDir = await mkdtemp(join(tmpdir(), "pr-review-ghdb-"));
+const dbPath = join(dbDir, "db.json");
+await writeFile(dbPath, JSON.stringify({
+  auth: true,
+  default: String(PR_NUMBER),
+  pullRequests: { [String(PR_NUMBER)]: pullRequestPayload(fixture, PR_NUMBER) },
+}));
+process.env[GH.ENV_BIN] = join(ROOT, "fixtures", "mock-gh.mjs");
+process.env.MOCK_GH_DB = dbPath;

@@ -31,3 +31,31 @@ function check(name, fn) {
       },
     );
 }
+/** Runs the launcher and resolves with the parsed ready line, or rejects. */
+function runCli(args, { cwd }) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [CLI_SCRIPT, ...args], {
+      cwd,
+      windowsHide: true,
+      env: { ...process.env, PR_REVIEW_OPEN: "0" },
+    });
+
+    const reader = createInterface({ input: child.stdout });
+    let stderr = "";
+    const timer = setTimeout(() => reject(new Error("the launcher did not answer in time")), 60_000);
+
+    reader.on("line", (line) => {
+      if (!line.startsWith(CLI.READY_PREFIX)) return;
+      clearTimeout(timer);
+      const info = JSON.parse(line.slice(CLI.READY_PREFIX.length));
+      resolve({ child, info });
+    });
+
+    child.stderr.on("data", (chunk) => { stderr += chunk.toString(); });
+    child.on("error", (error) => { clearTimeout(timer); reject(error); });
+    child.on("exit", (code) => {
+      clearTimeout(timer);
+      reject(new Error(stderr.trim() || `the launcher exited with code ${code}`));
+    });
+  });
+}

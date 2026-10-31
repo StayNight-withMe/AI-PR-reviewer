@@ -28,3 +28,13 @@ def balanced(text, pairs):
         if char in pairs:
             stack.append(pairs[char])
         elif char in ")]}":
+            if not stack or stack.pop() != char:
+                raise AssertionError(f"unbalanced {char}")
+    if stack:
+        raise AssertionError(f"unclosed {stack}")
+def check_sublime_settings():
+    data = load_json("editors/sublime/pr-review.sublime-settings")
+    assert data["mode"] == "branch", "the default scope must be the branch"
+    assert "node_path" in data and "cli_path" in data
+def check_sublime_keymap():
+    data = load_json("editors/sublime/Default (Windows).sublime-keymap")

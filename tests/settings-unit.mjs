@@ -43,3 +43,13 @@ test("a partial write keeps the other stored keys", async () => {
     await clean();
   }
 });
+test("an invalid value never overwrites the good stored one", async () => {
+  await clean();
+  try {
+    await writeSettings({ treeIndent: 24 });
+    const after = await writeSettings({ treeIndent: "not a number" });
+    assert.equal(after.treeIndent, 24, "a bad value erased the stored one");
+  } finally {
+    await clean();
+  }
+});

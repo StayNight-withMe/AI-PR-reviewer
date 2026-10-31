@@ -31,3 +31,21 @@ function isStale(artifact, source) {
   if (!existsSync(source)) return false;
   return statSync(artifact).mtimeMs < statSync(source).mtimeMs;
 }
+/** host key -> the bundle directory its code looks in. */
+const BUNDLES = {
+  vscode: join(PROJECT, "editors", "vscode", "server"),
+  visualstudio: join(PROJECT, "editors", "visualstudio", "server"),
+  jetbrains: join(PROJECT, "editors", "jetbrains", "server"),
+};
+const failures = [];
+function check(name, fn) {
+  return Promise.resolve()
+    .then(fn)
+    .then(
+      () => console.log(`PASS ${name}`),
+      (error) => {
+        failures.push(`${name}: ${error.message}`);
+        console.log(`FAIL ${name} — ${error.message}`);
+      },
+    );
+}
