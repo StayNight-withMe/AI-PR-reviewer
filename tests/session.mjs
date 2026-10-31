@@ -41,3 +41,16 @@ await check("no metadata means no session, not a guess", () => {
   assert.equal(sessionIdFromCall({ _meta: {} }), null);
   assert.equal(sessionIdFromCall({ _meta: { [AGENT.META_SESSION_KEY]: "  " } }), null);
 });
+await check("the calling session beats the inherited environment", () => {
+  const env = { OPENCODE_SESSION_ID: INHERITED };
+  assert.equal(resolveSessionId(undefined, meta, env), CALLER);
+});
+await check("an explicit argument beats everything", () => {
+  const env = { OPENCODE_SESSION_ID: INHERITED };
+  assert.equal(resolveSessionId("ses_explicit", meta, env), "ses_explicit");
+});
+await check("the environment is the fallback when no call context arrives", () => {
+  const env = { OPENCODE_SESSION_ID: INHERITED };
+  assert.equal(resolveSessionId(undefined, undefined, env), INHERITED);
+  assert.equal(currentSessionId(env), INHERITED);
+});

@@ -199,3 +199,14 @@ export async function createSyntheticRepo(options = {}) {
     },
   };
 }
+/** The content of the generated file: many small functions. */
+function largeFile(count) {
+  const lines = ["// Generated file. Do not edit by hand.", ""];
+  for (let index = 1; index <= count; index += 1) {
+    lines.push(`export function generated${index}(value: number): number {`);
+    lines.push(`  return value + ${index};`);
+    lines.push("}");
+    lines.push("");
+  }
+  return lines.join("\n");
+}

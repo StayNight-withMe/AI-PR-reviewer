@@ -67,3 +67,23 @@ if (argv[0] === "pr" && argv[1] === "list") {
   process.stdout.write(JSON.stringify(payload) + "\n");
   process.exit(0);
 }
+if (argv[0] === "pr" && argv[1] === "view") {
+  const db = await loadDb();
+  const jsonIndex = argv.indexOf("--json");
+  if (jsonIndex === -1) fail("expected --json", 2);
+
+  const selector = argv.slice(2, jsonIndex).filter((token) => !token.startsWith("--"));
+  const requested = selector[0] ?? db.default;
+  const pr = db.pullRequests?.[String(requested)];
+  if (!pr) fail(`no pull requests found for branch "${requested ?? ""}"`, 1);
+
+  // Only the requested fields come back, exactly like gh.
+  const fields = String(argv[jsonIndex + 1] ?? "").split(",").map((f) => f.trim()).filter(Boolean);
+  const payload = {};
+  for (const field of fields) {
+    if (Object.prototype.hasOwnProperty.call(pr, field)) payload[field] = pr[field];
+  }
+
+  process.stdout.write(JSON.stringify(payload) + "\n");
+  process.exit(0);
+}

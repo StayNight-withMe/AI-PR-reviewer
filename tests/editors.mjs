@@ -49,3 +49,34 @@ function check(name, fn) {
       },
     );
 }
+/** Runs a launcher and resolves with its ready payload; rejects on failure. */
+function runLauncher(cliPath, args, { cwd }) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [cliPath, ...args], {
+      cwd,
+      windowsHide: true,
+      env: { ...process.env, PR_REVIEW_OPEN: "0" },
+    });
+
+    let stdout = "";
+    let stderr = "";
+    const timer = setTimeout(() => {
+      child.kill();
+      reject(new Error("the launcher did not answer in time"));
+    }, 60_000);
+
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk.toString();
+      const line = stdout.split(/\r?\n/).find((l) => l.startsWith(CLI.READY_PREFIX));
+      if (!line) return;
+      clearTimeout(timer);
+      resolve({ child, info: JSON.parse(line.slice(CLI.READY_PREFIX.length)) });
+    });
+    child.stderr.on("data", (chunk) => { stderr += chunk.toString(); });
+    child.on("error", (error) => { clearTimeout(timer); reject(error); });
+    child.on("exit", (code) => {
+      clearTimeout(timer);
+      reject(new Error(stderr.trim() || `the launcher exited with code ${code}`));
+    });
+  });
+}

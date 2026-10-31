@@ -53,3 +53,19 @@ test("an invalid value never overwrites the good stored one", async () => {
     await clean();
   }
 });
+test("sanitizeSettings drops unknown keys and wrong types", () => {
+  const clean = sanitizeSettings({
+    theme: "light",
+    evil: "<script>",
+    treeIndent: "12",
+    hideViewed: "yes",
+    largeFileLines: 400,
+    "constructor": "x",
+    __proto__: { polluted: true },
+  });
+  assert.equal(clean.evil, undefined, "an unknown key survived");
+  assert.equal(clean.hideViewed, undefined, "a wrong boolean type survived");
+  assert.equal(clean.treeIndent, 12, "a numeric string was not coerced");
+  assert.equal(clean.largeFileLines, 400);
+  assert.equal(clean.theme, "light");
+});

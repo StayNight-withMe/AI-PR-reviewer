@@ -162,3 +162,10 @@ try {
   await import("node:fs/promises").then((fs) => fs.rm(dbDir, { recursive: true, force: true })).catch(() => {});
   void pathToFileURL;
 }
+if (failures.length) {
+  console.log(`\n${failures.length} check(s) failed:`);
+  for (const failure of failures) console.log(`  - ${failure}`);
+  process.exitCode = 1;
+} else {
+  console.log("\nAll resolve checks passed");
+}

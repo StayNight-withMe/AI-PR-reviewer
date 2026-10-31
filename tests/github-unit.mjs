@@ -55,3 +55,21 @@ test("normalizePullRequestSummary maps a list entry", async () => {
     updatedAt: "2026-01-01T00:00:00Z",
   });
 });
+test("the PR scope key and title are stable", () => {
+  const pr = normalizePullRequest({ number: 5, title: "Fix" });
+  assert.equal(pullRequestScope(pr), "pr5");
+  assert.equal(pullRequestTitle(pr), "PR #5: Fix");
+  assert.equal(pullRequestTitle(normalizePullRequest({ number: 5 })), "PR #5");
+});
+test("an already-present commit is not fetched again", async () => {
+  const { root, git } = await makeRepo();
+  try {
+    const head = await sha(git);
+    const pr = normalizePullRequest({ number: 1, headRefOid: head, baseRefOid: head, baseRefName: "main" });
+    const commits = await ensurePullRequestCommits(root, pr);
+    assert.equal(commits.head, head);
+    assert.equal(commits.fetched, false, "a local commit must not be fetched");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

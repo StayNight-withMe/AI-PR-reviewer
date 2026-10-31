@@ -51,3 +51,52 @@ test("client constants mirror server constants", async () => {
     assert.ok(text.includes(route), `client constants missing ${route}`);
   }
 });
+test("every PR helper is invoked through its namespace", async () => {
+  const files = await collectFiles(join(SRC, "assets"));
+  const offenders = [];
+
+  for (const file of files) {
+    const name = file.split(/[\\/]/).pop();
+    if (name === "constants.js" || name === "hljs-bundle.js") continue;
+
+    const text = await readFile(file, "utf8");
+    const exported = new Set();
+    for (const match of text.matchAll(/PR\.([A-Za-z_]\w*)\s*=\s*function/g)) exported.add(match[1]);
+
+    for (const fn of exported) {
+      // A bare call (not part of an object property and not prefixed by PR.)
+      const bareCall = new RegExp(`(^|[^.\\w])${fn}\\s*\\(`, "m");
+      if (bareCall.test(text)) offenders.push(`PR.${fn} called bare in ${name}`);
+    }
+  }
+
+  assert.deepEqual(offenders, [], `must use the PR namespace:\n${offenders.join("\n")}`);
+});
+
+test("every client constant referenced by UI code exists", async () => {
+  const files = await collectFiles(join(SRC, "assets"));
+  const constantsText = await readFile(join(SRC, "assets", "constants.js"), "utf8");
+
+  // Parse `window.PR.NAME = { KEY: ..., KEY2: ... }` blocks into a namespace -> keys map.
+  const namespaces = {};
+  const blockRe = /window\.PR\.([A-Za-z_]\w*)\s*=\s*\{([\s\S]*?)\n  \};/g;
+  for (const block of constantsText.matchAll(blockRe)) {
+    const keys = new Set();
+    for (const key of block[2].matchAll(/^\s{4}([A-Za-z_]\w*):/gm)) keys.add(key[1]);
+    namespaces[block[1]] = keys;
+  }
+
+  const usage = new RegExp(`\\bPR\\.(${Object.keys(namespaces).join("|")})\\.([A-Za-z_][A-Za-z0-9_]*)`, "g");
+  const missing = [];
+
+  for (const file of files) {
+    if (file.endsWith(join("assets", "constants.js"))) continue;
+    const text = await readFile(file, "utf8");
+    for (const match of text.matchAll(usage)) {
+      const [, namespace, key] = match;
+      if (!namespaces[namespace].has(key)) missing.push(`PR.${namespace}.${key} in ${file}`);
+    }
+  }
+
+  assert.deepEqual(missing, [], `missing client constants:\n${missing.join("\n")}`);
+});

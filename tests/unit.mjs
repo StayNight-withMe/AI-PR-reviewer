@@ -80,3 +80,40 @@ test("languageFor maps extensions", () => {
   assert.equal(languageFor(".gitignore"), DIFF.LANGUAGE.PROPERTIES);
   assert.equal(languageFor("noext"), DIFF.LANGUAGE.PLAINTEXT);
 });
+test("isBinaryPath flags binaries only", () => {
+  assert.equal(isBinaryPath("a.png"), true);
+  assert.equal(isBinaryPath("a.cs"), false);
+});
+test("toFileModel maps a diff into the UI file model", () => {
+  const text = `diff --git a/sub dir/my file.txt b/sub dir/my file.txt
+--- a/sub dir/my file.txt
++++ b/sub dir/my file.txt
+@@ -1 +1 @@
+-x
++y
+`;
+  const files = toFileModel(text);
+  assert.equal(files.length, 1);
+  assert.equal(files[0].path, "sub dir/my file.txt");
+  assert.equal(files[0].status, DIFF.STATUS.MODIFIED);
+  assert.equal(files[0].additions, 1);
+  assert.equal(files[0].deletions, 1);
+  assert.equal(files[0].changeCount, 2);
+  assert.equal(files[0].language, DIFF.LANGUAGE.PLAINTEXT);
+  assert.deepEqual(files[0].gaps, [], "gaps are filled in later");
+});
+test("repoLabel derives owner/name from remotes", () => {
+  assert.equal(repoLabel("/x/y", "git@github.com:acme/widget.git"), "acme/widget");
+  assert.equal(repoLabel("/x/y", "https://github.com/acme/widget.git"), "acme/widget");
+  assert.equal(repoLabel("C:\\repos\\plain"), "plain");
+});
+test("repoLabel keeps the last two segments of an https remote", () => {
+  assert.equal(repoLabel("/x/y", "https://github.com/team/sub/project.git"), "sub/project");
+  assert.equal(repoLabel("/x/y", "git@gitlab.example.com:group/app.git"), "group/app");
+});
+test("reviewId is deterministic and 12 chars", () => {
+  const meta = { repo: "a/b", branch: "dev", base: "main", head: "HEAD", mode: MODE.UNCOMMITTED };
+  const first = reviewId(meta);
+  assert.equal(first, reviewId(meta));
+  assert.equal(first.length, 12);
+});

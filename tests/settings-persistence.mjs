@@ -38,3 +38,13 @@ const first = await startReview({ repoPath: fixture.repo, mode: MODE.PR, pr: PR_
 const driver = await new Builder()
   .forBrowser("firefox")
   .setFirefoxOptions(new firefox.Options().addArguments("-headless").windowSize({ width: 1200, height: 900 }))
+  .build();
+/** Opens a page and waits until it is fully wired (settings loaded, handlers bound). */
+async function openPage(url) {
+  await driver.get(url);
+  await driver.wait(until.elementLocated(By.css(".diff-file")), 20_000);
+  // `body.dataset.booted` is set once settings are loaded and the controls are
+  // bound, so a change made now is actually handled and saved.
+  await driver.wait(async () => driver.executeScript(`return document.body.dataset.booted === '1';`), 15_000);
+  await PAUSE(300);
+}

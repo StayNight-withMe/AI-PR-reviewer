@@ -44,3 +44,13 @@ async function useMockGh(db) {
   process.env.MOCK_GH_DB = path;
   return { dir, path };
 }
+const db = {
+  auth: true,
+  default: String(PR_NUMBER),
+  pullRequests: {
+    [String(PR_NUMBER)]: pullRequestPayload(fixture, PR_NUMBER),
+    [String(FORK_PR_NUMBER)]: pullRequestPayload(fixture, FORK_PR_NUMBER),
+    [String(REMOTE_PR_NUMBER)]: pullRequestPayload(fixture, REMOTE_PR_NUMBER),
+    [String(FORK_ONLY_PR_NUMBER)]: pullRequestPayload(fixture, FORK_ONLY_PR_NUMBER),
+  },
+};

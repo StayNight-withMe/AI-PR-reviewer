@@ -70,3 +70,88 @@ function createClient() {
 
   return { child, request, notify };
 }
+const repo = await mkdtemp(join(tmpdir(), "pr-review-mcp-"));
+const git = (...args) => exec(GIT.BIN, args, { cwd: repo });
+let client = null;
+try {
+  await git("init", "--initial-branch", "main");
+  await git("config", "user.email", "test@example.com");
+  await git("config", "user.name", "Test");
+  await mkdir(join(repo, "src"), { recursive: true });
+  await writeFile(join(repo, "src/app.ts"), "export const value = 1;\n");
+  await git("add", "-A");
+  await git("commit", "-m", "init");
+  await writeFile(join(repo, "src/app.ts"), "export const value = 2;\n");
+
+  client = createClient();
+
+  await check("the server answers the initialize request", async () => {
+    const response = await client.request("initialize", {
+      protocolVersion: "2025-06-18",
+      capabilities: {},
+      clientInfo: { name: "test", version: "1.0.0" },
+    });
+    assert.ok(response.result, "no result");
+    assert.equal(response.result.serverInfo.name, "pr-review");
+    client.notify("notifications/initialized", {});
+  });
+
+  let reviewId = null;
+
+  await check("start_review opens a page", async () => {
+    const response = await client.request("tools/call", {
+      name: "start_review",
+      arguments: { repoPath: repo, mode: "uncommitted" },
+    });
+
+    const text = response.result?.content?.[0]?.text ?? "";
+    assert.ok(text.includes("Review ready:"), `unexpected answer: ${text.slice(0, 200)}`);
+    reviewId = /Review ID: (\S+)/.exec(text)?.[1] ?? null;
+    assert.ok(reviewId, "the answer has no review id");
+  });
+
+  await check("the page is a separate process that is registered", async () => {
+    const registry = await findPageRegistry(repo);
+    assert.ok(registry, "the page is not registered");
+    assert.equal(registry.reviewId, reviewId);
+
+    const response = await fetch(registry.url);
+    assert.equal(response.status, 200);
+  });
+
+  await check("the review is findable from another process", async () => {
+    // OpenCode runs one MCP process per session; a review opened in one must be
+    // readable from another. The on-disk index is what makes that work.
+    const indexed = await findIndexedPage(reviewId);
+    assert.ok(indexed, "the review is not in the cross-process index");
+    assert.equal(indexed.reviewId, reviewId);
+    assert.ok(indexed.url, "the indexed entry has no url");
+  });
+
+  await check("list_review_scope lists the branches", async () => {
+    const response = await client.request("tools/call", {
+      name: "list_review_scope",
+      arguments: { repoPath: repo, kind: "branches" },
+    });
+    const text = response.result?.content?.[0]?.text ?? JSON.stringify(response);
+    assert.ok(text.includes("main"), `unexpected answer: ${text}`);
+  });
+
+  await check("close_review stops the page", async () => {
+    const response = await client.request("tools/call", {
+      name: "close_review",
+      arguments: { reviewId },
+    });
+    assert.ok(response.result, "no result");
+
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const registry = await findPageRegistry(repo);
+    assert.equal(registry, null, "the page is still registered");
+
+    const indexed = await findIndexedPage(reviewId);
+    assert.equal(indexed, null, "the review is still in the cross-process index");
+  });
+} finally {
+  if (client) client.child.kill();
+  await rm(repo, { recursive: true, force: true });
+}
