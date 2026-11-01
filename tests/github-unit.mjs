@@ -114,3 +114,4 @@ test("reading a PR never moves the user's remote-tracking refs", async () => {
     await rm(root, { recursive: true, force: true });
   }
 });
+void GH;

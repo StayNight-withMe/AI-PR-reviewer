@@ -159,3 +159,40 @@ test("sortLikeTree is stable for identical paths", () => {
   const sorted = sortLikeTree(["a/b.cs", "a/b.cs"]);
   assert.equal(sorted.length, 2);
 });
+test("computeGaps finds the hidden head and tail of a file", () => {
+  const file = {
+    hunks: [{ oldStart: 9, oldLines: 7, newStart: 9, newLines: 8 }],
+  };
+  const lines = Array.from({ length: 27 }, (_, index) => `line ${index + 1}`);
+
+  const { totalLines, gaps } = computeGaps(file, lines);
+
+  assert.equal(totalLines, 27);
+  assert.equal(gaps.length, 2);
+
+  const [head, tail] = gaps;
+  assert.equal(head.dir, "up");
+  assert.equal(head.newStart, 1);
+  assert.equal(head.newEnd, 8);
+  assert.equal(head.oldStart, 1);
+
+  assert.equal(tail.dir, "down");
+  assert.equal(tail.newStart, 17);
+  assert.equal(tail.newEnd, 27);
+  assert.equal(tail.oldStart, 16, "the old side follows the line shift");
+});
+test("computeGaps counts only the lines that carry something", () => {
+  const file = {
+    hunks: [{ oldStart: 3, oldLines: 1, newStart: 3, newLines: 1 }],
+  };
+  const lines = ["a", "", "   ", "b", ""];
+
+  const { gaps } = computeGaps(file, lines);
+  const head = gaps.find((gap) => gap.dir === "up");
+  const tail = gaps.find((gap) => gap.dir === "down");
+
+  assert.equal(head.count, 2);
+  assert.equal(head.nonEmpty, 1, "blank lines do not count");
+  assert.equal(tail.count, 2);
+  assert.equal(tail.nonEmpty, 1);
+});

@@ -78,3 +78,10 @@ await check("a missing owner file is null, not a crash", async () => {
   }
 });
 await rm(dir, { recursive: true, force: true });
+if (failures.length) {
+  console.log(`\n${failures.length} check(s) failed:`);
+  for (const failure of failures) console.log(`  - ${failure}`);
+  process.exitCode = 1;
+} else {
+  console.log("\nAll session routing checks passed");
+}
