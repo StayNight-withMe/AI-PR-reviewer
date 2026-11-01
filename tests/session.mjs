@@ -68,3 +68,13 @@ await check("reusing a page hands the review to the new session", async () => {
   await writeReviewOwner(dir, CALLER);
   assert.equal(await readReviewOwner(dir), CALLER);
 });
+await check("a missing owner file is null, not a crash", async () => {
+  const empty = await mkdtemp(join(tmpdir(), "pr-review-owner-empty-"));
+  try {
+    assert.equal(await readReviewOwner(empty), null);
+    assert.equal(await readReviewOwner(null), null);
+  } finally {
+    await rm(empty, { recursive: true, force: true });
+  }
+});
+await rm(dir, { recursive: true, force: true });

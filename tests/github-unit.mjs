@@ -89,3 +89,28 @@ test("a missing commit is really missing (cat-file, not rev-parse)", async () =>
     await rm(root, { recursive: true, force: true });
   }
 });
+test("reading a PR never moves the user's remote-tracking refs", async () => {
+  // Regression: fetching the PR base used `git fetch origin <branch>`,
+  // which fast-forwards `refs/remotes/origin/<branch>` and silently empties
+  // every branch review of the repository.
+  const { root, git } = await makeRepo();
+  try {
+    // A fake remote-tracking ref that must keep its value.
+    const base = await sha(git);
+    await git("update-ref", "refs/remotes/origin/main", base);
+    const before = (await git("rev-parse", "refs/remotes/origin/main")).stdout.trim();
+
+    const pr = normalizePullRequest({
+      number: 9,
+      baseRefOid: base,
+      headRefOid: base,
+      baseRefName: "main",
+    });
+    await ensurePullRequestCommits(root, pr).catch(() => null);
+
+    const after = (await git("rev-parse", "refs/remotes/origin/main")).stdout.trim();
+    assert.equal(after, before, "origin/main moved while reading a PR");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

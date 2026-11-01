@@ -318,3 +318,10 @@ try {
   await rm(ghDb.dir, { recursive: true, force: true }).catch(() => {});
   await fixture.cleanup();
 }
+if (failures.length) {
+  console.log(`\n${failures.length} check(s) failed:`);
+  for (const failure of failures) console.log(`  - ${failure}`);
+  process.exitCode = 1;
+} else {
+  console.log("\nAll PR-mode checks passed");
+}

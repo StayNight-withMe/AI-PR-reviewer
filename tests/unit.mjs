@@ -129,3 +129,33 @@ test("dispatch deduplicates an identical submit and replaces a changed one", asy
   assert.equal(noSession.started, false);
   assert.ok(noSession.reason.length > 0);
 });
+test("sortLikeTree puts folders before files at each level", () => {
+  const input = [
+    "src/Domain/Atlas.Domain.csproj",
+    "src/Domain/Entities/Employee.cs",
+    "src/Domain/Constants/AtlasConstants.cs",
+    "README.md",
+  ];
+  const sorted = sortLikeTree(input);
+
+  // Depth-first: the nested folders come before the .csproj sitting at their level.
+  assert.deepEqual(sorted, [
+    "src/Domain/Constants/AtlasConstants.cs",
+    "src/Domain/Entities/Employee.cs",
+    "src/Domain/Atlas.Domain.csproj",
+    "README.md",
+  ]);
+});
+test("sortLikeTree keeps the input array untouched and accepts objects", () => {
+  const input = ["b/x.cs", "a/y.cs"];
+  const copy = input.slice();
+  sortLikeTree(input);
+  assert.deepEqual(input, copy, "the input must not be mutated");
+
+  const objects = sortLikeTree([{ path: "b/x.cs" }, { path: "a/y.cs" }]);
+  assert.deepEqual(objects.map((entry) => entry.path), ["a/y.cs", "b/x.cs"]);
+});
+test("sortLikeTree is stable for identical paths", () => {
+  const sorted = sortLikeTree(["a/b.cs", "a/b.cs"]);
+  assert.equal(sorted.length, 2);
+});
