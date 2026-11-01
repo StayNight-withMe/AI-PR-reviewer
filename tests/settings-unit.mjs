@@ -69,3 +69,21 @@ test("sanitizeSettings drops unknown keys and wrong types", () => {
   assert.equal(clean.largeFileLines, 400);
   assert.equal(clean.theme, "light");
 });
+test("sanitizeSettings rejects a non-object", () => {
+  assert.deepEqual(sanitizeSettings(null), {});
+  assert.deepEqual(sanitizeSettings("nope"), {});
+  assert.deepEqual(sanitizeSettings(42), {});
+});
+test("a corrupt file reads as empty instead of throwing", async () => {
+  await clean();
+  const { writeFile, mkdir } = await import("node:fs/promises");
+  const { dirname } = await import("node:path");
+  const path = settingsPath();
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, "not json{{{", "utf8");
+  try {
+    assert.deepEqual(await readSettings(), {});
+  } finally {
+    await clean();
+  }
+});

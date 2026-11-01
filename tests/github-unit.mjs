@@ -73,3 +73,19 @@ test("an already-present commit is not fetched again", async () => {
     await rm(root, { recursive: true, force: true });
   }
 });
+test("a missing commit is really missing (cat-file, not rev-parse)", async () => {
+  // Regression: a syntactically valid SHA can pass `rev-parse --verify`
+  // in a clone that has the object name reachable (e.g. from a fetched ref)
+  // while the object itself is absent, so a PR reported an empty diff. The
+  // check must ask the object store, and a commit that cannot be fetched must
+  // fail loudly instead of silently producing an empty review.
+  const { root, git } = await makeRepo();
+  try {
+    const absent = "deadbeef".repeat(5); // 40 hex chars, no such object
+    const pr = normalizePullRequest({ number: 2, headRefOid: absent, baseRefOid: await sha(git), baseRefName: "main" });
+    // No remote and no such object: the fetch cannot succeed, so it must throw.
+    await assert.rejects(ensurePullRequestCommits(root, pr), /fetch|Could not/i);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

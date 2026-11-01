@@ -183,3 +183,34 @@ export async function createPrFixture() {
     },
   };
 }
+/**
+ * The `gh pr view --json` payload for the fixture, in the shape `gh` returns.
+ *
+ * @param {object} fixture
+ * @param {number} number
+ */
+export function pullRequestPayload(fixture, number = PR_NUMBER) {
+  const table = {
+    [PR_NUMBER]: { head: fixture.commits.f2, branch: "feature/login", title: "Add the login module" },
+    [FORK_PR_NUMBER]: { head: fixture.commits.g1, branch: "feature/other", title: "Add the other module" },
+    [REMOTE_PR_NUMBER]: { head: fixture.commits.h1, branch: "feature/remote-only", title: "Remote-only work" },
+    [FORK_ONLY_PR_NUMBER]: { head: fixture.commits.k1, branch: "fork-only", title: "Fork-only work" },
+  };
+  const entry = table[number] ?? table[PR_NUMBER];
+  return {
+    number,
+    title: entry.title,
+    url: `https://github.com/acme/fixture/pull/${number}`,
+    state: "OPEN",
+    isDraft: false,
+    baseRefName: "main",
+    headRefName: entry.branch,
+    baseRefOid: fixture.commits.bigCommit,
+    headRefOid: entry.head,
+    author: { login: "octocat" },
+    body: "Please review.",
+    additions: 0,
+    deletions: 0,
+    changedFiles: 0,
+  };
+}

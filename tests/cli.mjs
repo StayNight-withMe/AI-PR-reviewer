@@ -130,3 +130,10 @@ try {
 } finally {
   await rm(repo, { recursive: true, force: true });
 }
+if (failures.length) {
+  console.log(`\n${failures.length} check(s) failed:`);
+  for (const failure of failures) console.log(`  - ${failure}`);
+  process.exitCode = 1;
+} else {
+  console.log("\nAll launcher checks passed");
+}

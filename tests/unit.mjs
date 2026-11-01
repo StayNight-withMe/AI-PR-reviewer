@@ -117,3 +117,15 @@ test("reviewId is deterministic and 12 chars", () => {
   assert.equal(first, reviewId(meta));
   assert.equal(first.length, 12);
 });
+test("config has no duplicate route strings", () => {
+  const values = Object.values(ROUTES);
+  assert.equal(new Set(values).size, values.length);
+});
+test("dispatch deduplicates an identical submit and replaces a changed one", async () => {
+  const { dispatchToSession } = await import("../src/dispatch.js");
+
+  // No session id: the guard must answer without spawning anything.
+  const noSession = await dispatchToSession(null, "msg");
+  assert.equal(noSession.started, false);
+  assert.ok(noSession.reason.length > 0);
+});

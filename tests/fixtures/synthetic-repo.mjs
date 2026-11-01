@@ -210,3 +210,8 @@ function largeFile(count) {
   }
   return lines.join("\n");
 }
+/** Reads a file of the fixture repository. */
+async function readFile(path) {
+  const { readFile: read } = await import("node:fs/promises");
+  return read(path, "utf8");
+}

@@ -87,3 +87,13 @@ if (argv[0] === "pr" && argv[1] === "view") {
   process.stdout.write(JSON.stringify(payload) + "\n");
   process.exit(0);
 }
+fail(`mock gh: unsupported command: ${argv.join(" ")}`, 2);
+async function loadDb() {
+  const path = process.env.MOCK_GH_DB;
+  if (!path) fail("MOCK_GH_DB is not set", 2);
+  try {
+    return JSON.parse(await readFile(path, "utf8"));
+  } catch (error) {
+    fail(`mock gh: cannot read the database: ${error.message}`, 2);
+  }
+}

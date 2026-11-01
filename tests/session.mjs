@@ -54,3 +54,17 @@ await check("the environment is the fallback when no call context arrives", () =
   assert.equal(resolveSessionId(undefined, undefined, env), INHERITED);
   assert.equal(currentSessionId(env), INHERITED);
 });
+await check("no source at all yields null instead of a stray id", () => {
+  assert.equal(resolveSessionId(undefined, undefined, {}), null);
+});
+const dir = await mkdtemp(join(tmpdir(), "pr-review-owner-"));
+await check("the owner of a review is recorded and read back", async () => {
+  await writeReviewOwner(dir, INHERITED);
+  assert.equal(await readReviewOwner(dir), INHERITED);
+});
+await check("reusing a page hands the review to the new session", async () => {
+  // The page was opened for one session and reused by another; the owner must
+  // move, or the next submit goes back to the first session.
+  await writeReviewOwner(dir, CALLER);
+  assert.equal(await readReviewOwner(dir), CALLER);
+});
