@@ -196,3 +196,50 @@ test("computeGaps counts only the lines that carry something", () => {
   assert.equal(tail.count, 2);
   assert.equal(tail.nonEmpty, 1);
 });
+test("computeGaps reports no region when the hunk covers the file", () => {
+  const file = {
+    hunks: [{ oldStart: 1, oldLines: 3, newStart: 1, newLines: 3 }],
+  };
+  const lines = ["a", "b", "c"];
+
+  const { gaps } = computeGaps(file, lines);
+  assert.equal(gaps.length, 0);
+});
+test("git writes a path with non-ASCII letters as it is", async () => {
+  const root = await mkdtemp(join(tmpdir(), "pr-review-unicode-"));
+
+  const git = (...args) => exec(GIT.BIN, args, { cwd: root });
+  const commit = async (file, content, message) => {
+    await mkdir(dirname(join(root, file)), { recursive: true });
+    await writeFile(join(root, file), content);
+    await git("add", file);
+    await git("commit", "-m", message);
+  };
+
+  try {
+    await git("init", "--initial-branch", "main");
+    await git("config", "user.email", "test@example.com");
+    await git("config", "user.name", "Test");
+    await commit("docs/новый.md", "# Document\n", "docs: add a document");
+    await commit("docs/plain.md", "# Novy document\n", "docs: add a plain document");
+
+    const files = await listFiles(root);
+    assert.ok(files.includes("docs/новый.md"), `the path is escaped: ${files.join(", ")}`);
+
+    // A file is found by its name, even when the name has non-ASCII letters.
+    const byName = await searchProject(root, "новый");
+    assert.ok(
+      byName.some((hit) => hit.path === "docs/новый.md"),
+      `the file was not found by its name: ${JSON.stringify(byName)}`,
+    );
+
+    // The content is found without regard to the case.
+    const byContent = await searchProject(root, "novy");
+    assert.ok(
+      byContent.some((hit) => hit.path === "docs/plain.md"),
+      `the content was not found: ${JSON.stringify(byContent)}`,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
