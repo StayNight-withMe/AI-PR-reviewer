@@ -281,3 +281,76 @@ test("git is found even when PATH has no git", () => {
   assert.ok(binary, "a git binary must be returned");
   assert.ok(binary === GIT.BIN || existsSync(binary), `the git path must exist: ${binary}`);
 });
+test("scope commits exclude commits of other branches that reached the base later", async () => {
+  const root = await mkdtemp(join(tmpdir(), "pr-review-scope-"));
+
+  const git = (...args) => exec(GIT.BIN, args, { cwd: root });
+  const commit = async (file, content, message) => {
+    await writeFile(join(root, file), content);
+    await git("add", file);
+    await git("commit", "-m", message);
+    return (await git("rev-parse", "HEAD")).stdout.trim();
+  };
+
+  try {
+    await git("init");
+    await git("config", "user.email", "test@example.com");
+    await git("config", "user.name", "Test");
+
+    const rootCommit = await commit("a.txt", "a", "root");
+    await git("branch", "feature");
+
+    // Another branch lands in the base after the feature branched off.
+    await commit("foreign.txt", "foreign", "foreign work");
+    const baseSha = (await git("rev-parse", "HEAD")).stdout.trim();
+    await git("update-ref", "refs/remotes/origin/dev", baseSha);
+
+    await git("checkout", "feature");
+    await commit("feature.txt", "feature", "feature work");
+
+    const commits = await loadScopeCommits(root, { commits: [], base: null, head: null });
+    const subjects = commits.map((entry) => entry.subject);
+
+    assert.deepEqual(subjects, ["feature work"], "only the branch's own commit belongs here");
+    assert.equal(commits.length, 1);
+    assert.notEqual(commits[0].sha, rootCommit);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+test("an uncommitted review lists only the branch's own commits", async () => {
+  // Regression: with no base, the commits tab fell back to "everything
+  // not on a remote" and showed 200 unrelated commits.
+  const root = await mkdtemp(join(tmpdir(), "pr-review-own-"));
+  const git = (...args) => exec(GIT.BIN, args, { cwd: root });
+  const commit = async (file, message) => {
+    await writeFile(join(root, file), message);
+    await git("add", file);
+    await git("commit", "-m", message);
+    return (await git("rev-parse", "HEAD")).stdout.trim();
+  };
+
+  try {
+    await git("init", "--initial-branch", "main");
+    await git("config", "user.email", "test@example.com");
+    await git("config", "user.name", "Test");
+
+    // Ten commits on the base branch.
+    for (let index = 0; index < 10; index += 1) {
+      await commit(`base${index}.txt`, `base work ${index}`);
+    }
+    const baseTip = (await git("rev-parse", "HEAD")).stdout.trim();
+    await git("update-ref", "refs/remotes/origin/dev", baseTip);
+
+    // Two commits of the branch's own work.
+    await git("checkout", "-b", "feature");
+    await commit("mine1.txt", "my first change");
+    await commit("mine2.txt", "my second change");
+
+    const commits = await loadScopeCommits(root, { commits: [], base: null, head: null });
+    assert.equal(commits.length, 2, `expected the 2 branch commits, got ${commits.length}`);
+    assert.deepEqual(commits.map((c) => c.subject), ["my second change", "my first change"]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
