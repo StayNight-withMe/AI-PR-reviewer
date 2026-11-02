@@ -243,3 +243,41 @@ test("git writes a path with non-ASCII letters as it is", async () => {
     await rm(root, { recursive: true, force: true });
   }
 });
+test("a remote branch keeps the name that resolves", async () => {
+  const root = await mkdtemp(join(tmpdir(), "pr-review-branch-"));
+  const git = (...args) => exec(GIT.BIN, args, { cwd: root });
+
+  try {
+    await git("init", "--initial-branch", "main");
+    await git("config", "user.email", "test@example.com");
+    await git("config", "user.name", "Test");
+    await writeFile(join(root, "a.txt"), "a");
+    await git("add", "-A");
+    await git("commit", "-m", "first");
+    await git("update-ref", "refs/remotes/origin/dev", "HEAD");
+
+    const branches = await listBranches(root);
+    assert.ok(branches.includes("origin/dev"), `the remote branch was renamed: ${JSON.stringify(branches)}`);
+    assert.ok(!branches.includes("origin/HEAD"), "the remote head alias is not a branch");
+
+    // Every listed branch has to resolve: the review scope hands these back to git.
+    const heads = await listBranchHeads(root, branches);
+    for (const head of heads) {
+      assert.ok(head.sha, `the branch ${head.name} does not resolve`);
+      assert.ok(head.subject, `the branch ${head.name} has no commit subject`);
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+test("git is found even when PATH has no git", () => {
+  resetGitBinary();
+  const binary = resolveGitBinary({
+    PATH: "C:\\Windows\\System32",
+    SYSTEMROOT: process.env.SYSTEMROOT ?? "C:\\Windows",
+    LOCALAPPDATA: process.env.LOCALAPPDATA ?? "",
+  });
+
+  assert.ok(binary, "a git binary must be returned");
+  assert.ok(binary === GIT.BIN || existsSync(binary), `the git path must exist: ${binary}`);
+});
