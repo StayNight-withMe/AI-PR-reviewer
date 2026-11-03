@@ -375,3 +375,42 @@ test("a branch at its base lists no commits instead of the whole history", async
     await rm(root, { recursive: true, force: true });
   }
 });
+test("without any base branch the commits tab stays empty, never the whole history", async () => {
+  // The exact shape of the reported bug: a repository with NO base branch at
+  // all: without a base the tab must stay empty.
+  const root = await mkdtemp(join(tmpdir(), "pr-review-nobase-"));
+  const git = (...args) => exec(GIT.BIN, args, { cwd: root });
+
+  try {
+    await git("init", "--initial-branch", "main");
+    await git("config", "user.email", "test@example.com");
+    await git("config", "user.name", "Test");
+
+    // No remote at all, and 30 commits: without the fix all 30 would show.
+    for (let index = 0; index < 30; index += 1) {
+      await writeFile(join(root, `f${index}.txt`), String(index));
+      await git("add", "-A");
+      await git("commit", "-m", `commit ${index}`);
+    }
+
+    const commits = await loadScopeCommits(root, { commits: [], base: null, head: null });
+    assert.equal(commits.length, 0, `expected no commits without a base, got ${commits.length}`);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+test("dispatch prompt names the review payload", () => {
+  const prompt = buildDispatchPrompt(
+    {
+      reviewState: "REQUEST_CHANGES",
+      reviewBody: "please fix",
+      comments: [{ path: "src/App.cs", lineStart: 3, lineEnd: 5, body: "why?" }],
+    },
+    { repo: "acme/app", branch: "feature", mode: "range", base: "origin/dev", head: "HEAD" },
+    { jsonPath: "C:/tmp/review.json", markdownPath: "C:/tmp/review.md" },
+  );
+
+  assert.match(prompt, /src\/App\.cs:3-5/);
+  assert.match(prompt, /please fix/);
+  assert.match(prompt, /origin\/dev\.\.\.HEAD/);
+});
