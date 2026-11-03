@@ -354,3 +354,24 @@ test("an uncommitted review lists only the branch's own commits", async () => {
     await rm(root, { recursive: true, force: true });
   }
 });
+test("a branch at its base lists no commits instead of the whole history", async () => {
+  const root = await mkdtemp(join(tmpdir(), "pr-review-atbase-"));
+  const git = (...args) => exec(GIT.BIN, args, { cwd: root });
+
+  try {
+    await git("init", "--initial-branch", "main");
+    await git("config", "user.email", "test@example.com");
+    await git("config", "user.name", "Test");
+    for (let index = 0; index < 5; index += 1) {
+      await writeFile(join(root, `f${index}.txt`), String(index));
+      await git("add", "-A");
+      await git("commit", "-m", `c${index}`);
+    }
+    await git("update-ref", "refs/remotes/origin/dev", "HEAD");
+
+    const commits = await loadScopeCommits(root, { commits: [], base: null, head: null });
+    assert.equal(commits.length, 0, `expected no commits, got ${commits.length}`);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
