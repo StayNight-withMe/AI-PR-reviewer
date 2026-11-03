@@ -474,3 +474,51 @@ test("highlight reads working-tree content, not HEAD", async () => {
     await rm(root, { recursive: true, force: true });
   }
 });
+test("an uncommitted diff joins staged+unstaged+untracked without a blank line", async () => {
+  // Regression: each `git diff` already ends in a newline, and the parts
+  // were joined with another one. The blank line between parts became a phantom
+  // empty "meta" row at the end of the preceding file, so an added file showed
+  // an extra trailing line in the review.
+  const root = await mkdtemp(join(tmpdir(), "pr-review-join-"));
+  const git = (...args) => exec(GIT.BIN, args, { cwd: root });
+
+  try {
+    await git("init", "--initial-branch", "main");
+    await git("config", "user.email", "test@example.com");
+    await git("config", "user.name", "Test");
+    await writeFile(join(root, "tracked.txt"), "one\n");
+    await git("add", "-A");
+    await git("commit", "-m", "init");
+
+    // Staged change, an unstaged change and an untracked file: three parts.
+    await writeFile(join(root, "tracked.txt"), "one\ntwo\n");
+    await git("add", "tracked.txt");
+    await writeFile(join(root, "second.txt"), "alpha\n");
+    await git("add", "second.txt");
+    await writeFile(join(root, "second.txt"), "alpha\nbeta\n");
+    await writeFile(join(root, "brand-new.txt"), ["a", "b", "c", ""].join("\n"));
+
+    const text = await diffUncommitted(root, { includeStaged: true, includeUntracked: true });
+    const files = parseDiff(text);
+
+    const added = files.find((file) => file.path === "brand-new.txt");
+    assert.ok(added, "the untracked file is missing from the diff");
+    assert.equal(added.additions, 3, `unexpected additions ${added.additions}`);
+    assert.deepEqual(
+      added.hunks[0].rows.map((row) => row.kind),
+      ["add", "add", "add"],
+      "a phantom row was added to the new file",
+    );
+    assert.deepEqual(added.hunks[0].rows.map((row) => row.content), ["a", "b", "c"]);
+
+    // No file may carry an empty meta row.
+    for (const file of files) {
+      for (const hunk of file.hunks) {
+        const phantom = hunk.rows.filter((row) => row.kind === "meta" && row.content === "");
+        assert.equal(phantom.length, 0, `${file.path} has a phantom empty meta row`);
+      }
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
