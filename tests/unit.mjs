@@ -414,3 +414,63 @@ test("dispatch prompt names the review payload", () => {
   assert.match(prompt, /please fix/);
   assert.match(prompt, /origin\/dev\.\.\.HEAD/);
 });
+test("dispatch message points at the prompt file relative to the repo", () => {
+  const message = buildDispatchMessage("C:\\repo\\.pr-review\\abc\\dispatch-prompt.md", "C:\\repo");
+  assert.equal(message, "Read .pr-review/abc/dispatch-prompt.md and start fixing the code review described there.");
+});
+test("current session id comes from the OpenCode environment", () => {
+  assert.equal(currentSessionId({ OPENCODE_SESSION_ID: "ses_1" }), "ses_1");
+  assert.equal(currentSessionId({ OPENCODE_SESSION: "ses_2" }), "ses_2");
+  assert.equal(currentSessionId({}), null);
+});
+test("dispatch to an unknown session fails instead of creating one", async () => {
+  const result = await dispatchToSession("ses_does_not_exist_for_test", "probe", { cwd: process.cwd() });
+
+  assert.equal(result.started, false);
+  assert.ok(result.reason, "a failed dispatch must explain itself");
+  assert.equal(result.sessionMissing, true);
+});
+test("dispatch without a session is refused", async () => {
+  const result = await dispatchToSession("", "probe", { cwd: process.cwd() });
+  assert.equal(result.started, false);
+  assert.ok(result.reason);
+});
+test("highlight reads working-tree content, not HEAD", async () => {
+  const root = await mkdtemp(join(tmpdir(), "pr-review-hl-"));
+  const file = "src/App.csproj";
+  const committed = [
+    "<Project>",
+    "  <ItemGroup>",
+    '    <PackageReference Include="Removed.Package" Version="1.0.0" />',
+    "  </ItemGroup>",
+    "  <ItemGroup>",
+    "    <ProjectReference Include=\"Shared.csproj\" />",
+    "  </ItemGroup>",
+    "</Project>",
+  ];
+  const working = [
+    "<Project>",
+    "  <ItemGroup>",
+    "    <ProjectReference Include=\"Shared.csproj\" />",
+    "  </ItemGroup>",
+    "</Project>",
+  ];
+
+  try {
+    await exec(GIT.BIN, ["init"], { cwd: root });
+    await exec(GIT.BIN, ["config", "user.email", "test@example.com"], { cwd: root });
+    await exec(GIT.BIN, ["config", "user.name", "Test"], { cwd: root });
+    await mkdir(join(root, "src"), { recursive: true });
+    await writeFile(join(root, file), committed.join("\n"));
+    await exec(GIT.BIN, ["add", file], { cwd: root });
+    await exec(GIT.BIN, ["commit", "-m", "init"], { cwd: root });
+
+    await writeFile(join(root, file), working.join("\n"));
+
+    const result = await readFilesForHighlight(root, [file, "src/Deleted.cs"]);
+    assert.deepEqual(result[file].lines, working);
+    assert.equal(result["src/Deleted.cs"], null);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
