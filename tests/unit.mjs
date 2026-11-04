@@ -601,3 +601,24 @@ test("parseDiff decodes a fully quoted path", () => {
   const [file] = parseDiff(text);
   assert.equal(file.path, "spaces and such.cs");
 });
+test("parseDiff decodes a git-quoted path with an escaped quote and an octal byte", () => {
+  const text = `diff --git "a/quo\\"te.cs" "b/quo\\"te.cs"
+--- "a/quo\\"te.cs"
++++ "b/quo\\"te.cs"
+@@ -1 +1 @@
+-a
++b
+`;
+  const [file] = parseDiff(text);
+  assert.equal(file.path, 'quo"te.cs');
+
+  const octal = `diff --git "a/\\320\\275.md" "b/\\320\\275.md"
+--- "a/\\320\\275.md"
++++ "b/\\320\\275.md"
+@@ -1 +1 @@
+-a
++b
+`;
+  const [escaped] = parseDiff(octal);
+  assert.equal(escaped.path, "\u043d.md", "an octal escape decodes to its byte");
+});
