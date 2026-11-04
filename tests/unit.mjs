@@ -575,3 +575,29 @@ test("a staged new file is added and a staged deletion is deleted", async () => 
     await rm(root, { recursive: true, force: true });
   }
 });
+/* --------------------- diff header / path parsing regressions -------------------- */
+test("parseDiff keeps a path that contains spaces", () => {
+  const text = `diff --git a/sub dir/my file.txt b/sub dir/my file.txt
+index 111..222 100644
+--- a/sub dir/my file.txt
++++ b/sub dir/my file.txt
+@@ -1 +1 @@
+-x
++y
+`;
+  const [file] = parseDiff(text);
+  assert.equal(file.path, "sub dir/my file.txt");
+  assert.equal(file.oldPath, "sub dir/my file.txt");
+  assert.equal(file.newPath, "sub dir/my file.txt");
+});
+test("parseDiff decodes a fully quoted path", () => {
+  const text = `diff --git "a/spaces and such.cs" "b/spaces and such.cs"
+--- "a/spaces and such.cs"
++++ "b/spaces and such.cs"
+@@ -1 +1 @@
+-a
++b
+`;
+  const [file] = parseDiff(text);
+  assert.equal(file.path, "spaces and such.cs");
+});
