@@ -522,3 +522,56 @@ test("an uncommitted diff joins staged+unstaged+untracked without a blank line",
     await rm(root, { recursive: true, force: true });
   }
 });
+test("the tree colours untracked files as added, not unchanged", async () => {
+  // Regression: the tree was built from `git diff HEAD` only, so an
+  // untracked file was invisible and the sidebar showed nothing but yellow.
+  const root = await mkdtemp(join(tmpdir(), "pr-review-tree-"));
+  const git = (...args) => exec(GIT.BIN, args, { cwd: root });
+
+  try {
+    await git("init", "--initial-branch", "main");
+    await git("config", "user.email", "test@example.com");
+    await git("config", "user.name", "Test");
+    await writeFile(join(root, "tracked.txt"), "one\n");
+    await git("add", "-A");
+    await git("commit", "-m", "init");
+
+    // One modified tracked file and one untracked file.
+    await writeFile(join(root, "tracked.txt"), "one\ntwo\n");
+    await writeFile(join(root, "brand-new.txt"), "new\n");
+
+    const tree = await buildProjectTree(root, { mode: MODE.UNCOMMITTED, base: null, head: null });
+    const byPath = new Map(tree.map((entry) => [entry.path, entry.status]));
+
+    assert.equal(byPath.get("brand-new.txt"), GIT.STATUS_ADDED_NAME, "the untracked file is not coloured as added");
+    assert.equal(byPath.get("tracked.txt"), GIT.STATUS_MODIFIED, "the modified file lost its status");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+test("a staged new file is added and a staged deletion is deleted", async () => {
+  const root = await mkdtemp(join(tmpdir(), "pr-review-tree2-"));
+  const git = (...args) => exec(GIT.BIN, args, { cwd: root });
+
+  try {
+    await git("init", "--initial-branch", "main");
+    await git("config", "user.email", "test@example.com");
+    await git("config", "user.name", "Test");
+    await writeFile(join(root, "keep.txt"), "keep\n");
+    await writeFile(join(root, "gone.txt"), "gone\n");
+    await git("add", "-A");
+    await git("commit", "-m", "init");
+
+    await git("rm", "gone.txt");                       // staged deletion
+    await writeFile(join(root, "staged-new.txt"), "n\n");
+    await git("add", "staged-new.txt");                // staged addition
+
+    const tree = await buildProjectTree(root, { mode: MODE.UNCOMMITTED, base: null, head: null });
+    const byPath = new Map(tree.map((entry) => [entry.path, entry.status]));
+
+    assert.equal(byPath.get("staged-new.txt"), GIT.STATUS_ADDED_NAME, "a staged new file is not added");
+    assert.equal(byPath.get("gone.txt"), GIT.STATUS_DELETED_NAME, "a staged deletion is not deleted");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
