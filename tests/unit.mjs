@@ -671,3 +671,35 @@ test("a real git diff keeps a file whose path contains a space", async () => {
     await rm(root, { recursive: true, force: true });
   }
 });
+test("the tail gap never reaches past the last real line", async () => {
+  const root = await mkdtemp(join(tmpdir(), "pr-review-tail-"));
+  const git = (...args) => exec(GIT.BIN, args, { cwd: root });
+
+  try {
+    await git("init", "--initial-branch", "main");
+    await git("config", "user.email", "test@example.com");
+    await git("config", "user.name", "Test");
+
+    const before = "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n";
+    await writeFile(join(root, "f.txt"), before);
+    await git("add", "-A");
+    await git("commit", "-m", "init");
+
+    // Delete lines 5-6: the file ends with a newline, so it has 8 real lines.
+    const after = "1\n2\n3\n4\n7\n8\n9\n10\n";
+    await writeFile(join(root, "f.txt"), after);
+
+    const { stdout } = await git("-c", "core.quotepath=false", "diff", "-U0", "--no-color", "--no-renames", "--patch", "--", ".");
+    const [file] = parseDiff(stdout);
+    const lines = splitLines(after);
+    assert.equal(lines.length, 8, "the trailing newline is not a line");
+
+    const { totalLines, gaps } = computeGaps(file, lines);
+    assert.equal(totalLines, 8);
+    const tail = gaps.find((gap) => gap.dir === "down");
+    assert.equal(tail.newEnd, 8, "the tail gap must stop at the last real line");
+    assert.equal(tail.count, 5);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
