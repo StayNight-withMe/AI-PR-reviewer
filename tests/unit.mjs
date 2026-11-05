@@ -622,3 +622,52 @@ test("parseDiff decodes a git-quoted path with an escaped quote and an octal byt
   const [escaped] = parseDiff(octal);
   assert.equal(escaped.path, "\u043d.md", "an octal escape decodes to its byte");
 });
+test("parseDiff does not add a phantom row for the trailing newline git always writes", () => {
+  const text = `diff --git a/a.txt b/a.txt
+--- a/a.txt
++++ b/a.txt
+@@ -1 +1 @@
+-x
++y
+`;
+  assert.ok(text.endsWith("\n"), "git terminates its output with a newline");
+  const [file] = parseDiff(text);
+  assert.deepEqual(
+    file.hunks[0].rows.map((row) => row.kind),
+    ["del", "add"],
+    "the trailing newline must not become a meta row",
+  );
+});
+test("splitLines drops the phantom last line of a trailing newline", () => {
+  assert.deepEqual(splitLines("a\nb\n"), ["a", "b"]);
+  assert.deepEqual(splitLines("a\nb"), ["a", "b"]);
+  assert.deepEqual(splitLines(""), []);
+  assert.deepEqual(splitLines("only"), ["only"]);
+  // A file that really ends with a blank line keeps it (two newlines).
+  assert.deepEqual(splitLines("a\n\n"), ["a", ""]);
+});
+test("a real git diff keeps a file whose path contains a space", async () => {
+  const root = await mkdtemp(join(tmpdir(), "pr-review-space-"));
+  const git = (...args) => exec(GIT.BIN, args, { cwd: root });
+
+  try {
+    await git("init", "--initial-branch", "main");
+    await git("config", "user.email", "test@example.com");
+    await git("config", "user.name", "Test");
+    await git("config", "core.quotepath", "false");
+
+    await mkdir(join(root, "sub dir"), { recursive: true });
+    await writeFile(join(root, "sub dir", "my file.txt"), "x\n");
+    await git("add", "-A");
+    await git("commit", "-m", "init");
+    await writeFile(join(root, "sub dir", "my file.txt"), "y\n");
+
+    const { stdout } = await git("diff", "--no-color", "--no-renames", "--patch", "--", ".");
+    const [file] = parseDiff(stdout);
+    assert.equal(file.path, "sub dir/my file.txt", "the path must not be split at its space");
+    assert.equal(file.additions, 1);
+    assert.equal(file.deletions, 1);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
