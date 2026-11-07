@@ -38,3 +38,13 @@ npm install
 ```
 `npm install` заодно проверит наличие `gh` — если его нет, просто подскажет,
 как поставить. Для локальных ревью он не нужен.
+## Запуск
+```bash
+# ревью текущей ветки
+npm run review -- .
+# только незакоммиченное
+npm run review -- . --mode uncommitted
+# пул-реквест с GitHub
+npm run review -- . --mode pr --pr 42
+# сразу открыть браузер
+npm run review -- . --open
