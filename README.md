@@ -88,3 +88,13 @@ npm run review -- . --open
 | Emacs | пакет в `editors/emacs` |
 | Zed | MCP-сервер + task, `editors/zed` |
 | Helix | pipe-команда + MCP, `editors/helix` |
+Подробности — в `editors/README.md`. Все интеграции — тонкие обёртки над одним
+движком `src/cli.js`.
+## Разработка
+```bash
+npm test                 # юнит-тесты
+npm run test:pr          # PR-режим офлайн, без сети
+npm run test:pr:ui       # PR-страница в браузере
+npm run test:all         # всё
+```
+Тесты для PR-режима работают на поддельном `gh` и локальном репозитории, так
