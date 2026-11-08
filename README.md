@@ -78,3 +78,13 @@ npm run review -- . --open
 системы, а не в проект. Рабочая копия остаётся чистой, `.gitignore` править не
 надо. Хочешь другое место — задай `PR_REVIEW_ARTIFACTS_DIR`.
 ## Интеграции с редакторами
+| Редактор | Как подключить |
+| --- | --- |
+| VS Code | расширение в `editors/vscode` |
+| Visual Studio 2022 | плагин в `editors/visualstudio` |
+| JetBrains | плагин в `editors/jetbrains` |
+| Neovim | Lua-модуль в `editors/neovim` |
+| Sublime Text | плагин в `editors/sublime` |
+| Emacs | пакет в `editors/emacs` |
+| Zed | MCP-сервер + task, `editors/zed` |
+| Helix | pipe-команда + MCP, `editors/helix` |
