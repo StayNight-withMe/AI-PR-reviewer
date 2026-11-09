@@ -108,3 +108,13 @@ src/
   core.js            сборка ревью: scope -> diff -> страница
   github.js          пул-реквесты через gh
   git.js             работа с git
+  diff.js            разбор unified diff
+  render.js          HTML страницы и Markdown-экспорт
+  server.js          HTTP-сервер страницы
+  settings-store.js  настройки интерфейса
+  artifacts.js       пути к артефактам
+  assets/            клиентский код страницы
+  models/            модели данных: scope, дерево, диффы, коммиты
+```
+Правило проекта: никаких магических литералов в коде — всё в `config.js`, а
+клиентские дубликаты в `assets/constants.js`.
