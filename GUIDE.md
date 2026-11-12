@@ -228,3 +228,13 @@ PR_REVIEW_ARTIFACTS_DIR=D:\reviews
 npm install                      # поставить (проверит gh)
 npm run review -- .              # ревью текущей ветки
 npm run review -- . --mode uncommitted
+npm run review -- . --mode pr --pr 42
+npm run review -- . --open       # сразу открыть браузер
+npm run gh:install               # поставить GitHub CLI
+gh auth login                    # войти в GitHub (один раз)
+# Тесты
+npm test                         # юнит-тесты
+npm run test:pr                  # PR-режим офлайн, без сети и без gh
+npm run test:pr:ui               # PR-страница в браузере (офлайн)
+npm run test:all                 # всё
+```
