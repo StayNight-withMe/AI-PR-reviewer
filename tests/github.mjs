@@ -18,3 +18,13 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  normalizePullRequest,
+  pullRequestScope,
+  pullRequestTitle,
+  ghBinary,
+} from "../src/github.js";
+import { GH, MODE } from "../src/config.js";
+const exec = promisify(execFile);
