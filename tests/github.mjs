@@ -8,3 +8,13 @@
  *   2. Live, skipped when `gh` is missing or unauthenticated: a real PR on a
  *      real repository is read and turned into a range review.
  *
+ * The live layer picks a repository from the environment (PR_REVIEW_TEST_REPO)
+ * or the current checkout, and a PR number that `gh pr list` returns. When no
+ * PR is reachable the layer reports "skipped" instead of failing: a checkout
+ * without PRs is normal, not a broken build.
+ *
+ * Run: node tests/github.mjs
+ */
+import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
