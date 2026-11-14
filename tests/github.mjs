@@ -61,3 +61,20 @@ const RAW = {
   deletions: 3,
   changedFiles: 4,
 };
+await check("normalizePullRequest maps every page field", () => {
+  const pr = normalizePullRequest(RAW);
+  assert.equal(pr.number, 42);
+  assert.equal(pr.title, "Fix the login redirect");
+  assert.equal(pr.url, RAW.url);
+  assert.equal(pr.state, "OPEN");
+  assert.equal(pr.draft, false);
+  assert.equal(pr.baseRefName, "main");
+  assert.equal(pr.headRefName, "feature/login");
+  assert.equal(pr.baseOid, RAW.baseRefOid);
+  assert.equal(pr.headOid, RAW.headRefOid);
+  assert.equal(pr.author, "octocat");
+  assert.equal(pr.body, RAW.body);
+  assert.equal(pr.additions, 12);
+  assert.equal(pr.deletions, 3);
+  assert.equal(pr.changedFiles, 4);
+});
