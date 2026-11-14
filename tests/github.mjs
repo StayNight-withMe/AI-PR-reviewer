@@ -42,3 +42,22 @@ function check(name, fn) {
       },
     );
 }
+function skip(name, reason) {
+  console.log(`SKIP ${name} — ${reason}`);
+}
+const RAW = {
+  number: 42,
+  title: "Fix the login redirect",
+  url: "https://github.com/acme/widget/pull/42",
+  state: "OPEN",
+  isDraft: false,
+  baseRefName: "main",
+  headRefName: "feature/login",
+  baseRefOid: "a".repeat(40),
+  headRefOid: "b".repeat(40),
+  author: { login: "octocat" },
+  body: "Please review the redirect.",
+  additions: 12,
+  deletions: 3,
+  changedFiles: 4,
+};
