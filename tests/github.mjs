@@ -78,3 +78,19 @@ await check("normalizePullRequest maps every page field", () => {
   assert.equal(pr.deletions, 3);
   assert.equal(pr.changedFiles, 4);
 });
+await check("normalizePullRequest tolerates a sparse payload", () => {
+  const pr = normalizePullRequest({ number: 7, isDraft: true });
+  assert.equal(pr.number, 7);
+  assert.equal(pr.draft, true);
+  assert.equal(pr.title, "");
+  assert.equal(pr.author, "");
+  assert.equal(pr.additions, 0);
+});
+await check("the review title and scope come from the PR", () => {
+  const pr = normalizePullRequest(RAW);
+  assert.equal(pullRequestTitle(pr), "PR #42: Fix the login redirect");
+  assert.equal(pullRequestScope(pr), "pr42");
+
+  const draft = normalizePullRequest({ number: 9, title: "", isDraft: true });
+  assert.equal(pullRequestTitle(draft), "PR #9");
+});
