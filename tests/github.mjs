@@ -104,3 +104,23 @@ await check("ghBinary honours the override and falls back to gh", () => {
   assert.equal(ghBinary({}), GH.BIN);
   assert.equal(ghBinary({ [GH.ENV_BIN]: "   " }), GH.BIN);
 });
+/* --------------------------- live layer (optional) -------------------------- */
+async function liveRepo() {
+  // Opt-in only: the default test run must not depend on a real repository,
+  // a real GitHub account or the network. `test:pr` covers the live paths with
+  // a mock gh and a local fixture instead.
+  const repo = process.env.PR_REVIEW_TEST_REPO;
+  if (!repo) return null;
+  try {
+    const { stdout } = await exec(ghBinary(), ["pr", "list", "--state", "all", "--limit", "1", "--json", "number"], {
+      cwd: repo,
+      windowsHide: true,
+      timeout: 30_000,
+    });
+    const list = JSON.parse(stdout);
+    if (!Array.isArray(list) || !list.length) return null;
+    return { repo, number: list[0].number };
+  } catch {
+    return null;
+  }
+}
