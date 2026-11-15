@@ -94,3 +94,13 @@ await check("the review title and scope come from the PR", () => {
   const draft = normalizePullRequest({ number: 9, title: "", isDraft: true });
   assert.equal(pullRequestTitle(draft), "PR #9");
 });
+await check("two PRs with the same commits get different scope keys", () => {
+  const a = normalizePullRequest({ ...RAW, number: 1 });
+  const b = normalizePullRequest({ ...RAW, number: 2 });
+  assert.notEqual(pullRequestScope(a), pullRequestScope(b));
+});
+await check("ghBinary honours the override and falls back to gh", () => {
+  assert.equal(ghBinary({ [GH.ENV_BIN]: "C:/tools/gh.exe" }), "C:/tools/gh.exe");
+  assert.equal(ghBinary({}), GH.BIN);
+  assert.equal(ghBinary({ [GH.ENV_BIN]: "   " }), GH.BIN);
+});
