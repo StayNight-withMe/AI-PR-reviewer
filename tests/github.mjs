@@ -124,3 +124,25 @@ async function liveRepo() {
     return null;
   }
 }
+const live = await liveRepo();
+if (!live) {
+  skip("a real PR becomes a range review", "set PR_REVIEW_TEST_REPO to opt in (test:pr covers this offline)");
+} else {
+  await check("a real PR becomes a range review", async () => {
+    const { buildReview } = await import("../src/core.js");
+    const review = await buildReview({ repoPath: live.repo, mode: MODE.PR, pr: live.number });
+
+    assert.equal(review.meta.mode, MODE.PR, "the mode is not pr");
+    assert.ok(review.meta.base && review.meta.base.length >= 7, "the base commit is missing");
+    assert.ok(review.meta.head && review.meta.head.length >= 7, "the head commit is missing");
+    assert.notEqual(review.meta.base, review.meta.head, "base and head are the same commit");
+    assert.ok(review.meta.pr, "the PR is not on the metadata");
+    assert.equal(review.meta.pr.number, live.number);
+    assert.ok(review.meta.title.startsWith(`PR #${live.number}`), `unexpected title ${review.meta.title}`);
+    assert.ok(Array.isArray(review.files), "the diff has no files array");
+
+    // The id must be a PR id, not a bare commit-range id.
+    assert.ok(review.meta.id, "the review has no id");
+    console.log(`  PR #${live.number}: ${review.files.length} files, ${review.meta.base.slice(0, 7)}…${review.meta.head.slice(0, 7)}`);
+  });
+}
