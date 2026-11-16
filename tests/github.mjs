@@ -146,3 +146,10 @@ if (!live) {
     console.log(`  PR #${live.number}: ${review.files.length} files, ${review.meta.base.slice(0, 7)}…${review.meta.head.slice(0, 7)}`);
   });
 }
+if (failures.length) {
+  console.log(`\n${failures.length} check(s) failed:`);
+  for (const failure of failures) console.log(`  - ${failure}`);
+  process.exitCode = 1;
+} else {
+  console.log("\nAll GitHub pull-request checks passed");
+}
