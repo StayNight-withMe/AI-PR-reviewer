@@ -250,6 +250,15 @@ export async function buildPage(meta, files, stats, allFiles, comments, reviewSt
     <div id="commits-tab" class="hidden">
       <div class="scope-bar">
         <div class="scope-group">
+          <label class="scope-label" for="branch-select">Branch</label>
+          <select class="gh-input" id="branch-select">
+            <option value="">Loading branches…</option>
+          </select>
+          <span class="small muted" id="branch-hint"></span>
+        </div>
+      </div>
+      <div class="scope-bar">
+        <div class="scope-group">
           <label class="scope-label" for="scope-mode">Add review</label>
           <select class="gh-input" id="scope-mode">
             <option value="${MODE.UNCOMMITTED}">Uncommitted changes</option>
@@ -258,7 +267,8 @@ export async function buildPage(meta, files, stats, allFiles, comments, reviewSt
           </select>
           <button class="gh-btn gh-btn-primary gh-btn-sm" id="btn-open-scope">Review</button>
         </div>
-        <div class="scope-hint small muted" id="scope-hint"></div>      </div>
+        <div class="scope-hint small muted" id="scope-hint"></div>
+      </div>
       <div id="commits-list"></div>
     </div>
   </main>
@@ -285,8 +295,7 @@ export async function buildPage(meta, files, stats, allFiles, comments, reviewSt
   <span class="status" id="action-status-bar">Click the + gutter, then drag, to comment</span>
   <div class="spacer"></div>
   <button class="gh-btn" id="btn-copy-path">Copy review path</button>
-  <button class="gh-btn gh-btn-primary" id="btn-request-changes">Request changes</button>
-  <button class="gh-btn" id="btn-approve">Approve</button>
+  <button class="gh-btn gh-btn-primary" id="btn-submit">Submit review</button>
 </div>
 
 <div class="modal-backdrop" id="commit-picker">
@@ -309,45 +318,41 @@ export async function buildPage(meta, files, stats, allFiles, comments, reviewSt
 <div class="modal-backdrop" id="dispatch-modal">
   <div class="modal">
     <div class="modal-header">
-      Send to AI for fixes
+      Submit review
       <button class="gh-btn gh-btn-sm js-close-modal">Close</button>
     </div>
     <div class="modal-body">
       <p class="small muted" style="margin-top:0">
-        The review is written to disk. Choose how to continue.
+        The review is written to disk. Pick a verdict and add a note.
       </p>
       <label class="radio-card selected">
-        <input type="radio" name="dispatch-mode" value="dispatch" checked>
+        <input type="radio" name="review-verdict" value="${REVIEW_STATE.REQUEST_CHANGES}" checked>
         <span>
-          <span class="title">Send to the AI (fix the code)</span><br>
-          <span class="desc">Starts fixing in this chat.</span>
+          <span class="title">Request changes</span><br>
+          <span class="desc">The AI fixes what the notes say.</span>
         </span>
       </label>
       <label class="radio-card">
-        <input type="radio" name="dispatch-mode" value="path">
+        <input type="radio" name="review-verdict" value="${REVIEW_STATE.APPROVE}">
         <span>
-          <span class="title">Only give me the review path</span><br>
-          <span class="desc">Nothing is sent; you get review.json / review.md.</span>
+          <span class="title">Approve</span><br>
+          <span class="desc">The work is good. The AI only reads the note and stays hands-off.</span>
         </span>
       </label>
-      <p class="small muted" style="margin:14px 0 6px">Summary (optional)</p>
-      <textarea class="gh-textarea" id="review-body" placeholder="Overall summary of your review…"></textarea>
+      <p class="small muted" style="margin:14px 0 6px">Note (optional)</p>
+      <textarea class="gh-textarea" id="review-body" placeholder="Anything the AI should know about this review…"></textarea>
+      <div class="dispatch-mode" style="margin-top:14px">
+        <label class="radio-line">
+          <input type="checkbox" id="dispatch-send" checked>
+          <span>Send to the AI</span>
+        </label>
+        <span class="small muted">Uncheck to only save review.json / review.md.</span>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="gh-btn js-close-modal">Cancel</button>
-      <button class="gh-btn gh-btn-primary" id="btn-submit">Submit</button>
+      <button class="gh-btn gh-btn-primary" id="btn-dispatch-submit">Submit</button>
     </div>
-  </div>
-</div>
-
-<div class="modal-backdrop" id="approve-modal">
-  <div class="modal" style="width:min(520px,100%)">
-    <div class="modal-header">Approve <button class="gh-btn gh-btn-sm js-close-modal">Close</button></div>
-    <div class="modal-body">
-      <div class="approve-hero"><span class="approve-check">✓</span></div>
-      <p class="small" style="text-align:center">The review is marked as approved. Nothing is changed.</p>
-    </div>
-    <div class="modal-footer"><button class="gh-btn js-close-modal">Close</button></div>
   </div>
 </div>
 
@@ -416,6 +421,7 @@ export async function buildFilePage(repoName, file, reviewId) {
 
 <div class="toast" id="toast"></div>
 <script id="file-data" type="${RENDER.SCRIPT_TYPE_JSON}">${safeJson}</script>
+${assets.hljsScript ? `<script>${assets.hljsScript}</script>` : P.EMPTY}
 <script>${assets.viewer}</script>
 </body>
 </html>`;

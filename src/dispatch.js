@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { join, relative as relativePath, sep } from "node:path";
-import { AGENT, ARTIFACTS, P } from "./config.js";
+import { AGENT, ARTIFACTS, P, REVIEW_STATE } from "./config.js";
 /** Env var OpenCode sets for every child process it starts. */
 const SESSION_ENV = "OPENCODE_SESSION_ID";
 const SESSION_ENV_ALT = "OPENCODE_SESSION";
@@ -57,9 +57,18 @@ export function buildDispatchPrompt(review, meta, paths) {
   const state = review?.reviewState ?? P.EMPTY;
   const comments = Array.isArray(review?.comments) ? review.comments : [];
   const body = String(review?.reviewBody ?? P.EMPTY).trim();
+  const approved = state === REVIEW_STATE.APPROVE;
+
+  const opening = approved
+    ? [
+        "A review was submitted and the changes were APPROVED. The work is accepted as it is.",
+        "Do not rewrite anything on your own initiative. Read the notes below only to catch a",
+        "small detail the reviewer mentioned; everything else is fine and must stay as it is.",
+      ]
+    : ["A review was submitted from the review page. Start fixing the code now."];
 
   const lines = [
-    "A review was submitted from the review page. Start fixing the code now.",
+    ...opening,
     P.EMPTY,
     `Repo: ${meta?.repo ?? P.EMPTY}`,
     `Branch: ${meta?.branch ?? P.EMPTY}`,
@@ -69,7 +78,7 @@ export function buildDispatchPrompt(review, meta, paths) {
     `Review Markdown: ${paths?.markdownPath ?? P.EMPTY}`,
   ];
 
-  if (body) lines.push("", "Summary from the reviewer:", body);
+  if (body) lines.push("", approved ? "Note from the reviewer:" : "Summary from the reviewer:", body);
 
   if (comments.length) {
     lines.push(P.EMPTY, `Inline comments (${comments.length}):`);
@@ -81,13 +90,20 @@ export function buildDispatchPrompt(review, meta, paths) {
       const done = comment.resolved === true ? " [already resolved]" : P.EMPTY;
       lines.push(`- ${comment.path}:${comment.lineStart}${range} — ${text}${done}`);
     }
+  } else if (approved) {
+    // The note is printed above, so only claim "without notes" when there is none.
+    lines.push(P.EMPTY, body
+      ? "No inline comments; the note above is the only remark."
+      : "No inline comments and no note; the reviewer approved the changes as they are.");
   } else {
     lines.push(P.EMPTY, "No inline comments; use the summary and the diff.");
   }
 
   lines.push(
     P.EMPTY,
-    "Read review.json for the full payload, apply the fixes, and report what changed.",
+    approved
+      ? "Read review.json for the full payload. Confirm briefly what you changed, if anything."
+      : "Read review.json for the full payload, apply the fixes, and report what changed.",
   );
 
   return lines.join("\n");

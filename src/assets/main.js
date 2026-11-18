@@ -501,22 +501,16 @@
 
     if (target.classList.contains("js-close-modal")) {
       PR.els.dispatchModal.classList.remove("show");
-      PR.els.approveModal.classList.remove("show");
       return true;
     }
 
     switch (target.id) {
-      case "btn-request-changes":
+      case "btn-submit":
         PR.els.dispatchModal.classList.add("show");
         return true;
-      case "btn-approve":
-        submit(STATE.APPROVE, PR.P_EMPTY);
+      case "btn-dispatch-submit":
+        submitReview();
         return true;
-      case "btn-submit": {
-        var modeEl = PR.els.dispatchModal.querySelector('input[name="dispatch-mode"]:checked');
-        submit(STATE.REQUEST_CHANGES, document.getElementById(PR.IDS.REVIEW_BODY).value, modeEl ? modeEl.value : PR.DISPATCH_MODE.PATH);
-        return true;
-      }
       case "btn-copy-path":
         copyPath();
         return true;
@@ -617,6 +611,21 @@
   });
 
   document.addEventListener("change", function (event) {
+    if (event.target.id === PR.IDS.BRANCH_SELECT) {
+      PR.changeBranch(event.target.value);
+      return;
+    }
+
+    // The verdict cards show which option is chosen; the radio itself decides.
+    if (event.target.name === PR.VERDICT_FIELD) {
+      var cards = PR.els.dispatchModal.querySelectorAll(".radio-card");
+      for (var i = 0; i < cards.length; i += 1) {
+        var input = cards[i].querySelector("input");
+        cards[i].classList.toggle("selected", !!input && input.checked);
+      }
+      return;
+    }
+
     if (event.target.id === PR.IDS.SCOPE_MODE) {
       PR.syncScopeVisibility();
       // A range needs concrete commits, so offer the picker right away.
@@ -639,10 +648,6 @@
     // Esc closes the topmost overlay first: the submit dialogs sit above the page, so they must go…
     if (PR.els.dispatchModal.classList.contains("show")) {
       PR.els.dispatchModal.classList.remove("show");
-      return;
-    }
-    if (PR.els.approveModal.classList.contains("show")) {
-      PR.els.approveModal.classList.remove("show");
       return;
     }
 
@@ -703,12 +708,21 @@
     };
   }
 
-  function submit(reviewState, body, dispatchMode) {
+  /** Submits the review with the verdict chosen in the dialog. */
+  function submitReview() {
+    var modal = PR.els.dispatchModal;
+    var checked = modal.querySelector('input[name="' + PR.VERDICT_FIELD + '"]:checked');
+    var verdict = checked ? checked.value : STATE.REQUEST_CHANGES;
+    var body = document.getElementById(PR.IDS.REVIEW_BODY).value;
+    var send = document.getElementById(PR.IDS.DISPATCH_SEND);
+    var sendToAgent = !send || send.checked;
+    submit(verdict, body, sendToAgent);
+  }
+
+  function submit(reviewState, body, sendToAgent) {
     postJson(API.REVIEW, buildReviewPayload(reviewState, body))
       .then(function (res) {
-        var shouldDispatch = reviewState === STATE.REQUEST_CHANGES
-          && dispatchMode === PR.DISPATCH_MODE.DISPATCH
-          && PR.DATA.dispatchEnabled;
+        var shouldDispatch = sendToAgent && PR.DATA.dispatchEnabled;
         if (!shouldDispatch) return res;
         return postJson(API.DISPATCH, {
           reviewId: PR.DATA.id,
@@ -724,17 +738,20 @@
       .then(function (res) {
         PR.els.dispatchModal.classList.remove("show");
         // Say plainly whether the fix turn actually started, and where it went: silently showing "saved"…
+        var approved = reviewState === STATE.APPROVE;
         var agent = res ? res.agent : null;
         var target = res && res.targetSessionId ? res.targetSessionId.slice(0, 12) : null;
         if (agent && agent.started) {
-          PR.toast("Review sent to session " + (target || "?") + " — the AI is fixing it now");
+          PR.toast(approved
+            ? "Approved and sent to session " + (target || "?") + " — the AI has the note"
+            : "Review sent to session " + (target || "?") + " — the AI is fixing it now");
         } else if (agent) {
-          PR.toast("Review saved. Auto-fix not started: " + (agent.reason || "unknown reason"), true);
+          PR.toast("Review saved. Auto-send not started: " + (agent.reason || "unknown reason"), true);
         } else if (res && res.dispatched === false) {
           // An empty review is a valid submit; it just has nothing to fix.
           PR.toast("Review saved — " + (res.reason || "nothing to fix"), true);
         } else {
-          PR.toast("Review saved");
+          PR.toast(approved ? "Approved — review saved" : "Review saved");
         }
       })
       .catch(function (err) { PR.toast("Submit failed: " + err.message, true); });
@@ -759,6 +776,7 @@
 
     PR.renderTree();
     PR.renderCommits();
+    PR.loadBranches();
     PR.renderFileList();
     PR.renderSummary();
     PR.renderProgress();
