@@ -11,6 +11,8 @@
     COMMIT: "/api/commit",
     COMMIT_RENAME: "/api/commit/rename",
     COMMITS: "/api/commits",
+    BRANCHES: "/api/branches",
+    BRANCH_COMMITS: "/api/branch-commits",
     RANGE: "/api/range",
     REVIEW: "/api/review",
     DISPATCH: "/api/dispatch",
@@ -181,9 +183,15 @@
     PATH: "path",
   };
 
+  /** The radio name that carries the review verdict in the submit dialog. */
+  window.PR.VERDICT_FIELD = "review-verdict";
+
   window.PR.HTTP = {
     POST: "POST",
   };
+
+  /** Query parameter names mirrored from src/config.js. */
+  window.PR.QUERY_BRANCH = "branch";
 
   /** Single-letter status of a changed file, as GitHub's file list shows it. */
   window.PR.STATUS_LETTER = {
@@ -273,6 +281,7 @@
     FILTER_INPUT: "filter-input",
     TREE_FILTER_INPUT: "tree-filter-input",
     REVIEW_BODY: "review-body",
+    DISPATCH_SEND: "dispatch-send",
     VIEW_BAR: "diff-view-bar",
     SYM_POP: "sym-pop",
     BTN_SETTINGS: "btn-settings",
@@ -289,6 +298,8 @@
     SCOPE_MODE: "scope-mode",
     SCOPE_FROM: "scope-from",
     SCOPE_TO: "scope-to",
+    BRANCH_SELECT: "branch-select",
+    BRANCH_HINT: "branch-hint",
     BTN_OPEN_SCOPE: "btn-open-scope",
     SCOPE_HINT: "scope-hint",
     SEARCH_INPUT: "search-input",

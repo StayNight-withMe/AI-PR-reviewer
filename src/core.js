@@ -1,13 +1,13 @@
 import { mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { commitDiff, currentBranch, diffBetween, listCommits, pushedShas, remoteUrl, renameCommit, resolveCommit, resolveRepo, searchProject } from "./git.js";
-import { loadScopeCommits } from "./models/commits.js";
+import { commitDiff, currentBranch, diffBetween, listBranches, listCommits, pushedShas, remoteUrl, renameCommit, resolveCommit, resolveRepo, searchProject } from "./git.js";
+import { commitsSinceMergeBase, defaultBase, loadScopeCommits } from "./models/commits.js";
 import { diffStats } from "./diff.js";
 import { buildFilePage, buildMarkdown, buildPage, loadAssets, reviewId } from "./render.js";
 import { servePage, writeReviewFiles } from "./server.js";
 import { buildSymbolIndex } from "./symbols.js";
 import { readFileForViewer, readFilesForHighlight } from "./fileview.js";
-import { MODE_LABELS, DIFF, GIT, MODE, P, SERVER } from "./config.js";
+import { MODE_LABELS, DIFF, GIT, MODE, P, REVIEW_STATE, SERVER } from "./config.js";
 import { removeLegacyArtifacts, reviewDir } from "./artifacts.js";
 import { repoLabel } from "./models/repo.js";
 import { resolveScope } from "./models/scope.js";
@@ -19,6 +19,8 @@ import { buildDispatchMessage, buildDispatchPrompt, currentSessionId, dispatchTo
 export { MODE_LABELS, repoLabel };
 /** Reason returned when a submit carries no comments and no summary. */
 const AGENT_REASON_EMPTY_REVIEW = "The review has no comments or summary, so there is nothing to fix.";
+/** Reason returned when the review was opened with auto-send turned off. */
+const AGENT_REASON_DISPATCH_DISABLED = "Auto-send is turned off for this review, so no agent turn was started.";
 export async function buildReview(params) {
   const root = await resolveRepo(resolve(params.repoPath ?? process.cwd()));
   const scope = await resolveScope(root, params);
@@ -133,6 +135,10 @@ export async function startReview(params) {
 
   /** A review with no comments and no summary has nothing for the agent to do. */
   function hasReviewContent(review) {
+    // An approval carries its own message: the agent needs to know the work is
+    // accepted, even when the reviewer wrote no notes at all.
+    if (review?.reviewState === REVIEW_STATE.APPROVE) return true;
+
     const comments = Array.isArray(review?.comments) ? review.comments : P.EMPTY_ARRAY;
     const body = String(review?.reviewBody ?? P.EMPTY).trim();
     return comments.length > P.ZERO || body.length > P.ZERO;
@@ -142,8 +148,19 @@ export async function startReview(params) {
   const onDispatch = async (payload) => {
     dispatched = payload;
     const review = payload.review ?? payload;
-    // An empty review has nothing to fix.
 
+    // The page hides the option, but a request can still arrive (a stale tab, a
+    // test, another client). A review with auto-send turned off must never start
+    // an agent turn, so the check lives here and not only in the browser.
+    if (params.dispatchEnabled === false) {
+      return {
+        dispatched: false,
+        reason: AGENT_REASON_DISPATCH_DISABLED,
+        jsonPath: payload.jsonPath,
+      };
+    }
+
+    // An empty review has nothing to fix.
     if (!hasReviewContent(review)) {
       return {
         dispatched: false,
@@ -202,6 +219,8 @@ export async function startReview(params) {
     findUsages: (name) => usages[name] ?? [],
     renameCommit: (sha, message, options) => renameCommitMessage(root, sha, message, options),
     listCommits: () => loadLiveCommits(root, scope),
+    listBranches: () => listBranches(root),
+    loadBranchCommits: (branch) => loadBranchCommits(root, branch, scope),
     searchProject: (query) => searchProject(root, query),
     loadCommit: (sha) => loadCommitDiff(root, sha),
     loadRange: (from, to) => loadRangeDiff(root, from, to),
@@ -246,6 +265,39 @@ async function loadLiveCommits(root, scope) {
 
   const pushedSet = new Set(pushedList);
   return commits.map((commit) => toCommitSummary(commit, pushedSet, headSha));
+}
+/** Commits of one branch against its base, for the branch selector in the Commits tab. */
+async function loadBranchCommits(root, branch, scope) {
+  const resolved = await resolveCommit(root, branch);
+  if (!resolved) throw new Error(`Branch not found: ${branch}`);
+
+  const base = await defaultBase(root).catch(() => null);
+  const own = base
+    ? await commitsSinceMergeBase(root, base, branch, GIT.MAX_COMMITS).catch(() => P.EMPTY_ARRAY)
+    : P.EMPTY_ARRAY;
+
+  // A branch that sits at its base (usually the base itself) has no commits of
+  // its own. Showing an empty tab looks broken, so fall back to its recent
+  // history and say plainly that this is what the list is.
+  const commits = own.length
+    ? own
+    : await listCommits(root, { range: branch, limit: GIT.MAX_COMMITS }).catch(() => P.EMPTY_ARRAY);
+
+  const [pushedList, headSha] = await Promise.all([
+    loadPushedShas(root),
+    resolveCommit(root, GIT.DEFAULT_REF),
+  ]);
+  const pushedSet = new Set(pushedList);
+
+  return {
+    branch,
+    base: base ?? null,
+    commits: commits.map((commit) => toCommitSummary(commit, pushedSet, headSha)),
+    // true when the list is the branch's own line of work, false when it is a
+    // fallback history of a branch with nothing of its own.
+    ownCommits: own.length > P.ZERO,
+    current: branch === (scope?.head ?? GIT.DEFAULT_REF),
+  };
 }
 /** Renames the message of the newest local commit; refuses rewritten history by default. */
 async function renameCommitMessage(root, sha, message, { allowPushed = false } = {}) {
