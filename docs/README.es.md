@@ -73,6 +73,36 @@ npm run review -- . --open
 
 La consola muestra una dirección; ábrela en el navegador.
 
+## Con qué asistentes de IA funciona
+
+Hay dos mitades independientes, y solo la segunda depende de un agente concreto.
+
+**La página de revisión funciona con cualquier agente.** La página es un servidor
+HTTP local, lo levanta el servidor MCP, el CLI `pr-review` o cualquier integración
+de editor. Al enviar, siempre se escriben `review.json` y `review.md` junto a los
+artefactos, así que Claude Code, Cursor, Gemini CLI, Copilot, Codex o una simple
+terminal obtienen lo mismo: el agente lee el archivo de revisión y corrige según
+él. En el diálogo de envío elige «solo la ruta de la revisión» y pásale ese
+archivo al agente.
+
+**El envío automático al chat es solo de OpenCode.** Pulsar **Request changes** y
+luego **Send to the AI** entrega la revisión directamente en la conversación
+abierta, sin copiar y pegar. Funciona llamando a la API de OpenCode con el
+identificador de la sesión desde la que se abrió la página. Otros asistentes no
+tienen una API de sesiones equivalente, así que en ellos el envío guarda los
+archivos y avisa «Review saved. Auto-fix not started»: la revisión no se pierde,
+simplemente no inicia el turno por sí sola.
+
+| | Página, comentarios, artefactos | Envío automático al chat |
+| --- | --- | --- |
+| OpenCode | sí | sí |
+| Claude Code | sí | no — leer `review.md` |
+| Cursor, Gemini CLI, Copilot, Codex | sí | no — leer `review.md` |
+| Terminal / revisión manual | sí | no aplica |
+
+O sea, la lista de integraciones de arriba es sobre el editor, no sobre el
+agente: la extensión de VS Code funciona igual con Claude Code que con OpenCode.
+
 ## Cómo lo usa la IA
 
 Si trabajas en un chat con un agente, no escribes nada: solo di
