@@ -64,6 +64,23 @@ npm run review -- . --open
 
 控制台会打印一个地址，在浏览器里打开它。
 
+## 支持哪些 AI 助手
+
+这里有两块互相独立的部分，只有第二块和具体的助手有关。
+
+**审查页面适用于任何助手。** 页面是一个本地 HTTP 服务器，由 MCP 服务器、`pr-review` CLI 或任意编辑器集成启动。提交时总会把 `review.json` 和 `review.md` 写到产物目录里，所以 Claude Code、Cursor、Gemini CLI、Copilot、Codex 或者普通终端拿到的结果都一样：助手读取审查文件，照着改。在提交对话框里选"只给我审查路径"，再把这个文件交给助手。
+
+**自动发送到对话只有 OpenCode 支持。** 按 **Request changes**，再选 **Send to the AI**，审查会直接进入打开的那个对话，不用复制粘贴。它通过 OpenCode 的 API 和打开页面时的会话 ID 来工作。其他助手没有等价的会话 API，所以在它们那里提交会保存文件并提示 "Review saved. Auto-fix not started"——审查不会丢，只是不会自动开始那一轮。
+
+| | 页面、批注、产物 | 自动发送到对话 |
+| --- | --- | --- |
+| OpenCode | 支持 | 支持 |
+| Claude Code | 支持 | 不支持——读 `review.md` |
+| Cursor、Gemini CLI、Copilot、Codex | 支持 | 不支持——读 `review.md` |
+| 终端 / 人工审查 | 支持 | 不适用 |
+
+也就是说，上面那个集成列表说的是编辑器，不是助手：VS Code 扩展配 Claude Code 和配 OpenCode 一样能用。
+
 ## AI 怎么用它
 
 如果你在对话里和助手协作，什么都不用输，直接说：

@@ -73,6 +73,35 @@ npm run review -- . --open
 
 The console prints an address; open it in your browser.
 
+## Which AI assistants work
+
+There are two independent halves, and only the second one is agent-specific.
+
+**The review page works with any agent.** The page is a local HTTP server, and it
+is started by the MCP server, by the `pr-review` CLI, or by any editor
+integration. Saving a review always writes `review.json` and `review.md` next to
+the artifacts — so Claude Code, Cursor, Gemini CLI, Copilot, Codex or a plain
+terminal all get the same result: the agent reads the review file and fixes
+accordingly. Use the "only give me the review path" option in the submit dialog
+and point the agent at that file.
+
+**Auto-dispatch is OpenCode-only.** Pressing **Request changes**, then **Send to
+the AI**, hands the review straight into the running chat, with no copy-paste.
+That works by calling the OpenCode API with the session id of the conversation
+that opened the page. Other assistants have no equivalent session API, so for
+them the submit saves the files and reports "Review saved. Auto-fix not
+started" — the review is never lost, it just doesn't start the turn by itself.
+
+| | Page, comments, artifacts | Auto-dispatch into the chat |
+| --- | --- | --- |
+| OpenCode | yes | yes |
+| Claude Code | yes | no — read `review.md` |
+| Cursor, Gemini CLI, Copilot, Codex | yes | no — read `review.md` |
+| Plain terminal / human review | yes | not applicable |
+
+So the integration list above is about the editor, not about the agent: the
+VS Code extension works with Claude Code just as well as with OpenCode.
+
 ## How the AI uses this
 
 If you work in a chat with an agent, you type nothing — just say:

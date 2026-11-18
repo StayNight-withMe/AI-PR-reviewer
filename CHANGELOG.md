@@ -20,6 +20,8 @@
   `list_review_scope`, `resolve_comments`, `close_review`,
   `list_pull_requests`.
 - Отправка готового ревью в сессию агента одним нажатием.
+- Автоотправка работает только с OpenCode; с другими ассистентами ревью
+  сохраняется в `review.json` и `review.md`, и агент читает его оттуда.
 - Интеграции для VS Code, Visual Studio 2022, JetBrains, Neovim, Sublime Text,
   Emacs, Zed и Helix.
 - Автоматическая проверка GitHub CLI при установке и команда `npm run gh:install`.
