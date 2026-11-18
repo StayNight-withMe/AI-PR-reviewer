@@ -4,7 +4,7 @@
 
 用真正的界面来审查代码：一个本地页面，外观和 GitHub Pull Request 一样。你在这里写批注，批注会直接送到 AI 助手的对话里。
 
-受够在终端里读 `git diff`、再用嘴念修改意见了吗？打开页面，拖动鼠标选中行，写下批注，粘贴截图，然后按 **Request changes**。AI 会接手你的批注并开始改代码。在它工作的时候，你不需要在脑子里记着"还有哪里要改"。
+受够在终端里读 `git diff`、再用嘴念修改意见了吗？打开页面，拖动鼠标选中行，写下批注，粘贴截图，然后按 **Submit review**。AI 会接手你的批注并开始改代码。在它工作的时候，你不需要在脑子里记着"还有哪里要改"。
 
 ![审查页面](screenshot-review.png)
 
@@ -19,7 +19,18 @@
 - 用 `Ctrl+V` 把截图直接贴进批注；
 - 点击名字跳到定义，和 IDE 一样；
 - **Viewed** 标记文件，大分支里不会走丢；
-- 按 **Request changes**，审查交给 AI，它开始修改。
+- 按 **Submit review**，选 **Request changes** 或 **Approve**，审查交给 AI。
+
+## 怎么提交审查
+
+一个按钮打开提交对话框：选结论，写一句备注，再决定要不要交给助手。
+
+| 结论 | 助手做什么 |
+| --- | --- |
+| **Request changes** | 按备注和批注去改 |
+| **Approve** | 读备注，确认工作已通过，不动代码 |
+
+通过也能带备注，所以「整体可以，但这个变量以后改个名」能传达到助手，而不会被当成"要重写代码"。取消勾选 **Send to the AI** 就只保存 `review.json` / `review.md`。
 
 ## 可以审查什么
 
@@ -68,9 +79,9 @@ npm run review -- . --open
 
 这里有两块互相独立的部分，只有第二块和具体的助手有关。
 
-**审查页面适用于任何助手。** 页面是一个本地 HTTP 服务器，由 MCP 服务器、`pr-review` CLI 或任意编辑器集成启动。提交时总会把 `review.json` 和 `review.md` 写到产物目录里，所以 Claude Code、Cursor、Gemini CLI、Copilot、Codex 或者普通终端拿到的结果都一样：助手读取审查文件，照着改。在提交对话框里选"只给我审查路径"，再把这个文件交给助手。
+**审查页面适用于任何助手。** 页面是一个本地 HTTP 服务器，由 MCP 服务器、`pr-review` CLI 或任意编辑器集成启动。提交时总会把 `review.json` 和 `review.md` 写到产物目录里，所以 Claude Code、Cursor、Gemini CLI、Copilot、Codex 或者普通终端拿到的结果都一样：助手读取审查文件，照着改。在提交对话框里取消勾选 **Send to the AI**，再把这个文件交给助手。
 
-**自动发送到对话只有 OpenCode 支持。** 按 **Request changes**，再选 **Send to the AI**，审查会直接进入打开的那个对话，不用复制粘贴。它通过 OpenCode 的 API 和打开页面时的会话 ID 来工作。其他助手没有等价的会话 API，所以在它们那里提交会保存文件并提示 "Review saved. Auto-fix not started"——审查不会丢，只是不会自动开始那一轮。
+**自动发送到对话只有 OpenCode 支持。** 按 **Submit review**，把审查发给助手，审查会直接进入打开的那个对话，不用复制粘贴。它通过 OpenCode 的 API 和打开页面时的会话 ID 来工作。其他助手没有等价的会话 API，所以在它们那里提交会保存文件并提示 "Review saved. Auto-fix not started"——审查不会丢，只是不会自动开始那一轮。
 
 | | 页面、批注、产物 | 自动发送到对话 |
 | --- | --- | --- |

@@ -26,7 +26,22 @@ This tool serves an ordinary web page on your machine:
 - paste a screenshot right into a comment with `Ctrl+V`;
 - click a name to jump to its definition, like in an IDE;
 - **Viewed** marks files so you don't get lost in a large branch;
-- press **Request changes** — the review goes to the agent, which starts fixing.
+- press **Submit review** — pick **Request changes** or **Approve**, and the
+  review goes to the agent.
+
+## Submitting a review
+
+One button opens the submit dialog: choose a verdict, write an optional note,
+and decide whether to send it to the agent.
+
+| Verdict | What the agent does |
+| --- | --- |
+| **Request changes** | fixes what the notes and comments say |
+| **Approve** | reads the note, confirms the work is accepted, and leaves the code alone |
+
+An approval carries a note too, so "LGTM, but rename that variable later" reaches
+the agent without pretending the code needs rewriting. Untick **Send to the AI**
+to only save `review.json` / `review.md`.
 
 ## What you can review
 
@@ -82,11 +97,11 @@ is started by the MCP server, by the `pr-review` CLI, or by any editor
 integration. Saving a review always writes `review.json` and `review.md` next to
 the artifacts — so Claude Code, Cursor, Gemini CLI, Copilot, Codex or a plain
 terminal all get the same result: the agent reads the review file and fixes
-accordingly. Use the "only give me the review path" option in the submit dialog
-and point the agent at that file.
+accordingly. Untick **Send to the AI** in the submit dialog and point the agent
+at that file.
 
-**Auto-dispatch is OpenCode-only.** Pressing **Request changes**, then **Send to
-the AI**, hands the review straight into the running chat, with no copy-paste.
+**Auto-dispatch is OpenCode-only.** Pressing **Submit review**, then sending it
+to the AI, hands the review straight into the running chat, with no copy-paste.
 That works by calling the OpenCode API with the session id of the conversation
 that opened the page. Other assistants have no equivalent session API, so for
 them the submit saves the files and reports "Review saved. Auto-fix not
