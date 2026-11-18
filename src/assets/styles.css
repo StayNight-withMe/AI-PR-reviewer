@@ -746,9 +746,14 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
   background: var(--bg-subtle);
   position: sticky; top: 99px; z-index: 20;
 }
+/* The branch bar sits above the scope bar; both are sticky, so only the upper
+   one may stick and the lower one must stack directly beneath it. */
+.scope-bar + .scope-bar { position: static; }
 .scope-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .scope-label { font-size: 12px; font-weight: 600; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.04em; }
 .scope-bar select.gh-input { max-width: 260px; }
+.dispatch-mode { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.radio-line { display: flex; align-items: center; gap: 6px; cursor: pointer; }
 /** ------------------------------- commits ------------------------------- */
 .commit-item {
   display: flex; align-items: center; gap: 12px; width: 100%;

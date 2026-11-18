@@ -21,6 +21,8 @@ export async function servePage(options) {
     searchProject,
     renameCommit,
     listCommits,
+    listBranches,
+    loadBranchCommits,
     port = SERVER.DEFAULT_PORT,
     host = SERVER.HOST,
     symbols = P.EMPTY_OBJECT,
@@ -40,7 +42,7 @@ export async function servePage(options) {
       const handled = await dispatch({
         request, response, url, html, outputDir, meta, session,
         buildFilePage, readFile, readFiles, loadCommit, loadRange, findUsages, symbols, onReview, onDispatch,
-        searchProject, renameCommit, listCommits,
+        searchProject, renameCommit, listCommits, listBranches, loadBranchCommits,
       });
       if (!handled) {
         send(response, SERVER.STATUS_NOT_FOUND, SERVER.MIME.TEXT, SERVER.DEFAULT_ERROR);
@@ -160,6 +162,16 @@ async function dispatch(ctx) {
     return true;
   }
 
+  if (get && url.pathname === ROUTES.API_BRANCHES) {
+    const branches = ctx.listBranches ? await ctx.listBranches() : P.EMPTY_ARRAY;
+    send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, branches }));
+    return true;
+  }
+
+  if (get && url.pathname === ROUTES.API_BRANCH_COMMITS) {
+    return handleBranchCommits(ctx);
+  }
+
   if (get && url.pathname === ROUTES.API_COMMIT) {
     return handleCommitDiff(ctx);
   }
@@ -247,9 +259,21 @@ async function handleDispatch({ request, response, onDispatch, session }) {
   send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, ...result }));
   return true;
 }
+async function handleBranchCommits({ response, url, loadBranchCommits }) {
+  const branch = url.searchParams.get(QUERY.BRANCH) ?? P.EMPTY;
+  if (!branch || !loadBranchCommits) {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.MISSING_BRANCH }));
+    return true;
+  }
+  try {
+    send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, ...(await loadBranchCommits(branch)) }));
+  } catch (error) {
+    send(response, SERVER.STATUS_ERROR, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: String(error.message) }));
+  }
+  return true;
+}
 async function handleCommitDiff({ response, url, loadCommit }) {
-  const sha = url.searchParams.get(QUERY.SHA) ?? P.EMPTY;
-  if (!sha || !loadCommit) {
+  const sha = url.searchParams.get(QUERY.SHA) ?? P.EMPTY;  if (!sha || !loadCommit) {
     send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.MISSING_SHA }));
     return true;
   }

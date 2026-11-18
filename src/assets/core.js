@@ -6,10 +6,16 @@
 
   var PR = window.PR;
   PR.DATA = DATA;
-  PR.SYMBOLS = DATA.symbols || {};
-  PR.DEFINITIONS = DATA.definitions || {};
-  PR.USAGES = DATA.usages || {};
-  PR.IMPLS = DATA.implementations || {};
+  // A symbol named `constructor`, `toString` or `valueOf` is a real C# name, and a
+  // plain object answers those lookups with Object.prototype members. Every
+  // lookup site expects an array or an entry, so the prototype made
+  // `usages.reduce` throw inside hydration: the section stayed unhighlighted
+  // (plain white code) and never finished loading. Null-prototype maps have no
+  // inherited names at all.
+  PR.SYMBOLS = symbolMap(DATA.symbols);
+  PR.DEFINITIONS = symbolMap(DATA.definitions);
+  PR.USAGES = symbolMap(DATA.usages);
+  PR.IMPLS = symbolMap(DATA.implementations);
   PR.STORAGE_KEY = PR.UI.STORAGE_PREFIX + DATA.id;
   PR.SETTINGS_KEY = PR.UI.SETTINGS_KEY;
 
@@ -71,6 +77,14 @@
     if (!isNaN(n) && n >= PR.state.nextId) PR.state.nextId = n + 1;
   });
 
+  /** A lookup map that never answers with an inherited name. */
+  function symbolMap(source) {
+    var map = Object.create(null);
+    if (!source) return map;
+    Object.keys(source).forEach(function (key) { map[key] = source[key]; });
+    return map;
+  }
+
   PR.els = {
     headerSummary: document.getElementById("header-summary"),
     tabs: document.querySelectorAll(".gh-tab"),
@@ -88,7 +102,6 @@
     actionStatus: document.getElementById("action-status-bar"),
     toast: document.getElementById("toast"),
     dispatchModal: document.getElementById("dispatch-modal"),
-    approveModal: document.getElementById("approve-modal"),
     lightbox: document.getElementById("lightbox"),
     settingsPop: document.getElementById("settings-pop"),
     commitPicker: document.getElementById("commit-picker"),

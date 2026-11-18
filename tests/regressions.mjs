@@ -1037,7 +1037,7 @@ try {
 
   await check("the submit dialog closes on Escape", async () => {
     await js(`(() => {
-      document.getElementById('btn-request-changes').click();
+      document.getElementById('btn-submit').click();
       return true;
     })()`);
 

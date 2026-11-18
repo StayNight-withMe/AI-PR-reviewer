@@ -74,6 +74,20 @@
     }
   }
 
+  /** ------------------------------ highlighting ---------------------------- */
+  /** Highlighted HTML for one line of the file. */
+  function highlightLine(text) {
+    if (window.hljs && DATA.language && DATA.language !== "plaintext") {
+      try {
+        var language = window.hljs.getLanguage(DATA.language) ? DATA.language : null;
+        return window.hljs.highlight(text || " ", language ? { language: language, ignoreIllegals: true } : {}).value || " ";
+      } catch (e) {
+        /** fall through to escaped text */
+      }
+    }
+    return escapeHtml(text) || " ";
+  }
+
   /** -------------------------------- rendering ----------------------------- */
   function render() {
     if (DATA.tooLarge) {
@@ -97,12 +111,12 @@
   }
 
   function renderRow(line) {
-    // no syntax highlighting and no changed-line tint (that belongs to the diff view, not to a file…
+    // Syntax colours, but no changed-line tint: this is a file reader, not a diff.
     return '<tr class="v-row" id="L' + line.number + '" data-line="' + line.number + '">' +
       '<td class="v-gutter"><button class="line-plus js-v-comment" data-line="' + line.number +
         '" title="Add a comment on this line">+</button></td>' +
       '<td class="v-num">' + line.number + "</td>" +
-      '<td class="v-code">' + (escapeHtml(line.text) || " ") + "</td></tr>";
+      '<td class="v-code">' + highlightLine(line.text) + "</td></tr>";
   }
 
   /** Scrolls to and flashes the line named by a `#L123` URL hash. */

@@ -8,7 +8,7 @@ directamente al chat de un agente de IA.
 
 ¿Cansado de leer `git diff` en la terminal y dictar correcciones en voz alta?
 Abre la página, arrastra sobre las líneas, escribe comentarios, pega capturas y
-pulsa **Request changes**. El agente recoge tus notas y empieza a corregir el
+pulsa **Submit review**. El agente recoge tus notas y empieza a corregir el
 código. Mientras trabaja, no tienes que recordar "qué más falta por arreglar".
 
 ![Página de revisión](screenshot-review.png)
@@ -26,7 +26,22 @@ Esta herramienta levanta una página web normal en tu máquina:
 - pega una captura directamente en un comentario con `Ctrl+V`;
 - haz clic en un nombre para ir a su definición, como en un IDE;
 - **Viewed** marca archivos para no perderte en una rama grande;
-- pulsa **Request changes** — la revisión va al agente y empieza a corregir.
+- pulsa **Submit review**: elige **Request changes** o **Approve**, y la
+  revisión va al agente.
+
+## Cómo enviar una revisión
+
+Un botón abre el diálogo de envío: elige el veredicto, escribe una nota opcional y
+decide si se la mandas al agente.
+
+| Veredicto | Qué hace el agente |
+| --- | --- |
+| **Request changes** | corrige lo que dicen la nota y los comentarios |
+| **Approve** | lee la nota, confirma que el trabajo está aceptado y no toca el código |
+
+Una aprobación también lleva nota, así que «vale, pero renombra esa variable
+luego» llega al agente sin fingir que el código hay que reescribirlo. Desmarca
+**Send to the AI** para solo guardar `review.json` / `review.md`.
 
 ## Qué puedes revisar
 
@@ -82,11 +97,11 @@ HTTP local, lo levanta el servidor MCP, el CLI `pr-review` o cualquier integraci
 de editor. Al enviar, siempre se escriben `review.json` y `review.md` junto a los
 artefactos, así que Claude Code, Cursor, Gemini CLI, Copilot, Codex o una simple
 terminal obtienen lo mismo: el agente lee el archivo de revisión y corrige según
-él. En el diálogo de envío elige «solo la ruta de la revisión» y pásale ese
-archivo al agente.
+él. Desmarca **Send to the AI** en el diálogo de envío y pásale ese archivo al
+agente.
 
-**El envío automático al chat es solo de OpenCode.** Pulsar **Request changes** y
-luego **Send to the AI** entrega la revisión directamente en la conversación
+**El envío automático al chat es solo de OpenCode.** Pulsar **Submit review** y
+enviarla al agente la entrega directamente en la conversación
 abierta, sin copiar y pegar. Funciona llamando a la API de OpenCode con el
 identificador de la sesión desde la que se abrió la página. Otros asistentes no
 tienen una API de sesiones equivalente, así que en ellos el envío guarda los

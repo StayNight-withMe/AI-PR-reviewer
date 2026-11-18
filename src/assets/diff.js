@@ -513,9 +513,15 @@
     var target = section || PR.els.diffFiles.querySelector('section[data-path="' + PR.cssEscape(path) + '"]');
     if (!target || target.dataset.hydrated === "1") return;
 
-    PR.getFileData(path).then(function (data) {
+    return PR.getFileData(path).then(function (data) {
       if (!data) return;
-      PR.highlightIn(target, path, data.language);
+      // One malformed line must not cost the whole file its highlighting: the
+      // section then stayed plain white and never finished loading.
+      try {
+        PR.highlightIn(target, path, data.language);
+      } catch (error) {
+        target.dataset.highlightFailed = "1";
+      }
       // hidden can be shown right away.
       PR.applyContextPolicy(target).then(function () {
         // something is actually still hidden.
