@@ -281,13 +281,18 @@ export async function diffUncommitted(repoPath, { includeStaged = true, includeU
   const parts = [];
   const pathspec = [GIT.FLAGS.HEAD, GIT.FLAGS.DOT, ...GIT.EXCLUDE_PATHSPEC];
 
-  if (includeStaged) {
-    const staged = await git(repoPath, [...GIT.ARGS.DIFF_CACHED, GIT.DEFAULT_REF, ...pathspec]);
-    if (staged.ok) parts.push(staged.stdout);
-  }
-
-  const unstaged = await git(repoPath, [...GIT.ARGS.DIFF, ...pathspec]);
-  if (unstaged.ok) parts.push(unstaged.stdout);
+  // One `git diff HEAD` covers the index AND the working tree in a single
+  // patch. Asking for `--cached HEAD` and then `diff` separately listed a file
+  // twice whenever it was staged as new and edited again afterwards: once as
+  // "added", once as "modified". The UI keys sections by path, so both copies
+  // rendered the same lines and the last line of the file appeared twice.
+  // Without staged changes the plain `git diff` (index vs working tree) is the
+  // right question, so the flag is passed as an explicit revision instead.
+  const trackedArgs = includeStaged
+    ? [...GIT.ARGS.DIFF, GIT.DEFAULT_REF, ...pathspec]
+    : [...GIT.ARGS.DIFF, ...pathspec];
+  const tracked = await git(repoPath, trackedArgs);
+  if (tracked.ok) parts.push(tracked.stdout);
 
   if (includeUntracked) {
     const untracked = await git(repoPath, GIT.ARGS.LS_FILES_UNTRACKED);

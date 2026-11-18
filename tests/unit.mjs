@@ -5,6 +5,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { promisify } from "node:util";
 import { parseDiff, diffStats, languageFor, isBinaryPath } from "../src/diff.js";
@@ -703,3 +704,62 @@ test("the tail gap never reaches past the last real line", async () => {
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("a file staged as new and edited again appears once in the uncommitted diff", async () => {
+  // Regression: the patch was built from `diff --cached HEAD` plus a separate
+  // `diff`, so a file that was staged as new and then edited again was listed
+  // twice — once as "added", once as "modified". Both sections carried the same
+  // path, so the review rendered its lines twice and the last line of the file
+  // (a closing brace, in the report) looked duplicated.
+  const root = await mkdtemp(join(tmpdir(), "pr-review-staged-"));
+  const git = (...args) => exec(GIT.BIN, args, { cwd: root });
+
+  try {
+    await git("init", "--initial-branch", "main");
+    await git("config", "user.email", "test@example.com");
+    await git("config", "user.name", "Test");
+    await git("config", "core.autocrlf", "false");
+    await writeFile(join(root, "base.txt"), "base\n");
+    await git("add", "-A");
+    await git("commit", "-m", "init");
+
+    // Staged as a new file, then edited again in the working tree.
+    const content = ["class ApiRoutes", "{", "}"].join("\n");
+    await writeFile(join(root, "ApiRoutes.cs"), `${content}\n`);
+    await git("add", "ApiRoutes.cs");
+    await writeFile(join(root, "ApiRoutes.cs"), `${content}\n// added later\n`);
+
+    const text = await diffUncommitted(root, { includeStaged: true, includeUntracked: true });
+    const files = parseDiff(text).filter((file) => file.path === "ApiRoutes.cs");
+
+    assert.equal(files.length, 1, `the file must appear once, got ${files.length}`);
+    assert.equal(files[0].status, "added");
+    // A single hunk that already contains the later edit.
+    assert.equal(files[0].hunks.length, 1);
+    const rows = files[0].hunks[0].rows.map((row) => row.content);
+    assert.equal(rows.filter((row) => row === "}").length, 1, "the closing brace must not be duplicated");
+    assert.ok(rows.includes("// added later"), "the unstaged edit must be part of the same patch");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("every mapped language is registered in the client bundle", async () => {
+  // Regression: the bundle shipped 14 languages, but the extension map named 25.
+  // A Go, Java, Rust or Vue file then fell back to unhighlighted plain text,
+  // which read as "the highlighting is broken and the code is white".
+  const { DIFF } = await import("../src/config.js");
+  const bundlePath = join(dirname(fileURLToPath(import.meta.url)), "..", "src", "assets", "hljs-bundle.js");
+  const bundle = await readFile(bundlePath, "utf8");
+
+  const registered = new Set(
+    [...bundle.matchAll(/hljs\.registerLanguage\("([^"]+)"/g)].map((match) => match[1]),
+  );
+  const mapped = new Set(Object.values(DIFF.LANGUAGE_BY_EXTENSION));
+  mapped.delete(DIFF.LANGUAGE.PLAINTEXT);
+
+  const missing = [...mapped].filter((language) => !registered.has(language));
+  assert.deepEqual(missing, [], `these languages render as plain text: ${missing.join(", ")}`);
+  assert.ok(registered.size >= 20, `the bundle registers only ${registered.size} languages`);
+});
+

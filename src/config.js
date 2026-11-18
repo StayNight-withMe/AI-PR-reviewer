@@ -144,6 +144,7 @@ export const SERVER = {
   MISSING_PATH: "Missing ?path=",
   MISSING_SHA: "Missing sha",
   MISSING_RANGE: "Missing from/to",
+  MISSING_BRANCH: "Missing branch",
   MISSING_NAME: "Missing name",
   MISSING_QUERY: "Missing ?q=",
   MISSING_COMMIT_MESSAGE: "Missing sha or message",
@@ -183,6 +184,8 @@ export const ROUTES = {
   API_DISPATCH: "/api/dispatch",
   API_RESULT: "/api/result",
   API_COMMITS: "/api/commits",
+  API_BRANCHES: "/api/branches",
+  API_BRANCH_COMMITS: "/api/branch-commits",
   API_COMMIT: "/api/commit",
   API_COMMIT_RENAME: "/api/commit/rename",
   API_RANGE: "/api/range",
@@ -199,6 +202,7 @@ export const QUERY = {
   TO: "to",
   NAME: "name",
   Q: "q",
+  BRANCH: "branch",
 };
 /** ---------------------------------- git ---------------------------------- */
 export const GIT = {
@@ -492,6 +496,9 @@ export const DIFF = {
     ts: "typescript", tsx: "typescript", js: "javascript", jsx: "javascript", mjs: "javascript", cjs: "javascript",
     json: "json", jsonc: "json", yml: "yaml", yaml: "yaml", toml: "ini", ini: "ini",
     md: "markdown", xml: "xml", html: "xml", css: "css", scss: "scss", less: "less",
+    // A .vue file is markup with script and style blocks; XML colours the markup
+    // instead of leaving the whole file as plain white text.
+    vue: "xml", svelte: "xml",
     sh: "bash", bash: "bash", ps1: "powershell", bat: "dos", cmd: "dos",
     sql: "sql", py: "python", rb: "ruby", go: "go", rs: "rust", java: "java", kt: "kotlin",
     php: "php", dockerfile: "dockerfile", env: "properties", gitignore: "properties",

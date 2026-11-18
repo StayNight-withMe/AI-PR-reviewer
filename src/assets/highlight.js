@@ -4,6 +4,11 @@
 
   var PR = window.PR;
 
+  /** Examines with an unknown name may answer with an inherited member; callers need an array. */
+  function listOf(value) {
+    return Array.isArray(value) ? value : [];
+  }
+
   /** hljs classes whose text must never become a link (keywords, strings, comments...). */
   var SKIP_HLJS = /hljs-(keyword|string|comment|number|literal|meta|attr|built_in|symbol|bullet|link)/;
 
@@ -196,7 +201,7 @@
   /** Used = appears at least once outside its own declaration line. */
   function isUsed(name) {
     var usages = PR.USAGES[name];
-    if (!usages || !usages.length) return true;
+    if (!Array.isArray(usages) || !usages.length) return true;
     // unknown: keep the old behaviour
     var total = usages.reduce(function (sum, usage) { return sum + usage.count; }, 0);
     return total > 1 || usages.length > 1;
@@ -272,10 +277,11 @@
     a.dataset.name = name;
     a.setAttribute("href", PR.fileUrl(target.path, target.line));
 
-    var usages = PR.USAGES[name] || [];
-    var total = usages.reduce(function (sum, usage) { return sum + usage.count; }, 0);
+    var usages = PR.USAGES[name];
+    var list = Array.isArray(usages) ? usages : [];
+    var total = list.reduce(function (sum, usage) { return sum + usage.count; }, 0);
     a.setAttribute("title", total
-      ? name + " — used " + total + " time(s) in " + usages.length + " file(s)"
+      ? name + " — used " + total + " time(s) in " + list.length + " file(s)"
       : name + " — " + (target.kind || "symbol") + " " + target.path + ":" + target.line);
     a.textContent = name;
     return a;
@@ -286,7 +292,7 @@
     PR.hideSymbolPopover();
 
     var def = PR.SYMBOLS[name];
-    var impls = PR.IMPLS[name] || [];
+    var impls = listOf(PR.IMPLS[name]);
     var target = PR.state.settings.treeOpen === PR.TREE_OPEN.NEW ? PR.UI.TARGET_NEW : PR.UI.TARGET_SELF;
 
     var pop = document.createElement("div");
@@ -342,7 +348,7 @@
     var el = pop.querySelector(".js-usage");
     if (!el) return;
 
-    var usages = PR.USAGES[name] || [];
+    var usages = listOf(PR.USAGES[name]);
     var current = pop.dataset.currentPath || PR.P_EMPTY;
 
     if (!usages.length) {
