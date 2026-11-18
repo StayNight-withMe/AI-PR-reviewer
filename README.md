@@ -1,122 +1,168 @@
 # AI PR Reviewer
-Ревью кода с удобным интерфейсом: локальная страница в стиле GitHub Pull Request,
-куда можно писать замечания, и откуда они сразу уходят в чат с ИИ-агентом.
-Устал читать `git diff` в терминале и диктовать правки голосом? Здесь ты
-открываешь страницу, мышкой выделяешь строки, пишешь комментарии, вставляешь
-скриншоты — и жмёшь **Request changes**. Нейросеть забирает твои замечания и
-садится править код. Пока она работает, ты не держишь в голове список
-«что ещё надо поправить».
-![Страница ревью](docs/screenshot-review.png)
-## Зачем это нужно
-Обычный diff в терминале показывает, что изменилось, и на этом всё. В нём
-неудобно оставлять замечания, невозможно приложить скриншот к строке, и он
-ничего не умеет передавать дальше.
-Эта утилита поднимает на твоей машине обычную веб-страницу:
-- дерево файлов, подсветка синтаксиса, номера строк;
-- выделяешь диапазон строк мышкой и пишешь к нему комментарий;
-- скриншот вставляешь прямо в комментарий через `Ctrl+V`;
-- кликаешь по имени — переходишь к его определению, как в IDE;
-- **Viewed** отмечает файлы, чтобы не потеряться в большой ветке;
-- нажимаешь **Request changes** — ревью уходит агенту, и он начинает правки.
-## Что можно ревьюить
-| Режим | Что показывает |
+
+**English** · [Русский](docs/README.ru.md) · [Español](docs/README.es.md) · [中文](docs/README.zh.md)
+
+Review code in a real interface: a local page in the style of a GitHub Pull
+Request, where you leave comments and from which they go straight to an AI
+agent's chat.
+
+Tired of reading `git diff` in a terminal and dictating fixes out loud? Open the
+page, drag over lines, write comments, paste screenshots, and press **Request
+changes**. The agent picks up your notes and starts fixing code. While it works,
+you don't keep a mental list of "what else needs fixing".
+
+![Review page](docs/screenshot-review.png)
+
+## Why this exists
+
+A plain diff in a terminal shows what changed and stops there. It is awkward for
+leaving notes, impossible to attach a screenshot to a line, and it can't hand
+anything on.
+
+This tool serves an ordinary web page on your machine:
+
+- file tree, syntax highlighting, line numbers;
+- drag over a range of lines and comment on it;
+- paste a screenshot right into a comment with `Ctrl+V`;
+- click a name to jump to its definition, like in an IDE;
+- **Viewed** marks files so you don't get lost in a large branch;
+- press **Request changes** — the review goes to the agent, which starts fixing.
+
+## What you can review
+
+| Mode | What it shows |
 | --- | --- |
-| `uncommitted` | то, что ещё не закоммичено (включая новые файлы) |
-| `branch` | всю ветку против базовой — по умолчанию |
-| `range` | выбранный диапазон коммитов |
-| `commits` | конкретные коммиты одним набором изменений |
-| `all` | всю историю ветки |
-| `pr` | настоящий пул-реквест с GitHub |
-Режим `pr` — через GitHub CLI. Он сам скачает нужные коммиты в служебную
-ссылку, твою ветку не тронет и рабочие файлы не изменит.
-## Установка
-Нужен Node.js 20 или новее.
+| `uncommitted` | what is not committed yet (new files included) |
+| `branch` | the whole branch against its base — the default |
+| `range` | a chosen range of commits |
+| `commits` | specific commits as one change set |
+| `all` | the full history of the branch |
+| `pr` | a real pull request from GitHub |
+
+The `pr` mode goes through the GitHub CLI. It fetches the needed commits into a
+private ref, never touches your branch, and never changes working files.
+
+## Installation
+
+Requires Node.js 20 or newer.
+
 ```bash
 git clone https://github.com/StayNight-withMe/AI-PR-reviewer.git
 cd AI-PR-reviewer
 npm install
 ```
-`npm install` заодно проверит наличие `gh` — если его нет, просто подскажет,
-как поставить. Для локальных ревью он не нужен.
-## Запуск
+
+`npm install` also checks for `gh` — if it's missing, it tells you how to
+install it. Local reviews don't need it.
+
+## Running
+
 ```bash
-# ревью текущей ветки
+# review the current branch
 npm run review -- .
-# только незакоммиченное
+
+# uncommitted changes only
 npm run review -- . --mode uncommitted
-# пул-реквест с GitHub
+
+# a pull request from GitHub
 npm run review -- . --mode pr --pr 42
-# сразу открыть браузер
+
+# open the browser right away
 npm run review -- . --open
 ```
-В консоли появится адрес, открывай его в браузере.
-## Как этим пользуется ИИ
-Если ты работаешь в чате с агентом, ничего вводить не надо — просто скажи:
-> Посмотри мои незакоммиченные изменения
-или
-> Открой PR #42 из owner/repo и проверь его
-Агент сам вызовет нужные инструменты:
-| Инструмент | Что делает |
+
+The console prints an address; open it in your browser.
+
+## How the AI uses this
+
+If you work in a chat with an agent, you type nothing — just say:
+
+> Look at my uncommitted changes
+
+or
+
+> Open PR #42 from owner/repo and review it
+
+The agent calls the tools itself:
+
+| Tool | What it does |
 | --- | --- |
-| `list_pull_requests` | показывает открытые PR, чтобы выбрать |
-| `start_review` | открывает страницу ревью |
-| `await_review` | ждёт, пока ты нажмёшь Submit, и забирает замечания |
-| `get_review` | читает уже сохранённое ревью |
-| `list_review_scope` | показывает ветки и коммиты |
-| `resolve_comments` | отмечает замечания исправленными |
-| `close_review` | закрывает страницу |
-## Замечания и их статус
-У каждого комментария есть **Resolve** — «это уже исправлено». Решённые
-комментарии остаются на месте, но гаснут и перечёркиваются, а счётчик в шапке
-показывает только открытые. Агент может делать то же самое сам: после правки
-он отмечает закрытые замечания.
-## Настройки
-Тема, раскладка diff, ширина дерева, перенос строк, отступы — всё
-запоминается на этом компьютере и переживает новое ревью и перезапуск.
-## Где лежат артефакты
-Ревью складывает `review.json`, `review.md` и картинки во временную папку
-системы, а не в проект. Рабочая копия остаётся чистой, `.gitignore` править не
-надо. Хочешь другое место — задай `PR_REVIEW_ARTIFACTS_DIR`.
-## Интеграции с редакторами
-| Редактор | Как подключить |
+| `list_pull_requests` | lists open PRs so you can pick one |
+| `start_review` | opens the review page |
+| `await_review` | waits for you to press Submit and collects the notes |
+| `get_review` | reads an already saved review |
+| `list_review_scope` | lists branches and commits |
+| `resolve_comments` | marks notes as fixed |
+| `close_review` | closes the page |
+
+## Comments and their state
+
+Every comment has a **Resolve** button — "this is fixed". Resolved comments stay
+in place but fade and get struck through, and the header counter shows only open
+ones. The agent can do the same thing itself: after a fix it marks the closed
+notes.
+
+## Settings
+
+Theme, diff layout, tree width, line wrapping, indentation — everything is
+remembered on this machine and survives a new review and a restart.
+
+## Where artifacts live
+
+A review writes `review.json`, `review.md` and images to the system temp
+directory, not into the project. The working copy stays clean and you don't need
+to touch `.gitignore`. Want another place — set `PR_REVIEW_ARTIFACTS_DIR`.
+
+## Editor integrations
+
+| Editor | How to connect |
 | --- | --- |
-| VS Code | расширение в `editors/vscode` |
-| Visual Studio 2022 | плагин в `editors/visualstudio` |
-| JetBrains | плагин в `editors/jetbrains` |
-| Neovim | Lua-модуль в `editors/neovim` |
-| Sublime Text | плагин в `editors/sublime` |
-| Emacs | пакет в `editors/emacs` |
-| Zed | MCP-сервер + task, `editors/zed` |
-| Helix | pipe-команда + MCP, `editors/helix` |
-Подробности — в `editors/README.md`. Все интеграции — тонкие обёртки над одним
-движком `src/cli.js`.
-## Разработка
+| VS Code | extension in `editors/vscode` |
+| Visual Studio 2022 | plugin in `editors/visualstudio` |
+| JetBrains | plugin in `editors/jetbrains` |
+| Neovim | Lua module in `editors/neovim` |
+| Sublime Text | plugin in `editors/sublime` |
+| Emacs | package in `editors/emacs` |
+| Zed | MCP server + task, `editors/zed` |
+| Helix | pipe command + MCP, `editors/helix` |
+
+Details are in `editors/README.md`. Every integration is a thin wrapper over one
+engine, `src/cli.js`.
+
+## Development
+
 ```bash
-npm test                 # юнит-тесты
-npm run test:pr          # PR-режим офлайн, без сети
-npm run test:pr:ui       # PR-страница в браузере
-npm run test:all         # всё
+npm test                 # unit tests
+npm run test:pr          # PR mode offline, no network
+npm run test:pr:ui       # PR page in a browser
+npm run test:all         # everything
 ```
-Тесты для PR-режима работают на поддельном `gh` и локальном репозитории, так
-что им не нужны ни сеть, ни аккаунт GitHub.
-## Устройство проекта
+
+The PR-mode tests run against a fake `gh` and a local repository, so they need
+neither a network nor a GitHub account.
+
+## Project layout
+
 ```
 src/
-  config.js          все константы: маршруты, аргументы git, размеры UI
-  cli.js             лаунчер, который запускают редакторы
-  index.js           MCP-сервер и его инструменты
-  core.js            сборка ревью: scope -> diff -> страница
-  github.js          пул-реквесты через gh
-  git.js             работа с git
-  diff.js            разбор unified diff
-  render.js          HTML страницы и Markdown-экспорт
-  server.js          HTTP-сервер страницы
-  settings-store.js  настройки интерфейса
-  artifacts.js       пути к артефактам
-  assets/            клиентский код страницы
-  models/            модели данных: scope, дерево, диффы, коммиты
+  config.js          every constant: routes, git arguments, UI sizes
+  cli.js             launcher that editors run
+  index.js           MCP server and its tools
+  core.js            builds a review: scope -> diff -> page
+  github.js          pull requests through gh
+  git.js             git access
+  diff.js            unified diff parser
+  render.js          page HTML and Markdown export
+  server.js          HTTP server for the page
+  settings-store.js  UI settings
+  artifacts.js       artifact paths
+  assets/            client-side page code
+  models/            data models: scope, tree, diffs, commits
 ```
-Правило проекта: никаких магических литералов в коде — всё в `config.js`, а
-клиентские дубликаты в `assets/constants.js`.
-## Лицензия
-MIT. Делай что хочешь, только не жалуйся, если что-то сломается.
+
+Project rule: no magic literals in code — everything lives in `config.js`, with
+client copies in `assets/constants.js`.
+
+## License
+
+MIT. Do what you want, just don't complain if something breaks.
