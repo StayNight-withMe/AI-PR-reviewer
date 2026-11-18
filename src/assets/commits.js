@@ -354,6 +354,65 @@
   };
 
   /** ------------------------------- scope bar ------------------------------ */
+  /** Fills the branch selector and keeps it in sync with the reviewed scope. */
+  PR.loadBranches = function () {
+    var select = document.getElementById(PR.IDS.BRANCH_SELECT);
+    if (!select) return Promise.resolve();
+
+    return fetch(PR.API.BRANCHES)
+      .then(function (response) { return response.json(); })
+      .then(function (result) {
+        if (!result || !result.ok || !Array.isArray(result.branches)) return;
+
+        var current = PR.DATA.branch;
+        select.innerHTML = result.branches.map(function (branch) {
+          return '<option value="' + PR.escapeHtml(branch) + '"' +
+            (branch === current ? " selected" : "") + ">" + PR.escapeHtml(branch) + "</option>";
+        }).join("");
+        PR.syncBranchHint();
+      })
+      .catch(function () {
+        select.innerHTML = '<option value="' + PR.escapeHtml(PR.DATA.branch || "") + '">' +
+          PR.escapeHtml(PR.DATA.branch || "unknown") + "</option>";
+      });
+  };
+
+  /** Shows which branch the commit list belongs to. */
+  PR.syncBranchHint = function () {
+    var hint = document.getElementById(PR.IDS.BRANCH_HINT);
+    var select = document.getElementById(PR.IDS.BRANCH_SELECT);
+    if (!hint) return;
+
+    var branch = select ? select.value : PR.DATA.branch;
+    var isCurrent = !branch || branch === PR.DATA.branch;
+    hint.textContent = isCurrent ? "the branch under review" : "not under review — browsing only";
+  };
+
+  /** Loads the commits of the chosen branch into the list. */
+  PR.changeBranch = function (branch) {
+    if (!branch) return Promise.resolve();
+    PR.syncBranchHint();
+    PR.setHtml(PR.els.commitList, '<div class="loading-row">Loading commits…</div>');
+
+    return fetch(PR.API.BRANCH_COMMITS + "?" + PR.QUERY_BRANCH + "=" + encodeURIComponent(branch))
+      .then(function (response) { return response.json(); })
+      .then(function (result) {
+        if (!result || !result.ok) throw new Error((result && result.error) || "Failed");
+        PR.state.commits = result.commits || [];
+        PR.state.commitSelection = [];
+        PR.renderCommits();
+        // A branch with no commits of its own shows its recent history instead;
+        // say so, otherwise an empty-looking list reads as a bug.
+        if (result.commits && result.commits.length && result.ownCommits === false) {
+          PR.toast("No commits of its own — showing the latest history of " + branch);
+        }
+      })
+      .catch(function (error) {
+        PR.setHtml(PR.els.commitList, '<div class="empty-state" style="padding:24px">Could not load ' +
+          PR.escapeHtml(branch) + ": " + PR.escapeHtml(error.message) + "</div>");
+      });
+  };
+
   PR.syncScopeVisibility = function () {
     var mode = document.getElementById(PR.IDS.SCOPE_MODE);
     var isRange = mode && mode.value === PR.MODE.RANGE;
