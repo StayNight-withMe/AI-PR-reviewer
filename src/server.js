@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { APP, ARTIFACTS, P, QUERY, ROUTES, SERVER } from "./config.js";
+import { APP, ARTIFACTS, P, QUERY, REVIEW_STATE, REVIEW_STATE_LABEL, ROUTES, SERVER } from "./config.js";
 import { readSettings, writeSettings } from "./settings-store.js";
 const HEADER_CONTENT_TYPE = SERVER.HEADER_CONTENT_TYPE;
 const HEADER_CACHE_CONTROL = SERVER.HEADER_CACHE_CONTROL;
@@ -54,7 +54,11 @@ export async function servePage(options) {
         response.destroy();
         return;
       }
-      send(response, SERVER.STATUS_ERROR, SERVER.MIME.JSON, JSON.stringify({
+      // A body the caller sent wrongly is the caller's error, not ours.
+      const status = error?.message === SERVER.BODY_TOO_LARGE
+        ? SERVER.STATUS_BAD_REQUEST
+        : SERVER.STATUS_ERROR;
+      send(response, status, SERVER.MIME.JSON, JSON.stringify({
         ok: false,
         error: String(error?.message ?? error),
       }));
@@ -249,7 +253,12 @@ function handlePaths({ response, outputDir }) {
   return true;
 }
 async function handleReviewSubmit({ request, response, outputDir, meta, onReview, session }) {
-  const review = JSON.parse(await readBody(request));
+  const review = normalizeReview(await readBody(request));
+  if (!review) {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.INVALID_BODY }));
+    return true;
+  }
+
   const savedImages = await persistImages(outputDir, review);
   const result = await onReview(review, meta);
 
@@ -258,8 +267,69 @@ async function handleReviewSubmit({ request, response, outputDir, meta, onReview
   session.resolveSubmitted({ ...result, review });
   return true;
 }
+/**
+ * The submitted review, with every field the server relies on in a known shape.
+ * The body comes from the browser: a field of the wrong type used to crash the
+ * submit with a 500, and a stored `null` comment broke the next page load.
+ * Returns null when the body is not JSON at all.
+ */
+export function normalizeReview(raw) {
+  let payload;
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  const review = payload && typeof payload === "object" && !Array.isArray(payload) ? payload : {};
+
+  return {
+    ...review,
+    reviewState: Object.hasOwn(REVIEW_STATE_LABEL, review.reviewState ?? P.EMPTY)
+      ? review.reviewState
+      : REVIEW_STATE.COMMENT,
+    reviewBody: clampText(review.reviewBody, SERVER.MAX_REVIEW_BODY_CHARS),
+    comments: toComments(review.comments),
+    noteImages: toImages(review.noteImages),
+    viewedFiles: Array.isArray(review.viewedFiles)
+      ? review.viewedFiles.filter((path) => typeof path === P.TYPE_STRING)
+      : P.EMPTY_ARRAY,
+    summary: review.summary && typeof review.summary === "object" ? review.summary : undefined,
+  };
+}
+function clampText(value, max) {
+  const text = typeof value === P.TYPE_STRING ? value : P.EMPTY;
+  return text.length > max ? text.slice(P.ZERO, max) : text;
+}
+/** The comments of a submit: objects with a path that is a non-empty string. */
+export function toComments(comments) {
+  if (!Array.isArray(comments)) return P.EMPTY_ARRAY;
+
+  return comments
+    .filter((comment) => comment && typeof comment === "object" && typeof comment.path === P.TYPE_STRING && comment.path)
+    .slice(P.ZERO, SERVER.MAX_COMMENTS_PER_REVIEW)
+    .map((comment) => ({
+      ...comment,
+      body: typeof comment.body === P.TYPE_STRING ? comment.body : P.EMPTY,
+      images: toImages(comment.images),
+    }));
+}
+/** Screenshots of a submit: only entries that actually carry data. */
+export function toImages(images) {
+  if (!Array.isArray(images)) return P.EMPTY_ARRAY;
+
+  return images
+    .filter((image) => image && typeof image === "object" && typeof image.dataUrl === P.TYPE_STRING)
+    .slice(P.ZERO, SERVER.MAX_IMAGES_PER_REVIEW);
+}
 async function handleDispatch({ request, response, onDispatch, session }) {
-  const payload = JSON.parse(await readBody(request));
+  let payload;
+  try {
+    payload = JSON.parse(await readBody(request));
+  } catch {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.INVALID_BODY }));
+    return true;
+  }
+
   session.lastDispatch = payload;
   const result = onDispatch ? await onDispatch(payload) : { ok: true };
   send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, ...result }));
@@ -344,7 +414,7 @@ async function handleThreadsSave({ request, response, saveThreads }) {
     return true;
   }
 
-  const comments = Array.isArray(payload?.comments) ? payload.comments : P.EMPTY_ARRAY;
+  const comments = toComments(payload?.comments);
   try {
     const saved = await saveThreads(comments);
     send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, saved }));
@@ -394,19 +464,27 @@ function readBody(request) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let size = P.ZERO;
+    let tooLarge = false;
 
     request.on("data", (chunk) => {
+      if (tooLarge) return;
       size += chunk.length;
+      // Keep draining the request instead of cutting the socket: the answer can
+      // still be a readable 400 rather than a reset connection.
       if (size > SERVER.MAX_BODY_BYTES) {
+        tooLarge = true;
         reject(new Error(SERVER.BODY_TOO_LARGE));
-        request.destroy();
         return;
       }
       chunks.push(chunk);
     });
 
-    request.on("end", () => resolve(Buffer.concat(chunks).toString(SERVER.CHARSET)));
-    request.on("error", reject);
+    request.on("end", () => {
+      if (!tooLarge) resolve(Buffer.concat(chunks).toString(SERVER.CHARSET));
+    });
+    request.on("error", (error) => {
+      if (!tooLarge) reject(error);
+    });
   });
 }
 function delay(ms, value) {

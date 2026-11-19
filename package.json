@@ -43,10 +43,11 @@
     "gh:check": "node scripts/ensure-gh.mjs --check",
     "gh:install": "node scripts/ensure-gh.mjs --install",
     "postinstall": "node scripts/ensure-gh.mjs --check --never-fail",
-    "test:all": "npm run test && npm run test:session && npm run test:session:isolation && npm run test:cli && npm run test:synthetic && npm run test:page && npm run test:mcp && npm run test:github && npm run test:pr && npm run test:publish && npm run test:committed && npm run test:threads && npm run test:pr:ui && npm run test:pr:flow && npm run test:artifacts && npm run test:header:ui && npm run test:resolve && npm run test:defects && npm run test:rename && npm run test:path-guard && npm run test:arg-guard && npm run test:note-images && npm run test:settings && npm run test:editors && npm run test:ui:regressions && npm run test:ui:suite && npm run test:ui && npm run test:ui:extra",
+    "test:all": "npm run test && npm run test:session && npm run test:session:isolation && npm run test:cli && npm run test:synthetic && npm run test:page && npm run test:mcp && npm run test:github && npm run test:pr && npm run test:publish && npm run test:committed && npm run test:threads && npm run test:pr:ui && npm run test:pr:flow && npm run test:artifacts && npm run test:header:ui && npm run test:resolve && npm run test:defects && npm run test:bad-input && npm run test:rename && npm run test:path-guard && npm run test:arg-guard && npm run test:note-images && npm run test:settings && npm run test:editors && npm run test:ui:regressions && npm run test:ui:suite && npm run test:ui && npm run test:ui:extra",
     "test:arg-guard": "node tests/arg-guard.mjs",
     "test:path-guard": "node tests/path-guard.mjs",
-    "test:rename": "node tests/commit-rename.mjs"
+    "test:rename": "node tests/commit-rename.mjs",
+    "test:bad-input": "node tests/bad-input.mjs"
   },
   "engines": {
     "node": ">=20"

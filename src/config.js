@@ -186,6 +186,10 @@ export const SERVER = {
   NOTE_IMAGE_PREFIX: "note",
   INVALID_BODY: "Invalid JSON body",
   MISSING_FILES: "Missing paths",
+  /** Bounds on what a single submit may carry, so one request cannot fill the disk. */
+  MAX_COMMENTS_PER_REVIEW: 500,
+  MAX_IMAGES_PER_REVIEW: 20,
+  MAX_REVIEW_BODY_CHARS: 100_000,
   PORT_MIN: 0,
   PORT_MAX: 65535,
   KEEPALIVE_MS: 60_000,
