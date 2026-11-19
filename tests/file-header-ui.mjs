@@ -106,8 +106,12 @@ try {
   });
 
   await check("a file with hidden regions offers Expand all inside the menu", async () => {
-    // Force folding: a low threshold makes every gap a candidate.
-    await driver.executeScript(`(PR.state.settings.contextCollapseLines = 1, PR.renderFileList(), true)`);
+    // Force folding: a low threshold makes every gap a candidate. Large-file
+    // deferring is turned off so the pick below cannot land on a placeholder
+    // that has no hunks at all.
+    await driver.executeScript(
+      `(PR.state.settings.contextCollapseLines = 1, PR.state.settings.largeFileLines = 0, PR.renderFileList(), true)`,
+    );
     await PAUSE(2500);
 
     const opened = await driver.executeScript(`return (function(){
