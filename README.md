@@ -57,6 +57,28 @@ to only save `review.json` / `review.md`.
 The `pr` mode goes through the GitHub CLI. It fetches the needed commits into a
 private ref, never touches your branch, and never changes working files.
 
+## Publishing a review to GitHub
+
+A pull request reviewed locally can be sent back as a real GitHub review: the
+verdict plus every inline comment, attached to its file and line. Nothing
+is copied by hand and the web UI is not needed.
+
+```bash
+npm run review -- . --mode pr --pr 42
+```
+
+Review the changes, leave comments, press **Submit review** and then ask the
+agent to publish it, or call the tool directly:
+
+| Tool | What it does |
+| --- | --- |
+| `publish_review` | posts the review to its PR: verdict, body and inline comments |
+
+The verdict travels as it does on GitHub: **Approve**, **Request changes** or
+**Comment**. A comment with no line (a whole-file remark) is moved into the
+review body, because GitHub only attaches comments to lines. Comments marked
+resolved locally are still published — the local state stays local.
+
 ## Installation
 
 Requires Node.js 20 or newer.
@@ -135,6 +157,7 @@ The agent calls the tools itself:
 | `start_review` | opens the review page |
 | `await_review` | waits for you to press Submit and collects the notes |
 | `get_review` | reads an already saved review |
+| `publish_review` | posts the review back to its GitHub pull request |
 | `list_review_scope` | lists branches and commits |
 | `resolve_comments` | marks notes as fixed |
 | `close_review` | closes the page |
