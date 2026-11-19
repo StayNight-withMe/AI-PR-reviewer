@@ -340,7 +340,11 @@ export async function buildPage(meta, files, stats, allFiles, comments, reviewSt
         </span>
       </label>
       <p class="small muted" style="margin:14px 0 6px">Note (optional)</p>
-      <textarea class="gh-textarea" id="review-body" placeholder="Anything the AI should know about this review…"></textarea>
+      <div class="note-wrap" id="review-note-wrap">
+        <div class="editor-attach js-note-chips" id="review-note-chips"></div>
+        <textarea class="gh-textarea" id="review-body" placeholder="Anything the AI should know about this review… (paste a screenshot with Ctrl+V)"></textarea>
+      </div>
+      <div class="small muted" style="margin-top:4px">Ctrl+V / drag-drop to attach a screenshot to the note.</div>
       <div class="dispatch-mode" style="margin-top:14px">
         <label class="radio-line">
           <input type="checkbox" id="dispatch-send" checked>
@@ -473,6 +477,10 @@ export function buildMarkdown(meta, review) {
     lines.push(P.EMPTY);
     lines.push(review.reviewBody);
   }
+  // Screenshots attached to the note: saved next to review.json, so the path stays relative.
+  for (const image of review.noteImages ?? P.EMPTY_ARRAY) {
+    if (image.file) lines.push(P.EMPTY, `![attachment](${image.file})`);
+  }
 
   lines.push(P.EMPTY);
   lines.push("## Inline comments");
@@ -492,7 +500,10 @@ export function buildMarkdown(meta, review) {
             ? `${comment.lineStart}${P.DASH}${comment.lineEnd}`
             : `${comment.lineStart}`;
           const resolved = comment.resolved === true ? " ~~resolved~~" : P.EMPTY;
-          lines.push(`- **line ${range}** (${side}): ${comment.body}${resolved}`);
+          const outdated = comment.outdated === true
+            ? ` _(outdated: ${comment.outdatedReason ?? P.EMPTY})_`
+            : P.EMPTY;
+          lines.push(`- **line ${range}** (${side}): ${comment.body}${resolved}${outdated}`);
           for (const image of comment.images ?? P.EMPTY_ARRAY) {
             if (image.file) lines.push(`  ![attachment](${image.file})`);
           }

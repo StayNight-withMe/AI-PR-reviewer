@@ -15,6 +15,7 @@ import { buildProjectTree } from "./models/tree.js";
 import { toDiffSet, toFileModel } from "./models/diffset.js";
 import { attachGapMetadata } from "./models/gaps.js";
 import { readReviewOwner, writeReviewOwner } from "./models/owner.js";
+import { markOutdated, readThreads, withSnippets, writeThreads } from "./models/threads.js";
 import { buildDispatchMessage, buildDispatchPrompt, currentSessionId, dispatchToSession, resolveSessionId, writeDispatchPrompt } from "./dispatch.js";
 export { MODE_LABELS, repoLabel };
 /** Reason returned when a submit carries no comments and no summary. */
@@ -121,8 +122,6 @@ export async function startReview(params) {
 
   const collapsed = files.filter((f) => f.status === DIFF.STATUS.DELETED).map((f) => f.path);
 
-  const onReview = async (review, reviewMeta) =>
-    writeReviewFiles(outputDir, reviewMeta, review, buildMarkdown(reviewMeta, review));
   // Deleted files may be absent from the working tree AND from HEAD (deleted inside a range), so…
   const fallbackRefs = [GIT.DEFAULT_REF, meta.base].filter(Boolean);
   // A PR is reviewed at a commit that is usually not checked out: content, highlighting and…
@@ -136,6 +135,28 @@ export async function startReview(params) {
   const contentOptions = reviewRange
     ? { refs: fallbackRefs, range: reviewRange }
     : { refs: fallbackRefs };
+
+  // Comments belong to the code they were written on, not to one page load: an
+  // id changes with the diff, so keeping them only in the browser lost every
+  // comment as soon as the review was reopened after a fix.
+  const reviewedLines = (filePath) => readFileForViewer(root, filePath, contentOptions);
+  // "Out of date" follows the working tree, so an uncommitted edit counts too.
+  const currentLines = (filePath) => readFileForViewer(root, filePath, { refs: fallbackRefs });
+  const stored = params.comments
+    ? { comments: params.comments }
+    : await readThreads(root, meta);
+  const comments = stored.comments.length
+    ? await markOutdated(await withSnippets(stored.comments, reviewedLines), currentLines)
+    : P.EMPTY_ARRAY;
+
+  const onReview = async (review, reviewMeta) => {
+    // Store what the comment was written on before the files are overwritten,
+    // so a later review can tell a moved comment from an edited line.
+    const withAnchors = await withSnippets(review.comments ?? P.EMPTY_ARRAY, reviewedLines);
+    const saved = { ...review, comments: withAnchors };
+    await writeThreads(root, reviewMeta ?? meta, withAnchors);
+    return writeReviewFiles(outputDir, reviewMeta, saved, buildMarkdown(reviewMeta, saved));
+  };
 
   /** A review with no comments and no summary has nothing for the agent to do. */
   function hasReviewContent(review) {
@@ -195,7 +216,7 @@ export async function startReview(params) {
     };
   };
 
-  const html = await buildPage(meta, files, stats, allFiles, params.comments ?? [], params.reviewState ?? "COMMENT", {
+  const html = await buildPage(meta, files, stats, allFiles, comments, params.reviewState ?? "COMMENT", {
     symbols,
     definitions: symbolIndex.definitions,
     usages,
@@ -220,6 +241,9 @@ export async function startReview(params) {
     readFiles: (paths) => readFilesForHighlight(root, paths, reviewRange
       ? { refs: fallbackRefs, preferRef: reviewRange.head }
       : { refs: fallbackRefs }),
+    // The page saves the comments it shows; the server keeps them for the next
+    // review of the same target, whatever its diff id turns out to be.
+    saveThreads: (list) => writeThreads(root, meta, list),
     findUsages: (name) => usages[name] ?? [],
     renameCommit: (sha, message, options) => renameCommitMessage(root, sha, message, options),
     listCommits: () => loadLiveCommits(root, scope),

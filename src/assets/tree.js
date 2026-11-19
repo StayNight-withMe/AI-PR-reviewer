@@ -57,15 +57,23 @@
     var query = state.treeFilter.trim().toLowerCase();
     var nodes = buildNodes(state.allFiles);
 
-    var html =
-      '<div class="tree-head">' +
-        '<input class="gh-input tree-search" id="tree-filter-input" placeholder="Find file…" value="' +
-          PR.escapeHtml(state.treeFilter) + '" autocomplete="off">' +
-        '<button class="gh-btn gh-btn-sm js-tree-toggle" title="Expand / collapse all">⇕</button>' +
-      "</div>" +
-      '<div class="tree-body">' + renderNode(nodes, 0, "", query) + "</div>";
+    // The search box is created once. Rebuilding it on every keystroke replaced
+    // the focused input mid-typing: the caret jumped to the end and the next
+    // character landed wherever the browser decided, so a fast typist lost
+    // letters. Only the list below it is redrawn while the user types.
+    if (!PR.els.tree.querySelector(".tree-head")) {
+      PR.setHtml(PR.els.tree,
+        '<div class="tree-head">' +
+          '<input class="gh-input tree-search" id="tree-filter-input" placeholder="Find file…" autocomplete="off">' +
+          '<button class="gh-btn gh-btn-sm js-tree-toggle" title="Expand / collapse all">⇕</button>' +
+        "</div>" +
+        '<div class="tree-body"></div>');
+    }
 
-    PR.setHtml(PR.els.tree, html);
+    var field = PR.els.tree.querySelector("#tree-filter-input");
+    if (field && field.value !== state.treeFilter) field.value = state.treeFilter;
+
+    PR.setHtml(PR.els.tree.querySelector(".tree-body"), renderNode(nodes, 0, "", query));
     expandChangedPaths();
   };
 

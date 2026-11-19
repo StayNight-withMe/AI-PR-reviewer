@@ -129,7 +129,11 @@ export async function viewPullRequest(repoPath, selector = {}) {
   } catch {
     throw new Error(GH.ERROR_BAD_JSON);
   }
-  return normalizePullRequest(parsed);
+  const pr = normalizePullRequest(parsed);
+  // An explicit `--repo` names the repository even when the payload has no URL,
+  // and it is the one the caller asked about, so it wins.
+  if (selector.repo) pr.repo = selector.repo;
+  return pr;
 }
 /** Lists the pull requests of a repository, newest first. */
 export async function listPullRequests(repoPath, options = {}) {
@@ -179,13 +183,22 @@ async function assertAuthenticated(repoPath) {
   if (result.missingBinary) throw result.error;
   throw new Error(GH.ERROR_NOT_AUTHED);
 }
+/** `owner/repo` of a pull-request URL, or an empty string. */
+export function repoFromUrl(url) {
+  const match = /github\.com[:/]+([^/]+)\/([^/?#]+)/i.exec(String(url ?? P.EMPTY));
+  return match ? `${match[P.ONE]}/${match[P.TWO].replace(/\.git$/i, P.EMPTY)}` : P.EMPTY;
+}
 /** Maps the `gh pr view --json` payload onto the fields the page uses. */
 export function normalizePullRequest(raw) {
   const number = Number(raw?.number);
+  const url = String(raw?.url ?? P.EMPTY);
   return {
     number: Number.isFinite(number) ? number : null,
     title: String(raw?.title ?? P.EMPTY),
-    url: String(raw?.url ?? P.EMPTY),
+    url,
+    // `owner/repo` of the PR. Kept with the review so publishing goes back to
+    // the repository the PR lives in, which is not always the checkout's.
+    repo: repoFromUrl(url),
     state: String(raw?.state ?? P.EMPTY),
     draft: raw?.isDraft === true,
     baseRefName: String(raw?.baseRefName ?? P.EMPTY),

@@ -118,7 +118,7 @@ try {
     assert.equal(state.hasDiff, true, "the deleted file has no diff content");
   });
 
-  await check("the viewer shows the file raw, without syntax colours", async () => {
+  await check("the viewer shows the file's real lines with syntax colours", async () => {
     await driver.get(new URL("/file?path=src/app.ts", started.url).toString());
     await driver.wait(until.elementLocated(By.css(".viewer-table")), 15_000);
     await PAUSE(700);
@@ -127,11 +127,14 @@ try {
       var cells = Array.prototype.slice.call(document.querySelectorAll('.v-code'));
       return {
         spans: document.querySelectorAll('.v-code span').length,
+        // Highlighting must not change what the file says.
         text: cells.map(function (c) { return c.textContent; }).join('\\n'),
+        tinted: document.querySelectorAll('.v-code.row-add, .v-code.row-del, tr.row-add, tr.row-del').length,
       };
     })();`);
 
-    assert.equal(shape.spans, 0, "the viewer still emits highlight spans");
+    assert.ok(shape.spans > 0, "the viewer shows the file without any syntax colour");
+    assert.equal(shape.tinted, 0, "the viewer tinted lines as if it were a diff");
     // The exact source lines are visible, unmodified.
     assert.ok(shape.text.includes("export const ready = true;"), `unexpected viewer text: ${shape.text.slice(0, 200)}`);
   });

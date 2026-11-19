@@ -287,6 +287,62 @@ try {
     assert.match(prompt, /no note/);
   });
 
+  await check("the note field accepts a pasted screenshot", async () => {
+    const result = await js(`(async () => {
+      document.getElementById('btn-submit').click();
+      const modal = document.getElementById('dispatch-modal');
+      const textarea = document.getElementById('review-body');
+      const wrap = document.getElementById('review-note-wrap');
+      const chips = document.getElementById('review-note-chips');
+      if (!textarea || !wrap || !chips) return { missing: true };
+
+      async function makeFile(name) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 6; canvas.height = 6;
+        const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+        return new File([blob], name, { type: 'image/png' });
+      }
+
+      const wired = typeof PR.bindImageInput === 'function';
+
+      // A real drag-and-drop of an image file onto the note.
+      const dropped = await makeFile('dropped.png');
+      const dropTransfer = new DataTransfer();
+      dropTransfer.items.add(dropped);
+      textarea.dispatchEvent(new DragEvent('drop', { dataTransfer: dropTransfer, bubbles: true, cancelable: true }));
+      await new Promise(r => setTimeout(r, 400));
+      const afterDrop = chips.querySelectorAll('.attach-chip').length;
+
+      // A paste: browsers hand the handler a ClipboardData with the image on it.
+      // A synthesised ClipboardEvent drops clipboardData in Firefox, so the
+      // handler is given the same interface the real event carries.
+      const pasted = await makeFile('pasted.png');
+      const pasteTransfer = new DataTransfer();
+      pasteTransfer.items.add(pasted);
+      const pasteEvent = new Event('paste', { bubbles: true, cancelable: true });
+      Object.defineProperty(pasteEvent, 'clipboardData', { value: pasteTransfer });
+      textarea.dispatchEvent(pasteEvent);
+      await new Promise(r => setTimeout(r, 400));
+      const afterPaste = chips.querySelectorAll('.attach-chip').length;
+
+      // Removing a chip must drop exactly that attachment.
+      const removeButtons = chips.querySelectorAll('.attach-remove');
+      if (removeButtons.length) removeButtons[0].click();
+      await new Promise(r => setTimeout(r, 200));
+      const afterRemove = chips.querySelectorAll('.attach-chip').length;
+
+      const srcs = [...chips.querySelectorAll('.attach-chip img')].map(img => img.src.slice(0, 22));
+      modal.querySelector('.js-close-modal').click();
+      return { wired, afterDrop, afterPaste, afterRemove, srcs };
+    })()`);
+    assert.ok(!result.missing, "the note field has no attachment area");
+    assert.ok(result.wired, "the image binder is not exposed to the dialog");
+    assert.equal(result.afterDrop, 1, `a dropped screenshot did not attach: ${JSON.stringify(result)}`);
+    assert.equal(result.afterPaste, 2, `a pasted screenshot did not attach: ${JSON.stringify(result)}`);
+    assert.equal(result.afterRemove, 1, "removing a chip did not drop the attachment");
+    assert.ok(result.srcs.every((src) => src.indexOf("data:image/") === 0), "an attachment is not the image itself");
+  });
+
   await check("the Commits tab offers a branch selector", async () => {
     const branches = await js(`(async () => {
       document.querySelector('.gh-tab[data-tab="commits"]').click();

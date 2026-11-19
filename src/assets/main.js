@@ -506,6 +506,7 @@
 
     switch (target.id) {
       case "btn-submit":
+        bindNoteAttachments();
         PR.els.dispatchModal.classList.add("show");
         return true;
       case "btn-dispatch-submit":
@@ -682,7 +683,7 @@
       .then(function (r) { return r.json(); });
   }
 
-  function buildReviewPayload(reviewState, body) {
+  function buildReviewPayload(reviewState, body, images) {
     var state = PR.state;
     return {
       id: PR.DATA.id,
@@ -695,6 +696,8 @@
         return { path: file.path, status: file.status, additions: file.additions, deletions: file.deletions };
       }),
       comments: state.comments,
+      // Screenshots attached to the note itself, not to a line of code.
+      noteImages: Array.isArray(images) ? images : [],
       viewedFiles: Array.from(state.viewed),
       reviewState: reviewState,
       reviewBody: body,
@@ -708,6 +711,44 @@
     };
   }
 
+  /** Images attached to the review note, kept across dialog openings. */
+  var noteImages = [];
+  var noteBound = false;
+
+  /** Wires paste/drop and the chips of the note field once. */
+  function bindNoteAttachments() {
+    if (noteBound) return;
+    var wrap = document.getElementById(PR.IDS.REVIEW_NOTE_WRAP);
+    var textarea = document.getElementById(PR.IDS.REVIEW_BODY);
+    if (!wrap || !textarea) return;
+    noteBound = true;
+
+    PR.bindImageInput(textarea, wrap, function (image) {
+      noteImages.push(image);
+      renderNoteChips();
+    });
+
+    renderNoteChips();
+  }
+
+  function renderNoteChips() {
+    var chips = document.getElementById(PR.IDS.REVIEW_NOTE_CHIPS);
+    if (!chips) return;
+    chips.innerHTML = noteImages.map(function (image, index) {
+      return '<span class="attach-chip">' +
+        '<img src="' + PR.escapeHtml(image.dataUrl || image.file || "") + '" alt="">' +
+        '<button class="attach-remove" data-i="' + index + '" title="Remove">×</button>' +
+      "</span>";
+    }).join("");
+
+    chips.onclick = function (event) {
+      var button = event.target.closest(".attach-remove");
+      if (!button) return;
+      noteImages.splice(parseInt(button.dataset.i, 10), 1);
+      renderNoteChips();
+    };
+  }
+
   /** Submits the review with the verdict chosen in the dialog. */
   function submitReview() {
     var modal = PR.els.dispatchModal;
@@ -716,11 +757,12 @@
     var body = document.getElementById(PR.IDS.REVIEW_BODY).value;
     var send = document.getElementById(PR.IDS.DISPATCH_SEND);
     var sendToAgent = !send || send.checked;
-    submit(verdict, body, sendToAgent);
+    submit(verdict, body, sendToAgent, noteImages.slice());
   }
 
-  function submit(reviewState, body, sendToAgent) {
-    postJson(API.REVIEW, buildReviewPayload(reviewState, body))
+  function submit(reviewState, body, sendToAgent, images) {
+    var payload = buildReviewPayload(reviewState, body, images);
+    postJson(API.REVIEW, payload)
       .then(function (res) {
         var shouldDispatch = sendToAgent && PR.DATA.dispatchEnabled;
         if (!shouldDispatch) return res;
@@ -728,7 +770,7 @@
           reviewId: PR.DATA.id,
           jsonPath: res.jsonPath,
           markdownPath: res.markdownPath,
-          review: buildReviewPayload(reviewState, body),
+          review: payload,
         }).then(function (dispatchResult) {
           res.agent = dispatchResult ? dispatchResult.agent : null;
           res.targetSessionId = dispatchResult ? dispatchResult.targetSessionId : null;
@@ -737,6 +779,10 @@
       })
       .then(function (res) {
         PR.els.dispatchModal.classList.remove("show");
+        // The note is sent: the next review starts without it, like a sent message.
+        noteImages = [];
+        renderNoteChips();
+        document.getElementById(PR.IDS.REVIEW_BODY).value = PR.P_EMPTY;
         // Say plainly whether the fix turn actually started, and where it went: silently showing "saved"…
         var approved = reviewState === STATE.APPROVE;
         var agent = res ? res.agent : null;

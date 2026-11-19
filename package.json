@@ -27,7 +27,10 @@
     "test:github": "node tests/github.mjs",
     "test:pr": "node tests/pr-mode.mjs",
     "test:publish": "node tests/publish.mjs",
+    "test:pr:flow": "node tests/pr-publish-flow.mjs",
     "test:committed": "node tests/committed-content.mjs",
+    "test:threads": "node tests/threads.mjs",
+    "test:ui:suite": "node tests/ui-suite.mjs",
     "test:pr:ui": "node tests/pr-page.mjs",
     "test:artifacts": "node tests/artifacts.mjs",
     "test:header:ui": "node tests/file-header-ui.mjs",
@@ -39,7 +42,7 @@
     "gh:check": "node scripts/ensure-gh.mjs --check",
     "gh:install": "node scripts/ensure-gh.mjs --install",
     "postinstall": "node scripts/ensure-gh.mjs --check --never-fail",
-    "test:all": "npm run test && npm run test:session && npm run test:session:isolation && npm run test:cli && npm run test:synthetic && npm run test:page && npm run test:mcp && npm run test:github && npm run test:pr && npm run test:publish && npm run test:pr:ui && npm run test:artifacts && npm run test:header:ui && npm run test:resolve && npm run test:defects && npm run test:settings && npm run test:editors && npm run test:ui:regressions && npm run test:ui && npm run test:ui:extra"
+    "test:all": "npm run test && npm run test:session && npm run test:session:isolation && npm run test:cli && npm run test:synthetic && npm run test:page && npm run test:mcp && npm run test:github && npm run test:pr && npm run test:publish && npm run test:committed && npm run test:threads && npm run test:pr:ui && npm run test:pr:flow && npm run test:artifacts && npm run test:header:ui && npm run test:resolve && npm run test:defects && npm run test:settings && npm run test:editors && npm run test:ui:regressions && npm run test:ui:suite && npm run test:ui && npm run test:ui:extra"
   },
   "engines": {
     "node": ">=20"

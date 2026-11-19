@@ -59,29 +59,32 @@ function flag(value) {
   if (value === undefined) return P.EMPTY;
   return value ? "1" : "0";
 }
-/** Waits until the page process has registered itself. */
-export async function waitForPageRegistry(root, { timeoutMs = SERVER.PAGE_START_TIMEOUT_MS } = {}) {
+/** Waits until the page process with this id has registered itself. */
+export async function waitForPageRegistry(root, { timeoutMs = SERVER.PAGE_START_TIMEOUT_MS, pid } = {}) {
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {
-    const entry = await findPageRegistry(root);
-    if (entry) return entry;
+    const entry = await findPageRegistry(root, { match: (candidate) => candidate.pid === pid });
+    // Another page of the same repository may already be running (a PR review
+    // next to a working-tree review, say). Waiting for "any page" returned that
+    // older one, so the new scope silently opened the wrong page.
+    if (entry && (pid === undefined || entry.pid === pid)) return entry;
     await delay(SERVER.PAGE_POLL_MS);
   }
 
   return null;
 }
 /** The registry entry of a running page of the repository, if there is one. */
-export async function findPageRegistry(root) {
+export async function findPageRegistry(root, { match } = {}) {
   // New reviews live outside the checkout; `.pr-review/` is the legacy folder
   // of an older version and is still scanned so an old page is found.
-  const legacy = await findRegistryIn(join(root, GIT.LEGACY_ARTIFACT_DIR));
+  const legacy = await findRegistryIn(join(root, GIT.LEGACY_ARTIFACT_DIR), match);
   if (legacy) return legacy;
 
-  return findRegistryIn(join(artifactsRoot(), repoSlug(root)));
+  return findRegistryIn(join(artifactsRoot(), repoSlug(root)), match);
 }
-/** The newest live registry entry in one artifacts directory, or null. */
-async function findRegistryIn(artifacts) {
+/** The first live registry entry in one artifacts directory that `match` accepts, or null. */
+async function findRegistryIn(artifacts, match) {
   let folders = [];
   try {
     folders = await readdir(artifacts, { withFileTypes: true });
@@ -95,7 +98,12 @@ async function findRegistryIn(artifacts) {
     const path = join(artifacts, folder.name, PAGE_REGISTRY);
     try {
       const entry = JSON.parse(await readFile(path, "utf8"));
-      if (entry?.port && isAlive(entry.pid)) return { ...entry, registryPath: path };
+      // More than one page of one repository can run at the same time (say a
+      // PR review next to a working-tree review), so the first live entry found
+      // is not necessarily the page the caller means.
+      if (entry?.port && isAlive(entry.pid) && (!match || match(entry))) {
+        return { ...entry, registryPath: path };
+      }
     } catch {
     // A half-written registry file is not an error: the page is starting.
     }
@@ -138,11 +146,15 @@ export async function stopPageProcess(entry) {
 }
 /** Reads the state of the page: the last submitted review and the dispatch. */
 export async function fetchPageResult(entry) {
-  const response = await fetch(`${entry.url}${ROUTES.API_RESULT}`);
+  const response = await fetch(pageUrl(entry.url, ROUTES.API_RESULT));
   if (!response.ok) return null;
 
   const payload = await response.json();
   return payload?.ok ? payload : null;
+}
+/** A page route as an absolute URL, whether the page URL ends with a slash or not. */
+export function pageUrl(base, route) {
+  return new URL(route, base).toString();
 }
 /** ------------------------- cross-process page index ------------------------ */
 /** The page index, shared by every MCP process of this user. */

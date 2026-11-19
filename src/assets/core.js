@@ -243,7 +243,26 @@
       }));
       // Settings are per device, not per review: a new review (or a changed diff, which gets a new id)…
       PR.storeSettings();
+      // Comments go to the server too: the page's own storage dies with the
+      // review id, and a reopened review must still show what was written.
+      PR.saveThreads();
     } catch (e) {}
+  };
+
+  /** Saves comments to the server, one request at a time, so they survive a new review. */
+  var threadsSave = Promise.resolve();
+  PR.saveThreads = function () {
+    threadsSave = threadsSave
+      .catch(function () {})
+      .then(function () {
+        return fetch(PR.API.THREADS, {
+          method: PR.HTTP.POST,
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ comments: PR.state.comments }),
+        });
+      })
+      .catch(function () {});
+    return threadsSave;
   };
 
   /** Saves settings, one request at a time. */

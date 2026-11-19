@@ -23,12 +23,16 @@
       return attachmentChip(image, index, false);
     }).join("");
     var resolved = comment.resolved === true;
+    var outdated = comment.outdated === true;
 
-    return '<div class="comment-box' + (resolved ? " is-resolved" : "") + '" data-id="' + comment.id + '">' +
+    return '<div class="comment-box' + (resolved ? " is-resolved" : "") + (outdated ? " is-outdated" : "") +
+        '" data-id="' + comment.id + '">' +
       '<div class="comment-head">' +
         '<span class="avatar">' + PR.escapeHtml((comment.author || "You").charAt(0).toUpperCase()) + "</span>" +
         "<strong>" + PR.escapeHtml(comment.author || "You") + "</strong>" +
         '<span class="muted small">' + (comment.lineStart ? "line " + range : "file comment") + "</span>" +
+        (outdated ? '<span class="outdated-pill" title="' + PR.escapeHtml(comment.outdatedReason || "") +
+          '">Outdated</span>' : "") +
         (resolved ? '<span class="resolved-pill" title="This comment is resolved">✓ Resolved</span>' : "") +
         '<span class="spacer"></span>' +
         '<button class="gh-btn gh-btn-sm ghost js-resolve" data-id="' + comment.id + '">' +
@@ -37,6 +41,11 @@
         '<button class="gh-btn gh-btn-sm ghost danger js-delete" data-id="' + comment.id + '">Delete</button>' +
       "</div>" +
       '<div class="comment-body">' + PR.escapeHtml(comment.body) + "</div>" +
+      (outdated && comment.outdatedReason
+        ? '<div class="comment-outdated-note">' + PR.escapeHtml(comment.outdatedReason) +
+          (comment.snippet ? '<pre class="comment-snippet">' + PR.escapeHtml(comment.snippet) + "</pre>" : "") +
+          "</div>"
+        : "") +
       (images ? '<div class="comment-attachments">' + images + "</div>" : "") +
     "</div>";
   }
@@ -61,7 +70,7 @@
 
   PR.renderComments = function () {
     var state = PR.state;
-    document.querySelectorAll(".comment-row, .file-comment-banner").forEach(function (node) {
+    document.querySelectorAll(".comment-row, .file-comment-banner, .orphan-comments").forEach(function (node) {
       // would wipe a form the user is typing in.
       if (node.classList.contains("js-editor") || node.querySelector(".js-editor")) return;
       node.remove();
@@ -69,6 +78,8 @@
 
     state.comments.forEach(function (comment) {
       var section = PR.findSection(comment.path);
+      // A comment on a file that is not part of this diff still has to be
+      // visible: it is the reviewer's own work, not something to hide.
       if (!section) return;
 
       if (!comment.lineStart) {
@@ -82,20 +93,42 @@
 
       var end = comment.lineEnd || comment.lineStart;
       var rows = rowsInRange(section, comment.side, comment.lineStart, end);
-      if (!rows.length) return;
-
       var row = document.createElement("tr");
       row.className = "comment-row";
-      row.innerHTML = '<td colspan="' + columnCount(rows[rows.length - 1]) + '">' + commentBoxHtml(comment) + "</td>";
-      rows[rows.length - 1].parentNode.insertBefore(row, rows[rows.length - 1].nextSibling);
+      row.innerHTML = '<td colspan="' + sectionColumnCount(section) + '">' + commentBoxHtml(comment) + "</td>";
+
+      if (rows.length) {
+        rows[rows.length - 1].parentNode.insertBefore(row, rows[rows.length - 1].nextSibling);
+        return;
+      }
+      // The line is gone from the diff (a rewrite, an unrelated edit): show the
+      // comment at the top of its file instead of dropping it silently.
+      mountOrphanComment(section, row);
     });
 
     renderSidebar();
   };
 
+  /** Comments whose line no longer exists, grouped at the top of their file. */
+  function mountOrphanComment(section, row) {
+    var host = section.querySelector(".orphan-comments");
+    if (!host) {
+      host = document.createElement("div");
+      host.className = "orphan-comments";
+      var header = section.querySelector(".diff-file-header");
+      header.parentNode.insertBefore(host, header.nextSibling);
+    }
+    var table = document.createElement("table");
+    table.className = "diff-table orphan-table";
+    var tbody = document.createElement("tbody");
+    tbody.appendChild(row);
+    table.appendChild(tbody);
+    host.appendChild(table);
+  }
+
   /** Number of columns in the diff table that holds `row`. */
   function columnCount(row) {
-    var table = row.closest("table");
+    var table = row.closest ? row.closest("table") : null;
     if (!table) return 1;
 
     var cols = table.querySelectorAll("colgroup > col").length;
@@ -110,6 +143,12 @@
       if (count > widest) widest = count;
     });
     return widest || 1;
+  }
+
+  /** Number of columns in the diff table of a file section. */
+  function sectionColumnCount(section) {
+    var table = section.querySelector(".diff-table");
+    return table ? columnCount(table) : 1;
   }
 
   /** Rows whose number cell on `side` falls inside the line range. */
@@ -150,9 +189,12 @@
           : comment.lineStart)
         : "file";
       var resolved = comment.resolved === true;
+      var outdated = comment.outdated === true;
       return '<button class="comment-summary-item js-goto-comment' + (resolved ? " is-resolved" : "") +
+          (outdated ? " is-outdated" : "") +
           '" data-path="' + PR.escapeHtml(comment.path) + '">' +
         '<span class="comment-summary-path">' + PR.escapeHtml(comment.path) + ":" + range +
+          (outdated ? ' <span class="outdated-pill">outdated</span>' : "") +
           (resolved ? ' <span class="resolved-pill">✓</span>' : "") + "</span>" +
         '<span class="comment-summary-text">' + PR.escapeHtml(comment.body || "(image)") + "</span></button>";
     }).join(""));
@@ -192,7 +234,7 @@
       renderChips();
     });
 
-    bindImageInput(editor.textarea, editor.box, function (image) {
+    PR.bindImageInput(editor.textarea, editor.box, function (image) {
       images.push(image);
       renderChips();
     });
@@ -258,7 +300,8 @@
     anchor.parentNode.insertBefore(banner, anchor.nextSibling);
   }
 
-  function bindImageInput(textarea, box, onImage) {
+  /** Binds paste/drop of images to a textarea, reporting each image it receives. */
+  PR.bindImageInput = function (textarea, box, onImage) {
     function addFiles(files) {
       Array.from(files || []).forEach(function (file) {
         if (!file || file.type.indexOf("image/") !== 0) return;
@@ -285,7 +328,7 @@
       box.classList.remove("drop-active");
       addFiles(event.dataTransfer ? event.dataTransfer.files : []);
     });
-  }
+  };
 
   function saveComment(options) {
     var body = options.textarea.value.trim();

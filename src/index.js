@@ -134,7 +134,7 @@ async function openReviewPage(args, extra) {
     }
 
     const port = await findFreePort();
-    spawnPageProcess({
+    const spawned = spawnPageProcess({
       repoPath: root,
       mode: args.mode,
       base: args.base,
@@ -150,7 +150,7 @@ async function openReviewPage(args, extra) {
       symbols: args.symbols,
     });
 
-    const registry = await waitForPageRegistry(root);
+    const registry = await waitForPageRegistry(root, { pid: spawned.child.pid });
     if (registry) {
       await writeReviewOwner(registry.outputDir, sessionId);
       await indexPage(registry);

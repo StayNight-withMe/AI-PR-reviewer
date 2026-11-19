@@ -156,6 +156,9 @@ export const SERVER = {
   FILE_ENCODING: "utf8",
   JSON_INDENT: 2,
   MAX_BATCH_FILES: 500,
+  /** A filename derived from a branch or PR name must stay a filename. */
+  MAX_SLUG_LENGTH: 60,
+  SHORT_HASH_LENGTH: 8,
   BASE64: "base64",
   BODY_TOO_LARGE: "Request body too large",
   DATA_URL_PATTERN: /^data:(image\/[a-zA-Z+]+);base64,(.+)$/,
@@ -171,6 +174,9 @@ export const SERVER = {
   MISSING_QUERY: "Missing ?q=",
   MISSING_COMMIT_MESSAGE: "Missing sha or message",
   RENAME_UNAVAILABLE: "Commit renaming is not available",
+  THREADS_UNAVAILABLE: "This page cannot store review comments",
+  /** File-name prefix of note screenshots, so they never collide with a comment id. */
+  NOTE_IMAGE_PREFIX: "note",
   INVALID_BODY: "Invalid JSON body",
   MISSING_FILES: "Missing paths",
   PORT_MIN: 0,
@@ -215,6 +221,7 @@ export const ROUTES = {
   API_SEARCH: "/api/search",
   API_VERSION: "/api/version",
   API_SETTINGS: "/api/settings",
+  API_THREADS: "/api/threads",
   FAVICON: "/favicon.ico",
 };
 export const QUERY = {
@@ -354,6 +361,18 @@ export const ARTIFACTS = {
   REVIEW_MARKDOWN: "review.md",
   IMAGES_DIR: "images",
   DISPATCH_PROMPT: "dispatch-prompt.md",
+};
+/** ----------------------------- review threads ---------------------------- */
+/** Comments outlive a single review page: they follow the code they were written on. */
+export const THREADS = {
+  DIR_NAME: "threads",
+  FILE_SUFFIX: ".json",
+  /** How many characters of the commented lines are kept to compare against later. */
+  MAX_SNIPPET_CHARS: 2000,
+  /** A scope with more comments than this is not a review, it is a data dump. */
+  MAX_COMMENTS: 5000,
+  REASON_FILE_GONE: "the file is no longer part of the review",
+  REASON_LINES_CHANGED: "the commented lines have changed since the review",
 };
 /** ------------------------------ mcp tool limits --------------------------- */
 /** Defaults of the MCP tool schemas, so the defaults and the text agree. */

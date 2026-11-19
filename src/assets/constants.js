@@ -22,6 +22,7 @@
     RESULT: "/api/result",
     VERSION: "/api/version",
     SETTINGS: "/api/settings",
+    THREADS: "/api/threads",
   };
 
   window.PR.REVIEW_STATE = {
@@ -281,6 +282,8 @@
     FILTER_INPUT: "filter-input",
     TREE_FILTER_INPUT: "tree-filter-input",
     REVIEW_BODY: "review-body",
+    REVIEW_NOTE_WRAP: "review-note-wrap",
+    REVIEW_NOTE_CHIPS: "review-note-chips",
     DISPATCH_SEND: "dispatch-send",
     VIEW_BAR: "diff-view-bar",
     SYM_POP: "sym-pop",

@@ -23,6 +23,7 @@ export async function servePage(options) {
     listCommits,
     listBranches,
     loadBranchCommits,
+    saveThreads,
     port = SERVER.DEFAULT_PORT,
     host = SERVER.HOST,
     symbols = P.EMPTY_OBJECT,
@@ -43,6 +44,7 @@ export async function servePage(options) {
         request, response, url, html, outputDir, meta, session,
         buildFilePage, readFile, readFiles, loadCommit, loadRange, findUsages, symbols, onReview, onDispatch,
         searchProject, renameCommit, listCommits, listBranches, loadBranchCommits,
+        saveThreads,
       });
       if (!handled) {
         send(response, SERVER.STATUS_NOT_FOUND, SERVER.MIME.TEXT, SERVER.DEFAULT_ERROR);
@@ -192,6 +194,10 @@ async function dispatch(ctx) {
     return handleUsages(ctx);
   }
 
+  if (post && url.pathname === ROUTES.API_THREADS) {
+    return handleThreadsSave(ctx);
+  }
+
   if (get && url.pathname === ROUTES.FAVICON) {
     send(response, SERVER.STATUS_NO_CONTENT, SERVER.MIME.TEXT, P.EMPTY);
     return true;
@@ -324,6 +330,29 @@ async function handleSearch({ response, url, searchProject }) {
   }
   return true;
 }
+async function handleThreadsSave({ request, response, saveThreads }) {
+  if (!saveThreads) {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.THREADS_UNAVAILABLE }));
+    return true;
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(await readBody(request));
+  } catch {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.INVALID_BODY }));
+    return true;
+  }
+
+  const comments = Array.isArray(payload?.comments) ? payload.comments : P.EMPTY_ARRAY;
+  try {
+    const saved = await saveThreads(comments);
+    send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, saved }));
+  } catch (error) {
+    send(response, SERVER.STATUS_ERROR, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: String(error.message) }));
+  }
+  return true;
+}
 async function handleCommitRename({ request, response, renameCommit }) {
   if (!renameCommit) {
     send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.RENAME_UNAVAILABLE }));
@@ -388,23 +417,29 @@ async function persistImages(outputDir, review) {
   const saved = [];
   const imagesDir = join(outputDir, ARTIFACTS.IMAGES_DIR);
 
-  for (const comment of review.comments ?? P.EMPTY_ARRAY) {
-    if (!Array.isArray(comment.images) || comment.images.length === P.ZERO) continue;
+  const collect = async (owner, prefix) => {
+    if (!Array.isArray(owner?.images) || owner.images.length === P.ZERO) return;
 
     await mkdir(imagesDir, { recursive: true });
 
-    for (const [index, image] of comment.images.entries()) {
+    for (const [index, image] of owner.images.entries()) {
       const match = SERVER.DATA_URL_PATTERN.exec(image.dataUrl ?? P.EMPTY);
       if (!match) continue;
 
       const extension = match[1].split(P.SLASH)[1].replace(SERVER.XML_SUFFIX, P.EMPTY).replace(SERVER.JPEG_SUFFIX, SERVER.JPG_EXTENSION);
-      const fileName = `${comment.id}${P.DASH}${index}${P.DOT}${extension}`;
+      const fileName = `${prefix}${P.DASH}${index}${P.DOT}${extension}`;
       await writeFile(join(imagesDir, fileName), Buffer.from(match[2], SERVER.BASE64));
 
       image.file = `${ARTIFACTS.IMAGES_DIR}${P.SLASH}${fileName}`;
       saved.push(image.file);
     }
+  };
+
+  for (const comment of review.comments ?? P.EMPTY_ARRAY) {
+    await collect(comment, comment.id);
   }
+  // A screenshot on the note itself belongs to the review, not to a line.
+  await collect(review, SERVER.NOTE_IMAGE_PREFIX);
 
   return saved;
 }

@@ -31,15 +31,23 @@ async function makeRepo() {
 const sha = async (git) => (await git("rev-parse", "HEAD")).stdout.trim();
 test("normalizePullRequest maps the gh payload", () => {
   const pr = normalizePullRequest({
-    number: 42, title: "T", url: "U", state: "OPEN", isDraft: true,
+    number: 42, title: "T", url: "https://github.com/o/r/pull/42", state: "OPEN", isDraft: true,
     baseRefName: "main", headRefName: "feat", baseRefOid: "b", headRefOid: "h",
     author: { login: "me" }, body: "B", additions: 1, deletions: 2, changedFiles: 3,
   });
   assert.deepEqual(pr, {
-    number: 42, title: "T", url: "U", state: "OPEN", draft: true,
+    number: 42, title: "T", url: "https://github.com/o/r/pull/42", repo: "o/r", state: "OPEN", draft: true,
     baseRefName: "main", headRefName: "feat", baseOid: "b", headOid: "h",
     author: "me", body: "B", additions: 1, deletions: 2, changedFiles: 3,
   });
+});
+test("the repository of a PR is read from its URL", () => {
+  // Publishing needs owner/repo, and `gh pr view` has no field for it. A URL
+  // that is not GitHub's yields nothing rather than a wrong guess.
+  assert.equal(normalizePullRequest({ url: "https://github.com/acme/shop/pull/7" }).repo, "acme/shop");
+  assert.equal(normalizePullRequest({ url: "https://github.com/acme/shop.git/pull/7" }).repo, "acme/shop");
+  assert.equal(normalizePullRequest({ url: "U" }).repo, "");
+  assert.equal(normalizePullRequest({}).repo, "");
 });
 test("normalizePullRequestSummary maps a list entry", async () => {
   const { normalizePullRequestSummary } = await import("../src/github.js");
