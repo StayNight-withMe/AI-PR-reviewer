@@ -439,6 +439,9 @@ a.tree-row { text-decoration: none; }
   /** `overflow`, `contain` and `content-visibility` on this element would create a containing block… */
 }
 .diff-file.flash { border-color: var(--accent-emphasis); }
+/** While a file's ⋯ menu is open the whole section must sit above the next one: the
+    sticky header creates a stacking context, so the popup inside it cannot. */
+.diff-file.menu-open { position: relative; z-index: 40; }
 /** The header must stay visible while a long file is scrolled, so the reviewer can press "Viewed"… */
 .diff-file-header {
   display: flex; align-items: center; gap: 8px;
