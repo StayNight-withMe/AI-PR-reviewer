@@ -151,14 +151,27 @@
   function isDeferred(file) {
     var limit = PR.state.settings.largeFileLines;
     if (!limit || limit <= 0) return false;
-    return (file.changeCount || 0) > limit;
+    // The setting is about FILE size, not the size of the hunk. Comparing only
+    // the changed lines left a generated snapshot with thousands of lines open:
+    // it had fewer than the limit changed, so nothing collapsed even though the
+    // setting read "collapse files over N lines".
+    var changed = file.changeCount || 0;
+    var total = file.totalLines || 0;
+    return Math.max(changed, total) > limit;
+  }
+
+  /** Why a file was put behind the Load button. */
+  function deferReason(file) {
+    var total = file.totalLines || 0;
+    if (total) return total + " lines in the file";
+    return (file.changeCount || 0) + " changed lines";
   }
 
   function deferredPlaceholder(file) {
     return '<div class="deferred-note">' +
       '<div class="deferred-title">Large file</div>' +
-      '<div class="deferred-text">' + file.changeCount +
-        " changed lines. Loaded on demand so the review stays fast.</div>" +
+      '<div class="deferred-text">' + deferReason(file) +
+        ". Loaded on demand so the review stays fast.</div>" +
       '<button class="gh-btn gh-btn-primary gh-btn-sm js-load-file">Load file</button>' +
     "</div>";
   }
