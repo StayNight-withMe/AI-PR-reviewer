@@ -718,6 +718,54 @@ try {
     assert.match(markdown, /Survives a reload/, "review.md lost an inline comment");
   });
 
+  await check("a screenshot on the note is saved with the review", async () => {
+    // The dialog is the only way a user attaches a screenshot to the note, and
+    // the note is a separate field from the comments. It must reach disk.
+    const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
+    const state = await js(`(async () => {
+      document.getElementById('btn-submit').click();
+      document.getElementById('review-body').value = 'See the screenshot';
+      document.getElementById('dispatch-send').checked = false;
+
+      // Paste, the way a user does it.
+      const textarea = document.getElementById('review-body');
+      const bytes = Uint8Array.from(atob(${JSON.stringify(png.split(",")[1])}), c => c.charCodeAt(0));
+      const file = new File([bytes], 'shot.png', { type: 'image/png' });
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      const event = new ClipboardEvent('paste', { bubbles: true, cancelable: true });
+      Object.defineProperty(event, 'clipboardData', { value: transfer });
+      textarea.dispatchEvent(event);
+
+      await new Promise(r => setTimeout(r, 500));
+      const chips = document.querySelectorAll('#review-note-chips .attach-chip').length;
+      document.getElementById('btn-dispatch-submit').click();
+      await new Promise(r => setTimeout(r, 1500));
+      return { chips, modalOpen: document.getElementById('dispatch-modal').classList.contains('show') };
+    })()`);
+
+    assert.equal(state.chips, 1, "the pasted screenshot did not appear in the note");
+    assert.equal(state.modalOpen, false, "the dialog stayed open after submitting");
+
+    const saved = JSON.parse(await readFile(join(reviewState.outputDir, "review.json"), "utf8"));
+    assert.equal(saved.review.noteImages.length, 1, "the review did not record the note image");
+    assert.equal(saved.review.noteImages[0].file, "images/note-0.png", "the note image has no file");
+
+    const markdown = await readFile(join(reviewState.outputDir, "review.md"), "utf8");
+    assert.match(markdown, /!\[attachment\]\(images\/note-0\.png\)/, "review.md does not show the note image");
+
+    // Clearing the note after a submit means the next review starts clean.
+    const after = await js(`(async () => {
+      document.getElementById('btn-submit').click();
+      const body = document.getElementById('review-body').value;
+      document.getElementById('btn-dispatch-submit').click();
+      await new Promise(r => setTimeout(r, 1200));
+      return { body };
+    })()`);
+    assert.equal(after.body, "", "the note stayed in the dialog after it was sent");
+  });
+
   await check("the Commits tab lists the commits of the scope", async () => {
     const state = await js(`(async () => {
       document.querySelector('.gh-tab[data-tab="commits"]').click();
