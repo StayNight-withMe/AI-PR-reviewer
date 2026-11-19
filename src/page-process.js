@@ -35,7 +35,11 @@ export function spawnPageProcess({ repoPath, mode, base, head, pr, prRepo, port,
     windowsHide: true,
     env: {
       ...process.env,
-      OPENCODE_SESSION_ID: sessionId ?? process.env.OPENCODE_SESSION_ID ?? P.EMPTY,
+      // The page owns its review, and the owner is the session that asked for
+      // it — never whatever session happened to launch this process.
+      PR_REVIEW_SESSION: sessionId ?? P.EMPTY,
+      OPENCODE_SESSION_ID: P.EMPTY,
+      OPENCODE_SESSION: P.EMPTY,
       PR_REVIEW_TITLE: title ?? P.EMPTY,
       PR_REVIEW_PR: pr !== undefined && pr !== null && String(pr).trim() ? String(pr).trim() : P.EMPTY,
       PR_REVIEW_PR_REPO: prRepo ?? P.EMPTY,
