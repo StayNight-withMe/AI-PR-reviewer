@@ -162,9 +162,16 @@ export const SERVER = {
   BASE64: "base64",
   BODY_TOO_LARGE: "Request body too large",
   DATA_URL_PATTERN: /^data:(image\/[a-zA-Z+]+);base64,(.+)$/,
-  XML_SUFFIX: "+xml",
-  JPEG_SUFFIX: "jpeg",
-  JPG_EXTENSION: "jpg",
+  /**
+   * The image formats a pasted screenshot may be stored as. Anything else is
+   * refused: an uploaded `image/svg+xml` would be written as a scriptable file.
+   */
+  IMAGE_TYPES: {
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/gif": "gif",
+    "image/webp": "webp",
+  },
   DEFAULT_ERROR: "Not found",
   MISSING_PATH: "Missing ?path=",
   MISSING_SHA: "Missing sha",

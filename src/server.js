@@ -417,29 +417,34 @@ async function persistImages(outputDir, review) {
   const saved = [];
   const imagesDir = join(outputDir, ARTIFACTS.IMAGES_DIR);
 
-  const collect = async (owner, prefix) => {
-    if (!Array.isArray(owner?.images) || owner.images.length === P.ZERO) return;
+  const collect = async (images, prefix) => {
+    if (!Array.isArray(images) || images.length === P.ZERO) return;
 
-    await mkdir(imagesDir, { recursive: true });
-
-    for (const [index, image] of owner.images.entries()) {
+    for (const [index, image] of images.entries()) {
       const match = SERVER.DATA_URL_PATTERN.exec(image.dataUrl ?? P.EMPTY);
       if (!match) continue;
 
-      const extension = match[1].split(P.SLASH)[1].replace(SERVER.XML_SUFFIX, P.EMPTY).replace(SERVER.JPEG_SUFFIX, SERVER.JPG_EXTENSION);
+      // Only the formats a screenshot really uses are stored, and the name is
+      // built from the index rather than from the comment: a crafted comment id
+      // could otherwise contain `../` and write outside the review folder.
+      const extension = SERVER.IMAGE_TYPES[match[P.ONE].toLowerCase()];
+      if (!extension) continue;
+
+      await mkdir(imagesDir, { recursive: true });
       const fileName = `${prefix}${P.DASH}${index}${P.DOT}${extension}`;
-      await writeFile(join(imagesDir, fileName), Buffer.from(match[2], SERVER.BASE64));
+      await writeFile(join(imagesDir, fileName), Buffer.from(match[P.TWO], SERVER.BASE64));
 
       image.file = `${ARTIFACTS.IMAGES_DIR}${P.SLASH}${fileName}`;
       saved.push(image.file);
     }
   };
 
-  for (const comment of review.comments ?? P.EMPTY_ARRAY) {
-    await collect(comment, comment.id);
+  for (const [index, comment] of (review.comments ?? P.EMPTY_ARRAY).entries()) {
+    await collect(comment.images, `comment-${index}`);
   }
-  // A screenshot on the note itself belongs to the review, not to a line.
-  await collect(review, SERVER.NOTE_IMAGE_PREFIX);
+  // A screenshot on the note itself belongs to the review, not to a line. It is
+  // sent as `noteImages`, a field of the review rather than of a comment.
+  await collect(review.noteImages, SERVER.NOTE_IMAGE_PREFIX);
 
   return saved;
 }

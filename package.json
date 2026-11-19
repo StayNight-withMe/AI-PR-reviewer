@@ -36,13 +36,14 @@
     "test:header:ui": "node tests/file-header-ui.mjs",
     "test:resolve": "node tests/resolve.mjs",
     "test:defects": "node tests/review-defects.mjs",
+    "test:note-images": "node tests/note-images.mjs",
     "test:settings": "node tests/settings-persistence.mjs",
     "bundle:server": "node scripts/bundle-server.mjs",
     "bundle:hljs": "node scripts/build-hljs-bundle.mjs",
     "gh:check": "node scripts/ensure-gh.mjs --check",
     "gh:install": "node scripts/ensure-gh.mjs --install",
     "postinstall": "node scripts/ensure-gh.mjs --check --never-fail",
-    "test:all": "npm run test && npm run test:session && npm run test:session:isolation && npm run test:cli && npm run test:synthetic && npm run test:page && npm run test:mcp && npm run test:github && npm run test:pr && npm run test:publish && npm run test:committed && npm run test:threads && npm run test:pr:ui && npm run test:pr:flow && npm run test:artifacts && npm run test:header:ui && npm run test:resolve && npm run test:defects && npm run test:settings && npm run test:editors && npm run test:ui:regressions && npm run test:ui:suite && npm run test:ui && npm run test:ui:extra"
+    "test:all": "npm run test && npm run test:session && npm run test:session:isolation && npm run test:cli && npm run test:synthetic && npm run test:page && npm run test:mcp && npm run test:github && npm run test:pr && npm run test:publish && npm run test:committed && npm run test:threads && npm run test:pr:ui && npm run test:pr:flow && npm run test:artifacts && npm run test:header:ui && npm run test:resolve && npm run test:defects && npm run test:note-images && npm run test:settings && npm run test:editors && npm run test:ui:regressions && npm run test:ui:suite && npm run test:ui && npm run test:ui:extra"
   },
   "engines": {
     "node": ">=20"
