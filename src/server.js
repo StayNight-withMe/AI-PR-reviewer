@@ -39,6 +39,9 @@ export async function servePage(options) {
 
   const server = createServer(async (request, response) => {
     try {
+      const rejected = rejectForeignRequest(request, response);
+      if (rejected) return;
+
       const url = new URL(request.url, `${SERVER.URL_PROTOCOL}${request.headers.host}`);
       const handled = await dispatch({
         request, response, url, html, outputDir, meta, session,
@@ -266,6 +269,37 @@ async function handleReviewSubmit({ request, response, outputDir, meta, onReview
   send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, ...result, images: savedImages }));
   session.resolveSubmitted({ ...result, review });
   return true;
+}
+/**
+ * Answers a request that did not come from the review page itself.
+ *
+ * The page listens on the loopback address, but any page in the same browser
+ * can reach it: a `Host` header of a name the browser is rebinding, or a
+ * cross-site POST that a browser sends without a preflight. Since the routes
+ * read files, write review state and run git, both are refused.
+ *
+ * Returns true when the request was answered.
+ */
+function rejectForeignRequest(request, response) {
+  const host = String(request.headers.host ?? P.EMPTY);
+  const hostname = host.replace(/:\d+$/, P.EMPTY).toLowerCase();
+
+  if (!SERVER.ALLOWED_HOSTS.includes(hostname)) {
+    send(response, SERVER.STATUS_FORBIDDEN, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.BAD_HOST }));
+    return true;
+  }
+
+  // Only a POST can change state, and the page always sends JSON. A form from
+  // another site can only send text/plain, so requiring JSON is the check.
+  if (request.method === SERVER.METHOD_POST) {
+    const type = String(request.headers[HEADER_CONTENT_TYPE] ?? P.EMPTY);
+    if (!type.toLowerCase().startsWith(SERVER.JSON_CONTENT_TYPE_PREFIX)) {
+      send(response, SERVER.STATUS_FORBIDDEN, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.BAD_CONTENT_TYPE }));
+      return true;
+    }
+  }
+
+  return false;
 }
 /**
  * The submitted review, with every field the server relies on in a known shape.
