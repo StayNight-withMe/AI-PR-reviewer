@@ -1,5 +1,5 @@
 /** GitHub pull-request scope, read through the GitHub CLI. */
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { promisify } from "node:util";
 import { git } from "./git.js";
@@ -28,16 +28,14 @@ export function hasGh(env = process.env) {
 // resolved by the shell; a missing binary fails at spawn with a clear error
 }
 /** Runs `gh` and returns its stdout. */
-async function gh(repoPath, args, { allowFailure = true } = {}) {
+async function gh(repoPath, args, { allowFailure = true, input } = {}) {
   const { file, prefix } = ghCommand();
   try {
-    const { stdout } = await exec(file, [...prefix, ...args], {
-      cwd: repoPath,
-      maxBuffer: GIT.MAX_BUFFER,
-      windowsHide: true,
-      encoding: "utf8",
-      env: { ...process.env, GH_PAGER: P.EMPTY, GH_PROMPT_DISABLED: "1" },
-    });
+    const stdout = input === undefined
+      ? (await exec(file, [...prefix, ...args], EXEC_OPTIONS(repoPath))).stdout
+      // `execFile` has no async stdin, and `gh api --input -` reads its payload
+      // from stdin: without a real pipe it waits forever.
+      : await runWithInput(file, [...prefix, ...args], input, repoPath);
     return { ok: true, stdout };
   } catch (error) {
     if (error.code === GIT.ENOENT) {
@@ -62,6 +60,55 @@ async function gh(repoPath, args, { allowFailure = true } = {}) {
     if (allowFailure) return { ok: false, error: failure, stderr };
     throw failure;
   }
+}
+/** Shared options for every `gh` call. */
+function EXEC_OPTIONS(repoPath) {
+  return {
+    cwd: repoPath,
+    maxBuffer: GIT.MAX_BUFFER,
+    windowsHide: true,
+    encoding: "utf8",
+    env: { ...process.env, GH_PAGER: P.EMPTY, GH_PROMPT_DISABLED: "1" },
+  };
+}
+/** Runs a command, writes `input` to its stdin and resolves with its stdout. */
+function runWithInput(file, args, input, repoPath) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(file, args, {
+      cwd: repoPath,
+      windowsHide: true,
+      env: { ...process.env, GH_PAGER: P.EMPTY, GH_PROMPT_DISABLED: "1" },
+    });
+
+    const out = [];
+    const err = [];
+    let size = P.ZERO;
+
+    child.stdout.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > GIT.MAX_BUFFER) {
+        child.kill();
+        reject(new Error(GH.ERROR_PUBLISH_FAILED + "the response was too large."));
+        return;
+      }
+      out.push(chunk);
+    });
+    child.stderr.on("data", (chunk) => err.push(chunk));
+    child.on("error", reject);
+    child.on("close", (code) => {
+      const stdout = Buffer.concat(out).toString("utf8");
+      if (code === P.ZERO) {
+        resolve(stdout);
+        return;
+      }
+      const failure = new Error(Buffer.concat(err).toString("utf8").trim() || `gh exited with ${code}`);
+      failure.stdout = stdout;
+      reject(failure);
+    });
+
+    child.stdin.on("error", () => {});
+    child.stdin.end(input);
+  });
 }
 /** Reads one pull request. */
 export async function viewPullRequest(repoPath, selector = {}) {
@@ -232,4 +279,134 @@ export function pullRequestScope(pr) {
 export function pullRequestTitle(pr) {
   const number = pr.number ? `${GH.TITLE_PREFIX}${pr.number}` : GH.TITLE_PREFIX.trim();
   return pr.title ? `${number}: ${pr.title}` : number;
+}
+/** The verdict flags `gh pr review` understands, keyed by our review state. */
+const REVIEW_FLAGS = {
+  APPROVE: GH.FLAG_APPROVE,
+  REQUEST_CHANGES: GH.FLAG_REQUEST_CHANGES,
+  COMMENT: GH.FLAG_COMMENT,
+};
+/** Maps one local comment onto a GitHub inline-comment payload. */
+export function toGitHubComment(comment) {
+  const start = Number(comment?.lineStart);
+  const end = Number(comment?.lineEnd ?? comment?.lineStart);
+  const side = comment?.side === "left" ? "LEFT" : "RIGHT";
+  const body = String(comment?.body ?? P.EMPTY).trim();
+  const path = String(comment?.path ?? P.EMPTY);
+
+  // GitHub attaches a comment to a line; anything else is kept in the body by
+  // the caller instead of being silently dropped.
+  if (!path || !Number.isFinite(start) || start <= P.ZERO || !body) return null;
+
+  const last = Number.isFinite(end) && end >= start ? end : start;
+  const payload = { path, body, side, line: last };
+  if (last > start) {
+    payload.start_line = start;
+    payload.start_side = side;
+  }
+  return payload;
+}
+/** Splits a review into the parts a GitHub review can carry. */
+export function toGitHubReview(review) {
+  const state = REVIEW_FLAGS[review?.reviewState] ? review.reviewState : "COMMENT";
+  const inline = [];
+  const loose = [];
+
+  for (const comment of Array.isArray(review?.comments) ? review.comments : []) {
+    const mapped = toGitHubComment(comment);
+    if (mapped) inline.push(mapped);
+    else if (String(comment?.body ?? P.EMPTY).trim()) loose.push(comment);
+  }
+
+  const parts = [];
+  const body = String(review?.reviewBody ?? P.EMPTY).trim();
+  if (body) parts.push(body);
+
+  // A comment without a line cannot be posted inline, so it is kept in the body.
+  if (loose.length) {
+    parts.push("**Comments that do not belong to a line**");
+    for (const comment of loose) {
+      parts.push(`- \`${comment.path}\`: ${String(comment.body).trim()}`);
+    }
+  }
+
+  return {
+    state,
+    event: state,
+    body: parts.join("\n\n").slice(P.ZERO, GH.MAX_BODY_CHARS),
+    comments: inline.slice(P.ZERO, GH.MAX_INLINE_COMMENTS),
+    droppedComments: Math.max(P.ZERO, inline.length - GH.MAX_INLINE_COMMENTS),
+  };
+}
+/** Publishes a locally written review to GitHub as a real pull-request review. */
+export async function publishReview(repoPath, { review, pr, repo }) {
+  if (!pr?.number) throw new Error(GH.ERROR_NOT_A_PR);
+  await assertAuthenticated(repoPath);
+
+  const payload = toGitHubReview(review);
+  const target = repo || pr.repo || null;
+
+  // Inline comments can only travel through the API: `gh pr review` has no flag
+  // for them. A review with nothing to attach still uses the simple CLI, which
+  // gives a clearer error for an already-approved PR.
+  if (!payload.comments.length) return publishSimpleReview(repoPath, payload, pr, target);
+
+  const resolved = target || (await repositoryOf(repoPath));
+  if (!resolved) throw new Error(`${GH.ERROR_PUBLISH_FAILED}cannot tell which repository this is.`);
+
+  const denormalized = {
+    body: payload.body,
+    event: payload.event,
+    comments: payload.comments,
+  };
+  const result = await gh(repoPath, [
+    ...GH.ARGS_API,
+    GH.FLAG_METHOD, GH.HTTP_POST,
+    GH.PR_REVIEWS_ENDPOINT.replace(GH.PLACEHOLDER_REPO, resolved).replace(GH.PLACEHOLDER_NUMBER, String(pr.number)),
+    GH.FLAG_INPUT, GH.STDIN,
+  ], { allowFailure: true, input: JSON.stringify(denormalized) });
+
+  if (!result.ok) throw new Error(`${GH.ERROR_PUBLISH_FAILED}${result.error?.message ?? P.EMPTY}`);
+
+  let url = P.EMPTY;
+  try {
+    url = JSON.parse(result.stdout)?.html_url ?? P.EMPTY;
+  } catch {
+    /** A successful post without a readable body still counts. */
+  }
+
+  return {
+    published: true,
+    state: payload.state,
+    inlineComments: payload.comments.length,
+    droppedComments: payload.droppedComments,
+    url,
+  };
+}
+/** A verdict-and-body review with no inline comments. */
+async function publishSimpleReview(repoPath, payload, pr, repo) {
+  const args = [...GH.ARGS_REVIEW, String(pr.number), REVIEW_FLAGS[payload.state]];
+  if (payload.body) args.push(...GH.ARGS_REVIEW_BODY, payload.body);
+  if (repo) args.push(...GH.ARGS_REPO, repo);
+
+  const result = await gh(repoPath, args, { allowFailure: true });
+  if (!result.ok) throw new Error(`${GH.ERROR_PUBLISH_FAILED}${result.error?.message ?? P.EMPTY}`);
+
+  return {
+    published: true,
+    state: payload.state,
+    inlineComments: P.ZERO,
+    droppedComments: payload.droppedComments,
+    url: pr.url ?? P.EMPTY,
+  };
+}
+/** `owner/repo` of the checkout, from its git remote. */
+async function repositoryOf(repoPath) {
+  const { ok, stdout } = await git(repoPath, GIT.ARGS.REMOTE);
+  if (!ok) return null;
+
+  const value = stdout.trim();
+  // git@github.com:owner/repo.git  or  https://github.com/owner/repo.git
+  const match = /github\.com[:/]+([^/]+)\/([^/]+?)(?:\.git)?\/?$/i.exec(value);
+  return match ? `${match[P.ONE]}/${match[P.TWO]}` : null;
 }

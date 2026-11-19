@@ -513,10 +513,11 @@ a.tree-row { text-decoration: none; }
 .viewed-wrap span:last-child { font-size: 12px; color: var(--fg-muted); }
 /** ------------------------------- diff body ------------------------------- */
 .diff-body {
-  /** The perf hints live here, not on `.diff-file`: on the section they would create a containing… */
-  content-visibility: auto;
-  contain-intrinsic-size: auto 1200px;
-  contain: layout style paint;
+  /** No `content-visibility` / `contain: paint` here. They were a performance
+      hint, but they let the browser paint only part of a section: a file was
+      visually cut off mid-hunk with no expander to continue it, and no amount of
+      scrolling brought the rest back. Deferring large files and hydrating in
+      chunks already keeps the page responsive, so correctness wins here. */
 }
 .diff-file.collapsed .diff-body { display: none; }
 .diff-file.is-viewed .diff-body { opacity: 0.85; }
