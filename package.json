@@ -1,6 +1,6 @@
 {
   "name": "pr-review-mcp",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "GitHub-style pull request review UI as an MCP server: builds a local review page for uncommitted changes, branch commits or explicit commits, collects inline comments and exports the review as Markdown/JSON for an AI.",
   "type": "module",
   "main": "src/index.js",
@@ -21,10 +21,13 @@
     "test:mcp": "node tests/mcp.mjs",
     "test:cli": "node tests/cli.mjs",
     "test:session": "node tests/session.mjs",
+    "test:session:isolation": "node tests/session-isolation.mjs",
     "test:editors": "node tests/editors.mjs",
     "test:editors:configs": "python tests/editors_configs.py",
     "test:github": "node tests/github.mjs",
     "test:pr": "node tests/pr-mode.mjs",
+    "test:publish": "node tests/publish.mjs",
+    "test:committed": "node tests/committed-content.mjs",
     "test:pr:ui": "node tests/pr-page.mjs",
     "test:artifacts": "node tests/artifacts.mjs",
     "test:header:ui": "node tests/file-header-ui.mjs",
@@ -36,7 +39,7 @@
     "gh:check": "node scripts/ensure-gh.mjs --check",
     "gh:install": "node scripts/ensure-gh.mjs --install",
     "postinstall": "node scripts/ensure-gh.mjs --check --never-fail",
-    "test:all": "npm run test && npm run test:session && npm run test:cli && npm run test:synthetic && npm run test:page && npm run test:mcp && npm run test:github && npm run test:pr && npm run test:pr:ui && npm run test:artifacts && npm run test:header:ui && npm run test:resolve && npm run test:defects && npm run test:settings && npm run test:editors && npm run test:ui:regressions && npm run test:ui && npm run test:ui:extra"
+    "test:all": "npm run test && npm run test:session && npm run test:session:isolation && npm run test:cli && npm run test:synthetic && npm run test:page && npm run test:mcp && npm run test:github && npm run test:pr && npm run test:publish && npm run test:pr:ui && npm run test:artifacts && npm run test:header:ui && npm run test:resolve && npm run test:defects && npm run test:settings && npm run test:editors && npm run test:ui:regressions && npm run test:ui && npm run test:ui:extra"
   },
   "engines": {
     "node": ">=20"

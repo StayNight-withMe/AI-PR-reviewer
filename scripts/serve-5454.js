@@ -1,7 +1,7 @@
 /** Standalone review server: keeps the review page alive without the MCP layer. */
 import { startReview } from "../src/core.js";
 import { writePageRegistry } from "../src/page-process.js";
-import { MODE, SERVER } from "../src/config.js";
+import { MODE, P, SERVER } from "../src/config.js";
 const DEFAULT_REPO = process.env.PR_REVIEW_REPO ?? process.cwd();
 const DEFAULT_PORT = Number(process.env.PR_REVIEW_PORT ?? SERVER.DEFAULT_PORT);
 const repoPath = process.argv[2] ?? DEFAULT_REPO;
@@ -29,6 +29,11 @@ const result = await startReview({
   host: SERVER.HOST,
   port,
   title: process.env.PR_REVIEW_TITLE || undefined,
+  // Only an explicit PR_REVIEW_SESSION marks this page as belonging to a chat.
+  // Inheriting OPENCODE_SESSION_ID from whoever launched the process gave the
+  // review to that unrelated session: a review opened by hand, or by a test,
+  // was delivered into another conversation's chat.
+  sessionId: process.env.PR_REVIEW_SESSION || P.EMPTY,
 });
 console.log(`REVIEW_PAGE_URL=${result.url}`);
 console.log(`REVIEW_ID=${result.reviewId}`);

@@ -22,7 +22,7 @@ import {
   waitForPageRegistry,
 } from "./page-process.js";
 import { APP, GH, MODE, P, SERVER, TOOLS } from "./config.js";
-import { listPullRequests } from "./github.js";
+import { listPullRequests, publishReview } from "./github.js";
 /** The instruction the MCP client shows to the model. */
 const INSTRUCTIONS = [
   "pr-review opens a local review page for a repository and reads the review back.",
@@ -30,6 +30,8 @@ const INSTRUCTIONS = [
   "To review a GitHub pull request: call list_pull_requests to see the open PRs, then",
   'start_review with mode="pr" and its number (pr=N); this reads the PR through the GitHub CLI,',
   "so gh must be installed and authenticated.",
+  "To send a finished review back to GitHub, call publish_review with the reviewId: it posts a real",
+  "pull-request review (verdict plus inline comments) through gh. Ask the user before publishing.",
   "Do not edit the OpenCode configuration, add wrapper scripts or change how this server is",
   "launched: the server finds git on its own and needs no environment setup. If a tool fails,",
   "report the error instead of rewriting the config.",
@@ -278,6 +280,80 @@ async function waitForSubmittedReview(review, timeoutMs) {
 }
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+server.registerTool(
+  "publish_review",
+  {
+    title: "Publish a review to GitHub",
+    description:
+      "Publishes a review that was written locally back to its GitHub pull request as a real PR review: " +
+      "the verdict (Approver / Request changes / Comment) plus every inline comment, attached to its file and line. " +
+      "Use it after the user finishes a review of mode=pr. Needs `gh` to be installed and authenticated.",
+    inputSchema: {
+      reviewId: z.string().describe("Identifier returned by start_review for a mode=pr review."),
+      reviewState: z
+        .enum(["APPROVE", "REQUEST_CHANGES", "COMMENT"])
+        .optional()
+        .describe("Verdict to publish. Defaults to the verdict the user chose on the page."),
+      reviewBody: z.string().optional().describe("Overall review text. Defaults to the one saved with the review."),
+    },
+  },
+  async ({ reviewId, reviewState, reviewBody }) => {
+    const entry = await resolveReview(reviewId);
+    const review = await readSavedReview(entry);
+    if (!review) throw new Error(`No saved review for ${reviewId}. Submit the review on the page first.`);
+
+    const pr = await pullRequestOf(entry, review);
+    if (!pr?.number) throw new Error(GH.ERROR_NOT_A_PR);
+
+    // An explicit verdict wins; otherwise the one the reviewer picked is used.
+    const payload = {
+      ...review.review,
+      reviewState: reviewState ?? review.review.reviewState,
+      reviewBody: reviewBody ?? review.review.reviewBody,
+    };
+
+    const result = await publishReview(entry.repo, {
+      review: payload,
+      pr,
+      repo: pr.repo,
+    });
+
+    const lines = [
+      `Published to GitHub as ${result.state}.`,
+      `Pull request: #${pr.number}${result.url ? ` — ${result.url}` : P.EMPTY}`,
+      `Inline comments: ${result.inlineComments}`,
+    ];
+    if (result.droppedComments) {
+      lines.push(`Not included: ${result.droppedComments} comments over GitHub's limit of ${GH.MAX_INLINE_COMMENTS}.`);
+    }
+
+    return { content: [{ type: "text", text: lines.join("\n") }] };
+  },
+);
+/** The saved review of a page, or null when nothing was submitted yet. */
+async function readSavedReview(entry) {
+  if (!entry?.outputDir) return null;
+
+  try {
+    const payload = JSON.parse(await readFile(join(entry.outputDir, "review.json"), "utf8"));
+    if (!payload?.review) return null;
+    return { meta: payload.meta ?? {}, review: payload.review };
+  } catch {
+    return null;
+  }
+}
+/** The pull request a review belongs to. */
+async function pullRequestOf(entry, review) {
+  const meta = review?.meta ?? {};
+  const number = entry?.pr ?? meta.pr?.number ?? null;
+  if (!number) return null;
+
+  return {
+    number,
+    url: entry?.prUrl ?? meta.pr?.url ?? P.EMPTY,
+    repo: meta.pr?.repo ?? entry?.prRepo ?? null,
+  };
 }
 server.registerTool(
   "get_review",

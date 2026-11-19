@@ -126,9 +126,13 @@ export async function startReview(params) {
   // Deleted files may be absent from the working tree AND from HEAD (deleted inside a range), so…
   const fallbackRefs = [GIT.DEFAULT_REF, meta.base].filter(Boolean);
   // A PR is reviewed at a commit that is usually not checked out: content, highlighting and…
-  const reviewRange = params.mode === MODE.PR
-    ? { base: scope.base, head: scope.head }
-    : null;
+  // The same is true of every committed scope: a range, a branch, or an explicit
+  // commit set is reviewed as it was committed. The working tree may hold
+  // unrelated edits, and reading those made a file show the wrong line count —
+  // rows of the reviewed version were missing, and the highlighted lines did not
+  // match the diff. Only `uncommitted` really means "read the disk".
+  const pinnedHead = params.mode === MODE.UNCOMMITTED ? null : scope.head ?? null;
+  const reviewRange = pinnedHead ? { base: scope.base, head: pinnedHead } : null;
   const contentOptions = reviewRange
     ? { refs: fallbackRefs, range: reviewRange }
     : { refs: fallbackRefs };

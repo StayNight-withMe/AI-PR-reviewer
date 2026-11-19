@@ -33,7 +33,7 @@ export const P = {
 /** ---------------------------------- app ---------------------------------- */
 export const APP = {
   NAME: "pr-review",
-  VERSION: "1.1.1",
+  VERSION: "1.1.2",
   /** The version of the HTTP contract the editor extensions rely on. */
   PROTOCOL_VERSION: "1",
 };
@@ -113,6 +113,28 @@ export const GH = {
   ERROR_NO_PR: "No pull request found for this repository.",
   ERROR_BAD_JSON: "The GitHub CLI returned an unreadable pull request.",
   ERROR_FETCH_FAILED: "Could not fetch the pull request head: ",
+  /** Publishing a locally written review back to GitHub as a real PR review. */
+  ARGS_REVIEW: ["pr", "review"],
+  ARGS_REVIEW_BODY: ["--body"],
+  ARGS_API: ["api"],
+  FLAG_METHOD: "--method",
+  FLAG_INPUT: "--input",
+  STDIN: "-",
+  HTTP_POST: "POST",
+  /** `gh api` endpoint; `{repo}` and `{number}` are filled in by the caller. */
+  PR_REVIEWS_ENDPOINT: "repos/{repo}/pulls/{number}/reviews",
+  PLACEHOLDER_REPO: "{repo}",
+  PLACEHOLDER_NUMBER: "{number}",
+  /** `--comment` / `--approve` / `--request-changes`: the verdict flags. */
+  FLAG_COMMENT: "--comment",
+  FLAG_APPROVE: "--approve",
+  FLAG_REQUEST_CHANGES: "--request-changes",
+  /** GitHub's own limits; exceeding them makes the API reject the whole review. */
+  MAX_BODY_CHARS: 65536,
+  MAX_INLINE_COMMENTS: 100,
+  ERROR_PUBLISH_FAILED: "GitHub rejected the review: ",
+  ERROR_NOT_A_PR: "This review is not about a pull request, so there is nothing to publish to GitHub.",
+  ERROR_PUBLISH_NEEDS_GH: "Publishing a review needs the GitHub CLI (gh) to be installed and logged in.",
 };
 /** --------------------------------- server -------------------------------- */
 export const SERVER = {
