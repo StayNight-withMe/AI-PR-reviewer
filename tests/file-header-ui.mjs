@@ -106,8 +106,12 @@ try {
   });
 
   await check("a file with hidden regions offers Expand all inside the menu", async () => {
-    // Force folding: a low threshold makes every gap a candidate.
-    await driver.executeScript(`(PR.state.settings.contextCollapseLines = 1, PR.renderFileList(), true)`);
+    // Force folding: a low threshold makes every gap a candidate. Large-file
+    // deferring is turned off so the pick below cannot land on a placeholder
+    // that has no hunks at all.
+    await driver.executeScript(
+      `(PR.state.settings.contextCollapseLines = 1, PR.state.settings.largeFileLines = 0, PR.renderFileList(), true)`,
+    );
     await PAUSE(2500);
 
     const opened = await driver.executeScript(`return (function(){
@@ -237,6 +241,52 @@ try {
     assert.ok(texts.includes("View file"), `View file is missing: ${texts.join(", ")}`);
     assert.ok(texts.includes("Add file comment"), `Add file comment is missing: ${texts.join(", ")}`);
     assert.ok(!texts.includes("Copy path"), "Copy path should be an icon next to the path, not a menu item");
+  });
+
+  await check("an open menu paints above the next file's header", async () => {
+    // Regression: the popup lives inside a sticky header, which has its own
+    // z-index and therefore its own stacking context. The next file's header has
+    // the same z-index, so it painted over the open menu.
+    const result = await driver.executeScript(`return (function(){
+      var sections = Array.prototype.slice.call(document.querySelectorAll('.diff-file'));
+      if (sections.length < 2) return { skipped: true };
+
+      var section = sections[0];
+      var button = section.querySelector('.js-file-menu');
+      if (!button) return { skipped: true };
+
+      // elementFromPoint only answers for coordinates inside the viewport.
+      section.scrollIntoView({ block: 'start' });
+      button.click();
+
+      var pop = section.querySelector('.file-menu-pop');
+      var rect = pop.getBoundingClientRect();
+      var inViewport = rect.top >= 0 && rect.bottom <= window.innerHeight;
+      var hit = inViewport
+        ? document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+        : null;
+      var lifted = section.classList.contains('menu-open');
+      var zIndex = getComputedStyle(section).zIndex;
+
+      button.click();
+      return {
+        skipped: false,
+        lifted: lifted,
+        zIndex: zIndex,
+        visible: rect.width > 0 && rect.height > 0,
+        inViewport: inViewport,
+        hitInsidePopup: !!(hit && pop.contains(hit)),
+        hitPath: hit && hit.closest('.diff-file') ? hit.closest('.diff-file').dataset.path : null,
+        closedLowersIt: !section.classList.contains('menu-open'),
+      };
+    })();`);
+    if (result.skipped) return;
+    assert.ok(result.visible, "the menu did not open");
+    assert.ok(result.lifted, "the section was not lifted while its menu is open");
+    assert.notEqual(result.zIndex, "auto", "the lifted section needs an explicit z-index");
+    if (!result.inViewport) return;
+    assert.ok(result.hitInsidePopup, `the next file painted over the menu (hit ${result.hitPath})`);
+    assert.equal(result.closedLowersIt, true, "closing the menu must drop the section back down");
   });
 
   await check("the path keeps its own copy button", async () => {

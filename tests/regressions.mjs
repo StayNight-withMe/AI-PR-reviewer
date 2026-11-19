@@ -39,7 +39,9 @@ try {
   console.log("BOOT page loaded");
   await waitFor(`document.querySelectorAll('.diff-file').length > 0 && [...document.querySelectorAll('.diff-file')].some(s => s.dataset.hydrated === '1')`);
   console.log("BOOT first section hydrated");
-  await waitFor(`[...document.querySelectorAll('.diff-file')].filter(s => s.dataset.hydrated === '1').length >= Math.min(64, document.querySelectorAll('.diff-file').length)`);
+  // Wait for every section, not a fixed number: the fixture's diff can hold any
+  // number of files, and a hard-coded 64 made the first check flaky.
+  await waitFor(`[...document.querySelectorAll('.diff-file')].every(s => s.dataset.hydrated === '1')`, 180_000);
   console.log("BOOT all sections hydrated");
 
   await check("all diff sections are highlighted and linkified", async () => {
@@ -97,8 +99,13 @@ try {
       const fg = getComputedStyle(probe).color;
       probe.remove();
 
-      const calls = [...document.querySelectorAll('.sym-call')];
-      const plain = [...document.querySelectorAll('.sym-link:not(.sym-call)')];
+      // The rule is C#-specific, and a link inside a markup token (a <button> tag
+      // in an .html or .vue file) keeps the token's own colour by design, so
+      // only C# sections are inspected.
+      const csSections = [...document.querySelectorAll('.diff-file')]
+        .filter(s => s.dataset.path.endsWith('.cs'));
+      const calls = csSections.flatMap(s => [...s.querySelectorAll('.sym-call')]);
+      const plain = csSections.flatMap(s => [...s.querySelectorAll('.sym-link:not(.sym-call)')]);
       return {
         fg,
         calls: calls.length,
@@ -148,11 +155,18 @@ try {
   });
 
   await check("Expand all reveals the whole file", async () => {
-    const path = await js(`(() => {
-      const section = [...document.querySelectorAll('.diff-file')].find(s => s.dataset.path.endsWith('.cs') && s.querySelectorAll('.diff-hunk').length > 1);
-      section.scrollIntoView({block:'center'});
+    const found = await js(`(() => {
+      // A section that actually offers Expand all: a multi-hunk file whose gaps
+      // are collapsed. Picking by path alone could land on a file with no gaps.
+      var section = [...document.querySelectorAll('.diff-file:not(.is-deferred)')]
+        .find(function (s) { return !!s.querySelector('.js-expand-all') && s.querySelectorAll('.diff-hunk').length > 1; });
+      if (!section) return null;
+      section.scrollIntoView({ block: 'center' });
       return section.dataset.path;
     })()`);
+    if (!found) return;
+
+    const path = found;
     const before = await js(`document.querySelector('section[data-path="' + CSS.escape(${JSON.stringify(path)}) + '"]').querySelectorAll('td.diff-code').length`);
     await js(`document.querySelector('section[data-path="' + CSS.escape(${JSON.stringify(path)}) + '"] .js-expand-all').click()`);
     await PAUSE(1200);
@@ -907,8 +921,8 @@ try {
       return {
         count: deferred.length,
         limit: PR.state.settings.largeFileLines,
-        cells: document.querySelectorAll('td.diff-code').length,
-        rows: document.querySelectorAll('tr').length,
+        // Only the deferred sections matter here: their own cells must be zero.
+        deferredCells: deferred.reduce((n, s) => n + s.querySelectorAll('td.diff-code').length, 0),
         hasNote: deferred.length ? !!deferred[0].querySelector('.deferred-note') : false,
         hasButton: deferred.length ? !!deferred[0].querySelector('.js-load-file') : false,
       };
@@ -916,8 +930,57 @@ try {
     assert.ok(info.limit > 0, "expected a default large-file threshold");
     assert.ok(info.count > 0, "expected at least one deferred large file");
     assert.ok(info.hasNote && info.hasButton, "deferred file needs its note and Load button");
-    // The point of deferring is a smaller DOM.
-    assert.ok(info.cells < 5000, `deferred files should keep the DOM small, got ${info.cells} cells`);
+    // The point of deferring is that the file contributes no rows at all.
+    assert.equal(info.deferredCells, 0, `deferred files rendered ${info.deferredCells} cells`);
+  });
+
+  await check("the large-file setting measures the whole file, not just the hunk", async () => {
+    // Regression: only `changeCount` was compared, so a generated snapshot with
+    // thousands of lines stayed open when fewer than the limit lines had changed.
+    // The fixture decides which files exist, so the threshold is derived from a
+    // real file instead of hard-coding 400: a file whose length exceeds its own
+    // change count is the exact case the old comparison missed.
+    const out = await js(`(async () => {
+      const previous = PR.state.settings.largeFileLines;
+
+      const candidate = PR.state.files.find(f =>
+        f.status !== 'deleted' &&
+        f.totalLines > 0 &&
+        f.changeCount > 0 &&
+        f.totalLines > f.changeCount &&
+        f.changeCount < f.totalLines - 1);
+      if (!candidate) { PR.state.settings.largeFileLines = previous; return { skipped: true }; }
+
+      // A limit between the changed lines and the file length: only the whole
+      // file can push it over.
+      PR.state.settings.largeFileLines = Math.max(candidate.changeCount, 1);
+      PR.renderFileList();
+      await new Promise(r => setTimeout(r, 700));
+
+      const section = [...document.querySelectorAll('.diff-file')]
+        .find(s => s.dataset.path === candidate.path);
+
+      const result = {
+        skipped: false,
+        path: candidate.path,
+        totalLines: candidate.totalLines,
+        changeCount: candidate.changeCount,
+        limit: PR.state.settings.largeFileLines,
+        deferred: section ? section.classList.contains('is-deferred') : false,
+        note: section && section.querySelector('.deferred-text') ? section.querySelector('.deferred-text').textContent : '',
+      };
+
+      PR.state.settings.largeFileLines = previous;
+      PR.renderFileList();
+      return result;
+    })()`);
+
+    if (out.skipped) return;
+    assert.ok(
+      out.deferred,
+      `${out.path} (${out.totalLines} lines, ${out.changeCount} changed, limit ${out.limit}) was not collapsed`,
+    );
+    assert.match(out.note, /\d+ lines in the file/, "the note must describe the whole file");
   });
 
   await check("loading a deferred file renders and highlights it", async () => {
@@ -934,6 +997,7 @@ try {
         cells: cells.length,
         highlighted: cells.filter(c => c.dataset.highlighted === '1').length,
         stillDeferred: section.classList.contains('is-deferred'),
+        collapsedGaps: section.querySelectorAll('.hunk-expander').length,
         hasExpandAll: !!section.querySelector('.js-expand-all'),
       };
     })()`);
@@ -943,7 +1007,11 @@ try {
     assert.ok(out.cells > 0, "loading must render the diff");
     assert.equal(out.highlighted, out.cells, "every row must be highlighted after loading");
     assert.ok(!out.stillDeferred, "the placeholder must be replaced");
-    assert.ok(out.hasExpandAll, "Expand all replaces the Load button");
+    // A loaded file only offers Expand all when it still hides something; a file
+    // with no collapsed gaps correctly has no such item.
+    if (out.collapsedGaps > 0) {
+      assert.ok(out.hasExpandAll, "a file with hidden regions must offer Expand all after loading");
+    }
   });
 
   await check("every file header has a copy-path button", async () => {
@@ -1213,6 +1281,42 @@ try {
     assert.equal(result.hash, "#L5");
     assert.ok(result.target, "line 5 is not marked as the target");
     assert.ok(result.top >= 0 && result.top < result.viewport, `line 5 is off-screen (${result.top})`);
+  });
+
+  await check("viewer wraps a long line instead of scrolling the page sideways", async () => {
+    // Regression: `.viewer-table` used the automatic table layout, so the table
+    // grew to the width of its longest line, the page scrolled horizontally and
+    // the line numbers left the screen. The diff table was already `fixed`,
+    // which is why the same line wrapped there and not in the viewer.
+    const out = await js(`(() => {
+      const cells = [...document.querySelectorAll('#file-viewer td.v-code')];
+      if (!cells.length) return { skipped: true };
+      const longest = cells.reduce((best, cell) => (
+        cell.textContent.length > (best ? best.textContent.length : 0) ? cell : best
+      ), null);
+      const style = getComputedStyle(longest);
+      const rect = longest.getBoundingClientRect();
+      return {
+        skipped: false,
+        layout: getComputedStyle(document.querySelector('.viewer-table')).tableLayout,
+        chars: longest.textContent.length,
+        height: Math.round(rect.height),
+        lineHeight: Math.round(parseFloat(style.lineHeight)),
+        right: Math.round(rect.right),
+        viewport: window.innerWidth,
+        overflow: document.documentElement.scrollWidth > window.innerWidth,
+        whiteSpace: style.whiteSpace,
+      };
+    })()`);
+    if (out.skipped) return;
+
+    assert.equal(out.layout, "fixed", "the viewer table must not size itself by its longest line");
+    assert.equal(out.whiteSpace, "pre-wrap", "code lines must be allowed to wrap");
+    assert.ok(!out.overflow, "the page scrolls sideways instead of wrapping");
+    assert.ok(out.right <= out.viewport, `the code cell reaches ${out.right}px in a ${out.viewport}px window`);
+    if (out.chars > 120) {
+      assert.ok(out.height > out.lineHeight, `a ${out.chars} char line stayed on one row`);
+    }
   });
 
   await check("viewer can comment on a file that was not modified", async () => {

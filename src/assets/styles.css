@@ -439,6 +439,9 @@ a.tree-row { text-decoration: none; }
   /** `overflow`, `contain` and `content-visibility` on this element would create a containing block… */
 }
 .diff-file.flash { border-color: var(--accent-emphasis); }
+/** While a file's ⋯ menu is open the whole section must sit above the next one: the
+    sticky header creates a stacking context, so the popup inside it cannot. */
+.diff-file.menu-open { position: relative; z-index: 40; }
 /** The header must stay visible while a long file is scrolled, so the reviewer can press "Viewed"… */
 .diff-file-header {
   display: flex; align-items: center; gap: 8px;
@@ -840,6 +843,11 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
 .viewer-toggle { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; color: var(--fg-muted); }
 .viewer-table {
   width: 100%; border-collapse: collapse;
+  /** `fixed` is what keeps a very long line inside the page: with the automatic
+      layout the table grows to the widest line, so the page scrolls sideways and
+      the line numbers leave the screen. The diff table has always been fixed,
+      which is why the same line wrapped there and not here. */
+  table-layout: fixed;
   border: 1px solid var(--border); border-radius: var(--radius);
   font-size: 12.5px; line-height: 20px;
 }

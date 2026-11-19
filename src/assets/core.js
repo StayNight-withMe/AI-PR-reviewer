@@ -382,6 +382,9 @@
     if (!openFileMenu) return;
     openFileMenu.pop.hidden = true;
     openFileMenu.button.setAttribute("aria-expanded", "false");
+    // The section no longer needs to sit above its neighbours.
+    var section = openFileMenu.button.closest(".diff-file");
+    if (section) section.classList.remove("menu-open");
     openFileMenu = null;
   };
 
@@ -396,6 +399,12 @@
 
     pop.hidden = false;
     button.setAttribute("aria-expanded", "true");
+    // The header is sticky with its own z-index, so it forms a stacking context:
+    // the popup inside it can never paint over the NEXT file's header, which has
+    // the same z-index. Lifting the whole section for as long as the menu is
+    // open is what makes the popup visible over the file below.
+    var section = button.closest(".diff-file");
+    if (section) section.classList.add("menu-open");
     openFileMenu = { button: button, pop: pop };
   };
   // A click anywhere else, Escape, or a scroll closes the menu.

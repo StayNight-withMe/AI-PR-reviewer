@@ -33,7 +33,7 @@ export const P = {
 /** ---------------------------------- app ---------------------------------- */
 export const APP = {
   NAME: "pr-review",
-  VERSION: "1.1.0",
+  VERSION: "1.1.1",
   /** The version of the HTTP contract the editor extensions rely on. */
   PROTOCOL_VERSION: "1",
 };
