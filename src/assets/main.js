@@ -834,25 +834,52 @@
     bindScrollSpy();
     bindStorageSync();
     bindStickyHeaderOffset();
+    bindActionBarHeight();
     // A marker tests and embedders can wait for: the page is fully wired, so a change made now is…
     document.body.dataset.booted = "1";
   }
 
-  /** Keeps the sticky file header below the sticky toolbar. */
+  /** Keeps the sticky chrome below the sticky page header. */
   function bindStickyHeaderOffset() {
+    var header = document.querySelector(".gh-header");
+    var tabs = document.querySelector(".gh-tabs");
     var toolbar = document.querySelector(".gh-sticky-toolbar");
     if (!toolbar) return;
+    var root = document.documentElement;
+    var height = function (el) { return el ? el.getBoundingClientRect().height : 0; };
 
     function update() {
-      // header must stick at that offset PLUS the toolbar's own height, or it would slide under the…
-      var rect = toolbar.getBoundingClientRect();
-      var stickyTop = parseFloat(getComputedStyle(toolbar).top) || 0;
-      var top = Math.max(0, Math.round(stickyTop + rect.height));
-      document.documentElement.style.setProperty("--diff-header-top", top + "px");
+      // Each sticky band sits directly under the one above it. Measuring the
+      // heights (rather than reading the offsets this function writes) keeps the
+      // chain correct when the header wraps on a narrow window, and avoids a
+      // feedback loop where every pass adds one more band's height.
+      var headerHeight = Math.round(height(header));
+      var tabsHeight = Math.round(height(tabs));
+      root.style.setProperty("--header-h", headerHeight + "px");
+
+      var barTop = headerHeight + tabsHeight;
+      root.style.setProperty("--chrome-body", barTop + "px");
+      root.style.setProperty("--diff-header-top", Math.round(barTop + height(toolbar)) + "px");
     }
 
     update();
 
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(update).catch(function () {});
+    window.addEventListener("resize", update);
+  }
+
+  /** The fixed action bar is taller when its contents wrap, so the room kept
+      free at the end of the page (and the toast above it) follow its height. */
+  function bindActionBarHeight() {
+    var bar = document.querySelector(".action-bar");
+    if (!bar) return;
+    var root = document.documentElement;
+
+    function update() {
+      root.style.setProperty("--action-h", Math.round(bar.getBoundingClientRect().height) + "px");
+    }
+
+    update();
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(update).catch(function () {});
     window.addEventListener("resize", update);
   }

@@ -219,13 +219,13 @@
     for (var index = 0; index < file.hunks.length; index += 1) {
       // too small to be worth hiding.
       var above = findGap(gaps, index, PR.GAP.UP);
-      if (above && isCollapsed(file, above)) out += expanderBlock(index, PR.GAP.UP);
+      if (above && isCollapsed(file, above)) out += expanderBlock(file.hunks[index], index, PR.GAP.UP);
       out += hunkBlock(file, file.hunks[index], index);
     }
     // invisible without a button, because the end of the diff looked exactly like the end of the file.
     var lastIndex = file.hunks.length - 1;
     var below = findGap(gaps, lastIndex, PR.GAP.DOWN);
-    if (below && isCollapsed(file, below)) out += expanderBlock(lastIndex, PR.GAP.DOWN);
+    if (below && isCollapsed(file, below)) out += expanderBlock(file.hunks[lastIndex], lastIndex, PR.GAP.DOWN);
     return out;
   }
 
@@ -306,23 +306,19 @@
     return hunk.rows.length > 0 && hunk.rows.every(function (row) { return row.kind === "add"; });
   }
 
-  function expanderBlock(hunkIndex, direction) {
-    var split = PR.state.diffMode === PR.DIFF_MODE.SPLIT;
+  function expanderBlock(hunk, hunkIndex, direction) {
+    var columns = tableColumns(hunk);
 
-    var cols = split
-      ? '<col class="c-gutter"><col class="c-num"><col><col class="c-gutter"><col class="c-num"><col>'
-      : '<col class="c-gutter"><col class="c-num"><col class="c-num"><col>';
-    // blue block is one wide, obvious target.
-    var span = split ? 3 : 3;
+    // One wide target across the whole row, as GitHub draws it: the bar is not
+    // tied to a side, so it must not end halfway across a split table.
     return '<div class="hunk-expander" data-hunk="' + hunkIndex + '" data-dir="' + direction + '">' +
-      '<table class="diff-table diff-expander-table"><colgroup>' + cols + "</colgroup><tbody><tr>" +
-        '<td class="expander-cell" colspan="' + span + '">' +
+      '<table class="diff-table diff-expander-table"><colgroup>' + columns.html + "</colgroup><tbody><tr>" +
+        '<td class="expander-cell" colspan="' + columns.count + '">' +
           '<button class="hunk-expander-btn js-expand" data-dir="' + direction + '" title="' +
             (direction === PR.DIRECTION.UP ? "Show code above this change" : "Show code below this change") + '">' +
             EXPAND_SVG +
           "</button>" +
         "</td>" +
-        (split ? '<td></td><td></td><td></td>' : '<td></td>') +
       "</tr></tbody></table>" +
     "</div>";
   }
@@ -345,25 +341,51 @@
     return hunk.rows.length > 0;
   }
 
+  /** Whether the current layout shows two sides of the hunk. */
+  function isSplit() {
+    return PR.state.diffMode === PR.DIFF_MODE.SPLIT;
+  }
+
+  /**
+   * The columns of a hunk table and how many cells one row of it must have.
+   * Both come from one place, because a row with the wrong cell count silently
+   * shifts the whole table: numbers land under the wrong code and the right
+   * side of a split view slides off its column.
+   */
+  function tableColumns(hunk) {
+    var simple = hasNoOldSide(hunk);
+    if (simple) {
+      // Nothing was removed, so there is no left side to show.
+      return { html: '<col class="c-gutter"><col class="c-num"><col>', count: 3 };
+    }
+    if (isSplit()) {
+      return {
+        html: '<col class="c-gutter"><col class="c-num"><col>' +
+              '<col class="c-gutter"><col class="c-num"><col>',
+        count: 6,
+      };
+    }
+    return { html: '<col class="c-gutter"><col class="c-num"><col class="c-num"><col>', count: 4 };
+  }
+
   function unifiedTable(file, hunk) {
     var marks = wordMarks(hunk.rows);
     var simple = hasNoOldSide(hunk);
+    var columns = tableColumns(hunk);
     var rows = hunk.rows.map(function (row, index) {
       return rowHtml(file, row, marks[index], simple);
     }).join("");
-    // A file with nothing removed has no meaningful left side, so GitHub hides
 
-    return '<table class="diff-table' + (simple ? " no-old-side" : "") + '"><colgroup><col class="c-gutter">' +
-      (simple ? "" : '<col class="c-num">') +
-      '<col class="c-num"><col></colgroup><tbody>' + rows + "</tbody></table>";
+    return '<table class="diff-table' + (simple ? " no-old-side" : "") +
+      '"><colgroup>' + columns.html + '</colgroup><tbody>' + rows + "</tbody></table>";
   }
 
   function splitTable(file, hunk) {
     var pairs = splitPairs(hunk.rows);
     var simple = hasNoOldSide(hunk);
-    return '<table class="diff-table split' + (simple ? " no-old-side" : "") + '"><colgroup><col class="c-gutter">' +
-      (simple ? "" : '<col class="c-num"><col>') +
-      '<col class="c-gutter"><col class="c-num"><col></colgroup><tbody>' +
+    var columns = tableColumns(hunk);
+    return '<table class="diff-table split' + (simple ? " no-old-side" : "") +
+      '"><colgroup>' + columns.html + '</colgroup><tbody>' +
       pairs.map(function (pair) { return splitRowHtml(pair, simple); }).join("") + "</tbody></table>";
   }
 
@@ -520,6 +542,32 @@
         '" data-kind="ctx">' + PR.escapeHtml(content) + "</td></tr>";
   };
 
+  /**
+   * An unchanged line inside a split table. It repeats the same code on both
+   * sides, the way GitHub shows context in split view.
+   */
+  function splitContextRow(oldLine, newLine, content, simple) {
+    var code = PR.escapeHtml(content);
+    var left = simple ? "" :
+      gutterCell("left", oldLine, null) +
+      '<td class="diff-num cell-ctx" data-side="left" data-line="' + oldLine + '">' + oldLine + "</td>" +
+      '<td class="diff-code cell-ctx" data-old="' + oldLine + '" data-new="" data-kind="ctx">' + code + "</td>";
+
+    return '<tr class="row-ctx split-row" data-side="right" data-line="' + newLine + '" data-kind="ctx">' +
+      left +
+      gutterCell("right", newLine, null) +
+      '<td class="diff-num cell-ctx" data-side="right" data-line="' + newLine + '">' + newLine + "</td>" +
+      '<td class="diff-code cell-ctx" data-old="' + (simple ? "" : oldLine) + '" data-new="' + newLine +
+        '" data-kind="ctx">' + code + "</td></tr>";
+  }
+
+  /** An unchanged line in whichever layout is on screen. */
+  function contextRowHtml(oldLine, newLine, content, simple) {
+    return isSplit()
+      ? splitContextRow(oldLine, newLine, content, simple)
+      : PR.contextRow(oldLine, newLine, content, simple);
+  }
+
   /** ------------------------------- hydration ------------------------------ */
   /** Hydrates one file section (uses the cached highlight lines). */
   PR.hydrate = function (path, section) {
@@ -611,7 +659,7 @@
     for (var line = gap.newStart; line <= gap.newEnd; line += 1) {
       var content = lines[line - 1];
       if (content === undefined) continue;
-      html += PR.contextRow(line - shift, line, content, simple);
+      html += contextRowHtml(line - shift, line, content, simple);
     }
 
     return html;

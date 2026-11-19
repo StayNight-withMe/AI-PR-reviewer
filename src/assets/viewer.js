@@ -394,6 +394,23 @@
 
   window.addEventListener("hashchange", focusHashLine);
 
+  /** The viewer keeps the same sticky chain as the review page: the toolbar must
+      sit below the page header, whose height changes when its contents wrap on a
+      narrow window. */
+  (function bindStickyOffset() {
+    var header = document.querySelector(".gh-header");
+    if (!header) return;
+    var root = document.documentElement;
+
+    function update() {
+      root.style.setProperty("--header-h", Math.round(header.getBoundingClientRect().height) + "px");
+    }
+
+    update();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(update).catch(function () {});
+    window.addEventListener("resize", update);
+  })();
+
   /** ---------------------------- device settings ---------------------------- */
   /** Reads the device settings from the server. */
   function readSettings() {

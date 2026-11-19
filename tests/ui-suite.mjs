@@ -1284,6 +1284,108 @@ try {
     assert.deepEqual(state.split, state.unified, "split view shows different new-side lines than unified view");
     assert.deepEqual(state.back, state.unified, "switching back did not restore the unified view");
   });
+
+  // A row whose cells do not add up to the table's columns shifts every number
+  // under the wrong code, and in split view pushes the right side off its column.
+  await check("every diff row has exactly as many cells as its table has columns", async () => {
+    const report = await js(`(async () => {
+      const inspect = () => {
+        const out = [];
+        document.querySelectorAll('table.diff-table').forEach((table) => {
+          const columns = table.querySelectorAll('colgroup > col').length;
+          if (!columns) return;
+          const bad = [];
+          table.querySelectorAll('tbody > tr').forEach((row, index) => {
+            let cells = 0;
+            for (const cell of row.children) cells += cell.colSpan || 1;
+            if (cells !== columns) bad.push({ index, cells, cls: row.className });
+          });
+          const section = table.closest('.diff-file');
+          out.push({ path: section && section.dataset.path, columns, rows: table.querySelectorAll('tbody > tr').length, bad });
+        });
+        return out;
+      };
+
+      const unified = inspect();
+      PR.state.diffMode = PR.DIFF_MODE.SPLIT;
+      PR.renderFileList();
+      await new Promise(r => setTimeout(r, 2000));
+      const split = inspect();
+
+      // Context expanding is the path that used to insert plain rows into a split table.
+      document.querySelectorAll('.js-expand').forEach(b => b.click());
+      await new Promise(r => setTimeout(r, 2000));
+      const expanded = inspect();
+
+      PR.state.diffMode = PR.DIFF_MODE.UNIFIED;
+      PR.renderFileList();
+      await new Promise(r => setTimeout(r, 1500));
+      return { unified, split, expanded };
+    })()`);
+
+    for (const phase of ["unified", "split", "expanded"]) {
+      const tables = report[phase];
+      assert.ok(tables.length > 0, `no diff tables were found in the ${phase} view`);
+      const broken = tables.filter(t => t.bad.length);
+      assert.deepEqual(broken, [],
+        `rows with the wrong cell count in the ${phase} view: ` +
+        broken.map(t => `${t.path} (${t.columns} columns): ${JSON.stringify(t.bad.slice(0, 3))}`).join("; "));
+    }
+  });
+
+  // A fixed or sticky element that crosses the right edge hides content and
+  // makes the page scroll sideways on a narrow window.
+  await check("the page fits the window at every width a reviewer uses", async () => {
+    const widths = [1440, 1024, 768, 500];
+    const problems = [];
+
+    for (const width of widths) {
+      await driver.manage().window().setRect({ width, height: 800 });
+      await driver.get(reviewState.url);
+      await driver.wait(async () => {
+        try { return await js(`document.body.dataset.booted === '1'`); } catch { return false; }
+      }, 60000);
+      await new Promise(r => setTimeout(r, 900));
+
+      const layout = await js(`(function () {
+        var vw = window.innerWidth;
+        var out = { width: vw, headerBottom: Math.round(document.querySelector('.gh-header').getBoundingClientRect().bottom),
+          tabsTop: Math.round(document.querySelector('.gh-tabs').getBoundingClientRect().top),
+          overflow: [], overlaps: [] };
+        document.querySelectorAll('body *').forEach(function (el) {
+          if (el.getClientRects().length === 0) return;
+          var b = el.getBoundingClientRect();
+          if (b.width === 0 || b.height === 0) return;
+          if (b.right <= vw + 1) return;
+          for (var p = el.parentElement; p; p = p.parentElement) {
+            var s = getComputedStyle(p);
+            if (s.overflowX === 'auto' || s.overflowX === 'scroll') return;
+          }
+          out.overflow.push(String(el.className).slice(0, 40) + '#' + el.id);
+        });
+        var head = document.querySelector('.gh-header');
+        var tabs = document.querySelector('.gh-tabs');
+        var fileHeader = document.querySelector('.diff-file-header');
+        var crosses = function (a, b) { return a && b && a.bottom > b.top + 1 && a.top < b.top; };
+        if (crosses(head.getBoundingClientRect(), tabs.getBoundingClientRect())) out.overlaps.push('tabs under header');
+        var head2 = document.querySelectorAll('.diff-file-header')[0];
+        if (head2 && crosses(head2.getBoundingClientRect(), document.querySelector('.gh-sticky-toolbar').getBoundingClientRect())) {
+          out.overlaps.push('file header under toolbar');
+        }
+        void fileHeader;
+        return out;
+      })()`);
+
+      if (layout.overflow.length) problems.push(`${width}px: past the right edge: ${layout.overflow.join(', ')}`);
+      if (layout.overlaps.length) problems.push(`${width}px: overlapping chrome: ${layout.overlaps.join(', ')}`);
+      if (layout.tabsTop < layout.headerBottom - 1) {
+        problems.push(`${width}px: the tabs start at ${layout.tabsTop} but the header ends at ${layout.headerBottom}`);
+      }
+    }
+
+    await driver.manage().window().setRect({ width: 1440, height: 900 });
+    assert.deepEqual(problems, [], problems.join(" | "));
+  });
 } finally {
   await driver.quit();
   await reviewState.page.close();
