@@ -80,22 +80,39 @@ export async function listBranches(repoPath) {
       .filter((name) => name && name !== GIT.HEAD_ALIAS),
   )].sort();
 }
+/**
+ * A caller-supplied revision, safe to hand to git as an argument. A value that
+ * starts with a dash would be read as an option — `--output=<file>` writes a
+ * file anywhere the user can write — so anything that is not plainly a sha or
+ * a ref is refused rather than passed through.
+ */
+export function safeRef(ref) {
+  const value = String(ref ?? P.EMPTY).trim();
+  if (!value || !GIT.REF_PATTERN.test(value)) throw new Error(`${GIT.ERROR_BAD_REF}${ref}`);
+  return value;
+}
 export async function resolveCommit(repoPath, ref) {
-  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.REV_PARSE_COMMIT, GIT.FLAGS.VERIFY, `${ref}${GIT.COMMIT_SUFFIX}`]);
+  const { ok, stdout } = await git(repoPath, [
+    ...GIT.ARGS.REV_PARSE_COMMIT, GIT.FLAGS.VERIFY, GIT.END_OF_OPTIONS, `${safeRef(ref)}${GIT.COMMIT_SUFFIX}`,
+  ]);
   return ok ? stdout.trim() : null;
 }
 export async function mergeBase(repoPath, base, head) {
-  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.MERGE_BASE, base, head]);
+  const { ok, stdout } = await git(repoPath, [
+    ...GIT.ARGS.MERGE_BASE, GIT.END_OF_OPTIONS, safeRef(base), safeRef(head),
+  ]);
   return ok ? stdout.trim() : null;
 }
 /** The commit itself, or the empty tree when it has no parent (a root commit). */
 export async function parentOrEmptyTree(repoPath, sha) {
-  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.REV_PARSE_COMMIT, `${sha}${GIT.TILDE}`]);
+  const { ok, stdout } = await git(repoPath, [
+    ...GIT.ARGS.REV_PARSE_COMMIT, GIT.END_OF_OPTIONS, `${safeRef(sha)}${GIT.TILDE}`,
+  ]);
   return ok && stdout.trim() ? stdout.trim() : GIT.EMPTY_TREE_OBJECT;
 }
 /** Patch between two revisions (a tree or a commit), straight from `from` to `to`. */
 export async function diffFromTo(repoPath, from, to) {
-  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.DIFF, from, to]);
+  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.DIFF, GIT.END_OF_OPTIONS, safeRef(from), safeRef(to)]);
   return ok ? stdout : P.EMPTY;
 }
 /** The commits in newest-first order, without walking their ancestors. */
@@ -109,8 +126,10 @@ export async function orderCommits(repoPath, shas) {
 /** Commits of a range, newest first. */
 export async function listCommits(repoPath, { range, head, excludeRemotes = false, limit = GIT.MAX_COMMITS } = {}) {
   const args = [...GIT.ARGS.LOG, `${GIT.FLAG_MAX_COUNT}${limit}`];
-  if (range) args.push(range);
-  if (excludeRemotes) args.push(head ?? GIT.DEFAULT_REF, ...GIT.ARGS.LOG_NOT_REMOTES);
+  // A revision is checked before it is passed: a reason such as
+  // `--output=<path>` would otherwise be read as an option.
+  if (range) args.push(safeRef(range));
+  if (excludeRemotes) args.push(...GIT.ARGS.LOG_NOT_REMOTES, safeRef(head ?? GIT.DEFAULT_REF));
 
   const { ok, stdout } = await git(repoPath, args);
   if (!ok) return [];
@@ -142,6 +161,10 @@ export async function searchProject(repoPath, query, { limit = GIT.MAX_SEARCH_HI
     git(repoPath, [
       ...GIT.ARGS.GREP_LINES,
       GIT.FLAG_IGNORE_CASE,
+      // `-e` marks the next argument as the pattern, so a query that starts
+      // with a dash cannot become an option. Without it, searching for
+      // `-O./script` made git run that script.
+      GIT.FLAG_PATTERN,
       trimmed,
       GIT.FLAGS.HEAD,
       GIT.FLAGS.DOT,
@@ -193,7 +216,7 @@ function parseGrepLine(line) {
   };
 }
 export async function commitDiff(repoPath, sha) {
-  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.SHOW_STAT, sha]);
+  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.SHOW_STAT, GIT.END_OF_OPTIONS, safeRef(sha)]);
   return ok ? stdout : P.EMPTY;
 }
 /** SHAs already reachable from any remote ref: these must never be rewritten. */
@@ -314,11 +337,13 @@ export async function diffUncommitted(repoPath, { includeStaged = true, includeU
     .join(P.EMPTY);
 }
 export async function diffBetween(repoPath, base, head) {
-  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.DIFF, `${base}${GIT.RANGE_SEPARATOR}${head ?? GIT.DEFAULT_REF}`]);
+  const { ok, stdout } = await git(repoPath, [
+    ...GIT.ARGS.DIFF, GIT.END_OF_OPTIONS, `${safeRef(base)}${GIT.RANGE_SEPARATOR}${safeRef(head ?? GIT.DEFAULT_REF)}`,
+  ]);
   return ok ? stdout : P.EMPTY;
 }
 export async function fileContent(repoPath, ref, filePath) {
-  const { ok, stdout } = await git(repoPath, [GIT.SHOW, `${ref}:${filePath}`]);
+  const { ok, stdout } = await git(repoPath, [GIT.SHOW, GIT.END_OF_OPTIONS, `${ref}:${filePath}`]);
   return ok ? stdout : null;
 }
 /** Returns every tracked file path in the repository. */

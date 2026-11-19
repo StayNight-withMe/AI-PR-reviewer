@@ -275,6 +275,14 @@ export const GIT = {
   MAX_REVIEW_FILE_BYTES: 2_000_000,
   MAX_SEARCH_HITS: 200,
   MIN_SEARCH_LENGTH: 2,
+  /**
+   * A revision a caller may name: a sha, a ref, or a range of them. It must
+   * look like one, because a value such as `--output=<path>` reaches git as an
+   * option and writes a file anywhere the user can write.
+   */
+  REF_PATTERN: /^(?!-)[\w@{}~^.\-/=]+$/,
+  /** Ends option parsing, so the argument after it is always a value. */
+  END_OF_OPTIONS: "--end-of-options",
   EXCLUDE_PATHSPEC: [":(exclude).pr-review/**", ":(exclude).pr-review"],
   ARGS: {
     /** Writes a path with non-ASCII letters as it is, not as an octal escape. */
@@ -330,6 +338,8 @@ export const GIT = {
   FLAG_UNIFIED_ZERO: "-U0",
   /** Searches the content without regard to the case. */
   FLAG_IGNORE_CASE: "-i",
+  /** Marks the next argument as a literal pattern, never an option. */
+  FLAG_PATTERN: "-e",
   FLAG_MAX_COUNT: "--max-count=",
   FLAG_PATH_SPEC: "--",
   COMMIT_SUFFIX: "^{commit}",
@@ -361,6 +371,8 @@ export const GIT = {
   ENOENT: "ENOENT",
   ERROR_NOT_INSTALLED: "git executable not found. Install Git and make sure it is on PATH.",
   ERROR_NOT_A_REPO: "Not a git repository: ",
+  /** A revision argument that is not a revision. */
+  ERROR_BAD_REF: "Not a valid revision: ",
 };
 /** -------------------------------- artifacts ------------------------------ */
 export const ARTIFACTS = {
@@ -684,6 +696,8 @@ export const TREE = {
 export const FILEVIEW = {
   ENCODING: "utf8",
   ERROR_CANNOT_READ: "Cannot read ",
+  /** A path the review may read: relative to the repository, never above it. */
+  ERROR_OUTSIDE_REPO: "Path is outside the repository: ",
   HUNK_NEW_LINE: /\+(\d+)(?:,\d+)?/,
   DIFF_HEADER_OLD: "---",
   DIFF_HEADER_NEW: "+++",
