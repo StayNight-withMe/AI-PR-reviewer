@@ -237,21 +237,33 @@ export async function pushedShas(repoPath) {
 /** Rewrites the message of a commit. */
 export async function renameCommit(repoPath, sha, message, { allowPushed = false } = {}) {
   const resolved = await resolveCommit(repoPath, sha);
-  if (!resolved) throw new Error(`Commit not found: ${sha}`);
+  if (!resolved) throw new Error(`${GIT.ERROR_COMMIT_NOT_FOUND}${sha}`);
 
   if (!allowPushed) {
     const pushed = await pushedShas(repoPath);
-    if (pushed.has(resolved)) throw new Error("This commit is already pushed; allow rewriting it explicitly.");
+    if (pushed.has(resolved)) throw new Error(GIT.ERROR_COMMIT_PUSHED);
   }
 
   const head = await resolveCommit(repoPath, GIT.DEFAULT_REF);
-  if (!head) throw new Error("No commits to rewrite.");
+  if (!head) throw new Error(GIT.ERROR_NOTHING_TO_REWRITE);
+
+  // Replaying a commit that is not on the checked-out branch would transplant
+  // its whole history into the working tree — and leave HEAD detached.
+  if (!(await isAncestor(repoPath, resolved, head))) {
+    throw new Error(`${GIT.ERROR_COMMIT_NOT_ON_BRANCH}${resolved.slice(P.ZERO, GIT.SHORT_SHA_LENGTH)}`);
+  }
+
   if (resolved === head) {
     await amendMessage(repoPath, message);
     return resolveCommit(repoPath, GIT.DEFAULT_REF);
   }
 
   return replayWithNewMessage(repoPath, resolved, head, message);
+}
+/** True when `sha` is reachable from `ref`, i.e. rewriting it stays on this branch. */
+async function isAncestor(repoPath, sha, ref) {
+  const { ok } = await git(repoPath, [...GIT.ARGS.MERGE_BASE, GIT.ARGS.IS_ANCESTOR, GIT.END_OF_OPTIONS, sha, ref]);
+  return ok;
 }
 async function amendMessage(repoPath, message) {
   const { ok, stderr } = await git(repoPath, [...GIT.ARGS.COMMIT_AMEND_MESSAGE, message]);
@@ -261,9 +273,9 @@ async function amendMessage(repoPath, message) {
 async function replayWithNewMessage(repoPath, sha, head, message) {
   const parent = await firstParent(repoPath, sha);
   const tree = await revParse(repoPath, `${sha}${GIT.TREE_SUFFIX}`);
-  if (!tree) throw new Error("Cannot read the commit tree.");
+  if (!tree) throw new Error(GIT.ERROR_NO_TREE);
 
-  const backup = `${GIT.BACKUP_REF_PREFIX}${sha.slice(0, GIT.SHORT_SHA_LENGTH)}`;
+  const backup = `${GIT.BACKUP_REF_PREFIX}${sha.slice(P.ZERO, GIT.SHORT_SHA_LENGTH)}`;
   await git(repoPath, [...GIT.ARGS.UPDATE_REF, backup, head]);
 
   const created = await git(repoPath, [
@@ -274,17 +286,21 @@ async function replayWithNewMessage(repoPath, sha, head, message) {
   ]);
 
   const newSha = created.ok ? created.stdout.trim() : null;
-  if (!newSha) throw new Error(created.stderr?.trim() || "git commit-tree failed.");
+  if (!newSha) throw new Error(created.stderr?.trim() || GIT.ERROR_COMMIT_TREE_FAILED);
 
+  // Replaying onto HEAD itself leaves HEAD detached: git says "Successfully
+  // rebased and updated detached HEAD", and the user silently loses the branch
+  // they were on. Naming the branch keeps it attached.
+  const branch = await currentBranch(repoPath);
   const rebaseArgs = parent
-    ? [...GIT.ARGS.REBASE_ONTO, newSha, parent, GIT.DEFAULT_REF]
-    : [...GIT.ARGS.REBASE_ROOT, newSha, GIT.DEFAULT_REF];
+    ? [...GIT.ARGS.REBASE_ONTO, newSha, parent, branch]
+    : [...GIT.ARGS.REBASE_ROOT, newSha, branch];
 
   const rebased = await git(repoPath, rebaseArgs);
   if (!rebased.ok) {
     await git(repoPath, GIT.ARGS.REBASE_ABORT);
-    await git(repoPath, [GIT.ARGS.RESET[0], GIT.ARGS.RESET[1], head]);
-    throw new Error(rebased.stderr?.trim() || `Rewrite failed; restored ${backup}.`);
+    await git(repoPath, [...GIT.ARGS.RESET, head]);
+    throw new Error(rebased.stderr?.trim() || `${GIT.ERROR_REWRITE_FAILED}${backup}.`);
   }
 
   return resolveCommit(repoPath, GIT.DEFAULT_REF);

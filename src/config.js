@@ -293,6 +293,8 @@ export const GIT = {
     BRANCHES: ["branch", "-a", "--format=%(refname:short)"],
     REV_PARSE_COMMIT: ["rev-parse", "--verify"],
     MERGE_BASE: ["merge-base"],
+    /** `git merge-base --is-ancestor`: exit code only. */
+    IS_ANCESTOR: "--is-ancestor",
     LOG: ["log", "--no-color", "--format=%H%x1f%h%x1f%s%x1f%an%x1f%ae%x1f%aI", "--date=iso-strict"],
     LOG_NOT_REMOTES: ["--not", "--remotes"],
     SHOW_STAT: ["show", "--no-color", "--patch", "--no-renames", "--format="],
@@ -373,7 +375,14 @@ export const GIT = {
   ERROR_NOT_A_REPO: "Not a git repository: ",
   /** A revision argument that is not a revision. */
   ERROR_BAD_REF: "Not a valid revision: ",
-};
+  /** Rewriting a commit that is not on the checked-out branch would merge it in. */
+  ERROR_COMMIT_NOT_ON_BRANCH: "This commit is not on the checked-out branch: ",
+  ERROR_COMMIT_NOT_FOUND: "Commit not found: ",
+  ERROR_COMMIT_PUSHED: "This commit is already pushed; allow rewriting it explicitly.",
+  ERROR_NOTHING_TO_REWRITE: "No commits to rewrite.",
+  ERROR_NO_TREE: "Cannot read the commit tree.",
+  ERROR_COMMIT_TREE_FAILED: "git commit-tree failed.",
+  ERROR_REWRITE_FAILED: "Rewrite failed; restored ",};
 /** -------------------------------- artifacts ------------------------------ */
 export const ARTIFACTS = {
   REVIEW_JSON: "review.json",
