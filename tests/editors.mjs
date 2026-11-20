@@ -204,6 +204,39 @@ try {
     assert.ok(text.includes("server/src/cli.js"), "the bundled engine path is missing");
   });
 
+  /* A plugin is loaded as a jar, so the engine inside it has to be unpacked
+     before Node can run it. Shipping the files without that step installs a
+     plugin that cannot start anything. */
+  await check("jetbrains: the plugin unpacks its bundled engine", async () => {
+    const text = await readFile(
+      join(PROJECT, "editors", "jetbrains", "src", "main", "kotlin", "com", "prreview", "jetbrains", "ReviewServer.kt"),
+      "utf8",
+    );
+    assert.ok(text.includes("JarFile"), "the plugin does not read its own jar");
+    assert.ok(text.includes("entries"), "the plugin does not walk the jar's entries");
+
+    const build = await readFile(join(PROJECT, "editors", "jetbrains", "build.gradle.kts"), "utf8");
+    assert.ok(/from\("server"\)/.test(build), "the engine is not copied into the plugin resources");
+  });
+
+  await check("visualstudio: the package carries the engine and names its asset", async () => {
+    const project = await readFile(join(PROJECT, "editors", "visualstudio", "PrReview.VisualStudio.csproj"), "utf8");
+    assert.ok(project.includes('Include="server\\**\\*"'), "the engine is not part of the package");
+
+    const manifest = await readFile(join(PROJECT, "editors", "visualstudio", "source.extension.vsixmanifest"), "utf8");
+    assert.ok(!manifest.includes("PkgdefProjectOutputGroup"),
+      "the manifest names a build-time placeholder instead of a file");
+    assert.ok(manifest.includes("ProductArchitecture"),
+      "VS 2022 rejects an installation target without an architecture");
+  });
+
+  await check("visualstudio: the packer keeps the engine's folders", async () => {
+    const builder = await readFile(join(PROJECT, "editors", "visualstudio", "build-vsix.mjs"), "utf8");
+    // Two files share a base name; matching them by name loses one of them.
+    assert.ok(!builder.includes("byBaseName"), "files are matched by name, which overwrites a namesake");
+    assert.ok(builder.includes("file.name"), "the staged paths are not used as archive names");
+  });
+
   await check("neovim: the Lua module uses the shared contract", async () => {
     const text = await readFile(join(PROJECT, "editors", "neovim", "lua", "pr-review.lua"), "utf8");
     assert.ok(text.includes(`"${CLI.READY_PREFIX}"`), "the ready prefix is not the shared one");
