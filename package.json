@@ -43,7 +43,7 @@
     "gh:check": "node scripts/ensure-gh.mjs --check",
     "gh:install": "node scripts/ensure-gh.mjs --install",
     "postinstall": "node scripts/ensure-gh.mjs --check --never-fail",
-    "test:all": "npm run test && npm run test:session && npm run test:session:isolation && npm run test:cli && npm run test:synthetic && npm run test:page && npm run test:mcp && npm run test:github && npm run test:pr && npm run test:publish && npm run test:committed && npm run test:logic && npm run test:threads && npm run test:pr:ui && npm run test:pr:flow && npm run test:artifacts && npm run test:header:ui && npm run test:resolve && npm run test:defects && npm run test:foreign && npm run test:bad-input && npm run test:rename && npm run test:path-guard && npm run test:arg-guard && npm run test:note-images && npm run test:settings && npm run test:editors && npm run test:ui:regressions && npm run test:ui:suite && npm run test:ui && npm run test:ui:extra",
+    "test:all": "npm run test && npm run test:session && npm run test:session:isolation && npm run test:cli && npm run test:synthetic && npm run test:page && npm run test:mcp && npm run test:github && npm run test:pr && npm run test:publish && npm run test:committed && npm run test:logic && npm run test:threads && npm run test:pr:ui && npm run test:pr:flow && npm run test:artifacts && npm run test:header:ui && npm run test:resolve && npm run test:defects && npm run test:foreign && npm run test:bad-input && npm run test:rename && npm run test:path-guard && npm run test:arg-guard && npm run test:note-images && npm run test:settings && npm run test:editors && npm run test:editors:vscode && npm run test:ui:regressions && npm run test:ui:suite && npm run test:ui && npm run test:ui:extra",
     "test:arg-guard": "node tests/arg-guard.mjs",
     "test:path-guard": "node tests/path-guard.mjs",
     "test:rename": "node tests/commit-rename.mjs",
@@ -53,7 +53,9 @@
     "test:logic:outdated": "node tests/logic-outdated.mjs",
     "test:logic:grouping": "node tests/logic-grouping.mjs",
     "test:logic": "npm run test:logic:resolve && npm run test:logic:outdated && npm run test:logic:grouping && npm run test:logic:cycle",
-    "test:logic:cycle": "node tests/logic-cycle.mjs"
+    "test:logic:cycle": "node tests/logic-cycle.mjs",
+    "test:editors:vscode": "node editors/vscode/test-in-editor.mjs",
+    "build:vsix:vs": "node editors/visualstudio/build-vsix.mjs"
   },
   "engines": {
     "node": ">=20"

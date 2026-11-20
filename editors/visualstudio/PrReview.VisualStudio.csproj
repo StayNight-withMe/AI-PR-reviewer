@@ -32,4 +32,17 @@
       <ResourceName>Menus.ctmenu</ResourceName>
     </VSCTCompile>
   </ItemGroup>
+  <!-- The extension starts the review server itself, so the engine has to travel
+       inside the .vsix: without it, an installed copy has nothing to run. The
+       folder is written by `npm run bundle:server` and is not in source control. -->
+  <ItemGroup>
+    <Content Include="server\**\*">
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+  </ItemGroup>
+  <!-- `source.extension.vsixmanifest` is the shipped manifest. MSBuild merges it
+       with the build output, so the project has to name it explicitly. -->
+  <PropertyGroup>
+    <VsixSourceManifestPath>source.extension.vsixmanifest</VsixSourceManifestPath>
+  </PropertyGroup>
 </Project>

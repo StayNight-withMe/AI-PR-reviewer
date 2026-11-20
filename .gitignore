@@ -25,3 +25,7 @@ chromedriver/
 Thumbs.db
 # History builder scratch
 .history-*
+
+# Extension packages are build output, not source.
+editors/**/*.vsix
+editors/visualstudio/obj/
