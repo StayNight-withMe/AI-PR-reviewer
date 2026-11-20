@@ -52,7 +52,8 @@
     "test:logic:resolve": "node tests/logic-resolve.mjs",
     "test:logic:outdated": "node tests/logic-outdated.mjs",
     "test:logic:grouping": "node tests/logic-grouping.mjs",
-    "test:logic": "npm run test:logic:resolve && npm run test:logic:outdated && npm run test:logic:grouping"
+    "test:logic": "npm run test:logic:resolve && npm run test:logic:outdated && npm run test:logic:grouping && npm run test:logic:cycle",
+    "test:logic:cycle": "node tests/logic-cycle.mjs"
   },
   "engines": {
     "node": ">=20"

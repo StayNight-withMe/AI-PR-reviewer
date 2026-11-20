@@ -345,6 +345,9 @@ export function toComments(comments) {
     .map((comment) => ({
       ...comment,
       body: typeof comment.body === P.TYPE_STRING ? comment.body : P.EMPTY,
+      // A comment is open unless it says otherwise. Leaving the field absent
+      // made every reader guess, and the saved review carried no answer at all.
+      resolved: comment.resolved === true,
       images: toImages(comment.images),
     }));
 }
