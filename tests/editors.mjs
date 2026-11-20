@@ -237,6 +237,18 @@ try {
     assert.ok(builder.includes("file.name"), "the staged paths are not used as archive names");
   });
 
+  await check("visualstudio: the VSIX does not shadow assemblies from the host", async () => {
+    const builder = await readFile(join(PROJECT, "editors", "visualstudio", "build-vsix.mjs"), "utf8");
+    assert.ok(builder.includes("async function sharedWithEditor()"),
+      "the build does not check which DLLs Visual Studio already provides");
+    assert.ok(builder.includes("shared.has(entry)"),
+      "the staging step does not omit host-provided assemblies");
+    assert.ok(builder.includes("const shipped = files.map"),
+      "the completed VSIX is not checked for accidental assembly shadowing");
+    assert.ok(builder.includes("if (shipped.length)"),
+      "the build can succeed while shipping conflicting Visual Studio DLLs");
+  });
+
   await check("neovim: the Lua module uses the shared contract", async () => {
     const text = await readFile(join(PROJECT, "editors", "neovim", "lua", "pr-review.lua"), "utf8");
     assert.ok(text.includes(`"${CLI.READY_PREFIX}"`), "the ready prefix is not the shared one");
