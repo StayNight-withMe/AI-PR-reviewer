@@ -19,6 +19,7 @@
         <Parent guid="guidPrReviewCmdSet" id="PrReviewGroup" />
         <Strings>
           <ButtonText>Open review of the current branch</ButtonText>
+          <CommandName>PrReview.OpenReview</CommandName>
         </Strings>
       </Button>
     </Buttons>

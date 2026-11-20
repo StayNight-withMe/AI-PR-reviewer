@@ -27,6 +27,41 @@ const STAGE = join(HERE, "obj", "vsix-stage");
 const TEMP = join(HERE, "obj", "vsix-flat.vsix");
 const OUTPUT = join(BUILD, "PrReview.VisualStudio.vsix");
 const VSSDK = "C:\\Users\\Rog\\.nuget\\packages\\microsoft.vssdk.buildtools\\17.9.3168\\tools\\VSSDK";
+const IDE = "C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\Common7\\IDE";
+
+/**
+ * Assemblies Visual Studio itself supplies.
+ *
+ * The build copies every dependency into `bin`, and shipping those copies is
+ * what broke the editor: an extension folder that contains its own
+ * `Microsoft.VisualStudio.Shell.15.0.dll` loads that file instead of the
+ * installation's, and the packages that need the real one fail with "did not
+ * load correctly". Only assemblies Visual Studio does not have may travel.
+ */
+async function sharedWithEditor() {
+  const roots = [join(IDE, "PublicAssemblies"), join(IDE, "PrivateAssemblies"), IDE];
+  const shared = new Set();
+
+  for (const entry of await readdir(BUILD)) {
+    if (!entry.endsWith(".dll")) continue;
+    for (const root of roots) {
+      if (await exists(join(root, entry))) {
+        shared.add(entry);
+        break;
+      }
+    }
+  }
+  return shared;
+}
+
+async function exists(path) {
+  try {
+    await stat(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /** Compiles the project and produces the .pkgdef the package registration needs. */
 async function build() {
@@ -45,11 +80,15 @@ async function stage() {
   await rm(STAGE, { recursive: true, force: true });
   await mkdir(STAGE, { recursive: true });
 
-  // The assembly, its dependencies and the registration file.
+  const shared = await sharedWithEditor();
+
+  // The assembly, the registration file and only the dependencies Visual Studio
+  // does not already provide.
   for (const entry of await readdir(BUILD)) {
     if (entry.endsWith(".vsix") || entry.endsWith(".pdb") || entry.endsWith(".xml")) continue;
     const source = join(BUILD, entry);
     if (!(await stat(source)).isFile()) continue;
+    if (entry.endsWith(".dll") && shared.has(entry)) continue;
     await cp(source, join(STAGE, entry));
   }
 
@@ -247,4 +286,13 @@ const files = await stagedFiles();
 await packFlat(files);
 await rebuild(files);
 const size = (await stat(OUTPUT)).size;
+
+// A package that shadows the editor's own assemblies installs cleanly and then
+// breaks the editor, which is far worse than a failed build.
+const shared = await sharedWithEditor();
+const shipped = files.map((file) => file.name).filter((name) => shared.has(name));
+if (shipped.length) {
+  throw new Error(`the package ships assemblies Visual Studio provides: ${shipped.join(", ")}`);
+}
+
 console.log(`Built ${OUTPUT} — ${files.length} files, ${Math.round(size / 1024)} KB`);

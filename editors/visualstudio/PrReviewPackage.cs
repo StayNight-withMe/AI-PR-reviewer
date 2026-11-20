@@ -58,6 +58,25 @@ namespace PrReview.VisualStudio
             Marshal.ThrowExceptionForHR(result);
         }
 
+        /// <summary>
+        /// The folder of the open solution, or null when none is open.
+        ///
+        /// A Visual Studio process starts in its own installation folder, so the
+        /// tool window cannot use the current directory to find the code the user
+        /// opened.
+        /// </summary>
+        internal static string? SolutionDirectory()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            var solution = GetGlobalService(typeof(SVsSolution)) as IVsSolution;
+            if (solution == null) return null;
+
+            var hr = solution.GetSolutionInfo(out string directory, out string file, out _);
+            if (hr != 0) return null;
+            if (!string.IsNullOrWhiteSpace(directory)) return directory;
+            return string.IsNullOrWhiteSpace(file) ? null : Path.GetDirectoryName(file);
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)

@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.Web.WebView2.Wpf;
 namespace PrReview.VisualStudio
 {
@@ -51,7 +52,9 @@ namespace PrReview.VisualStudio
 
             try
             {
-                var cwd = FindRepositoryRoot();
+                // Reading the solution folder has to happen on the UI thread; it
+                // is also the only thing here that does, so it runs first.
+                var cwd = await FindRepositoryRootAsync();
                 var info = runner.Info ?? await runner.StartAsync(NodePath(), CliPath(), cwd, "branch", null);
 
                 Content = _webView;
@@ -67,17 +70,26 @@ namespace PrReview.VisualStudio
             }
         }
 
-        /// <summary>The repository of the open solution, or the current directory.</summary>
-        private static string FindRepositoryRoot()
+        /// <summary>
+        /// The repository of the open solution, or the current directory.
+        ///
+        /// A Visual Studio process starts in its own installation folder, so
+        /// walking up from the current directory found nothing on a normal launch
+        /// and the review ran against whatever happened to be there. The solution
+        /// folder is the answer: it is where the code the user opened lives.
+        /// </summary>
+        private async System.Threading.Tasks.Task<string> FindRepositoryRootAsync()
         {
-            var directory = new DirectoryInfo(Environment.CurrentDirectory);
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            var start = PrReviewPackage.SolutionDirectory() ?? Environment.CurrentDirectory;
+            var directory = new DirectoryInfo(start);
             while (directory != null)
             {
                 if (Directory.Exists(Path.Combine(directory.FullName, ".git"))) return directory.FullName;
                 directory = directory.Parent;
             }
 
-            return Environment.CurrentDirectory;
+            return start;
         }
 
         /// <summary>Node on PATH, or a well-known installation.</summary>
