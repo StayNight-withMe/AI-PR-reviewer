@@ -7,6 +7,7 @@ import { z } from "zod";
 import { listBranchHeads, listBranches, listCommits, resolveRepo } from "./git.js";
 import { buildMarkdown } from "./render.js";
 import { writeReviewFiles } from "./server.js";
+import { setCommentsResolved } from "./models/resolve-store.js";
 import { startReview } from "./core.js";
 import { resolveSessionId } from "./dispatch.js";
 import { writeReviewOwner } from "./models/owner.js";
@@ -480,31 +481,14 @@ server.registerTool(
   },
   async ({ reviewId, ids, resolved }) => {
     const review = await resolveReview(reviewId);
-    const jsonPath = join(review.outputDir, "review.json");
-    const payload = JSON.parse(await readFile(jsonPath, "utf8"));
 
-    const comments = payload?.review?.comments ?? [];
-    if (!comments.length) {
-      return { content: [{ type: "text", text: "This review has no comments." }] };
-    }
-
-    const wanted = Array.isArray(ids) && ids.length ? new Set(ids.map(String)) : null;
-    const touched = [];
-    for (const comment of comments) {
-      if (wanted && !wanted.has(String(comment.id))) continue;
-      comment.resolved = resolved === true;
-      touched.push(String(comment.id));
-    }
-
+    const touched = await setCommentsResolved(review, ids, resolved);
     if (!touched.length) {
       return {
-        content: [{ type: "text", text: `No comment matched: ${(ids ?? []).join(", ")}.` }],
+        content: [{ type: "text", text: `No comment matched: ${(ids ?? []).join(", ") || "(all)"}.` }],
         isError: true,
       };
     }
-    // Keep review.json and review.md in sync with the new state.
-    const markdown = buildMarkdown(payload.meta, payload.review);
-    await writeReviewFiles(review.outputDir, payload.meta, payload.review, markdown);
 
     return {
       content: [

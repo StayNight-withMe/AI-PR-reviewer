@@ -243,7 +243,15 @@ export async function startReview(params) {
       : { refs: fallbackRefs }),
     // The page saves the comments it shows; the server keeps them for the next
     // review of the same target, whatever its diff id turns out to be.
-    saveThreads: (list) => writeThreads(root, meta, list),
+    //
+    // The snippet is the anchor a later review compares against, and it has to be
+    // recorded here: this is the only moment the reviewed version is still what
+    // the comment was written on. Saving without it left every page-written
+    // comment permanently "fresh", because there was nothing to compare.
+    saveThreads: async (list) => {
+      const anchored = await withSnippets(list, reviewedLines);
+      return writeThreads(root, meta, anchored);
+    },
     findUsages: (name) => usages[name] ?? [],
     renameCommit: (sha, message, options) => renameCommitMessage(root, sha, message, options),
     listCommits: () => loadLiveCommits(root, scope),

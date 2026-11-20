@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { APP, ARTIFACTS, P, QUERY, REVIEW_STATE, REVIEW_STATE_LABEL, ROUTES, SERVER } from "./config.js";
 import { readSettings, writeSettings } from "./settings-store.js";
+import { writeReviewFiles as writeReviewOutput } from "./review-output.js";
 const HEADER_CONTENT_TYPE = SERVER.HEADER_CONTENT_TYPE;
 const HEADER_CACHE_CONTROL = SERVER.HEADER_CACHE_CONTROL;
 export async function servePage(options) {
@@ -561,15 +562,5 @@ async function persistImages(outputDir, review) {
   return saved;
 }
 export async function writeReviewFiles(outputDir, meta, review, markdown) {
-  await mkdir(outputDir, { recursive: true });
-
-  const jsonPath = join(outputDir, ARTIFACTS.REVIEW_JSON);
-  const markdownPath = join(outputDir, ARTIFACTS.REVIEW_MARKDOWN);
-
-  await Promise.all([
-    writeFile(jsonPath, JSON.stringify({ meta, review }, null, SERVER.JSON_INDENT), SERVER.FILE_ENCODING),
-    writeFile(markdownPath, markdown, SERVER.FILE_ENCODING),
-  ]);
-
-  return { jsonPath, markdownPath, markdown };
+  return writeReviewOutput(outputDir, meta, review, markdown);
 }
