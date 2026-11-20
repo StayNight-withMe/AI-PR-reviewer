@@ -44,6 +44,17 @@ try {
   await waitFor(`[...document.querySelectorAll('.diff-file')].every(s => s.dataset.hydrated === '1')`, 180_000);
   console.log("BOOT all sections hydrated");
 
+  // Later checks switch the layout to split view; a previous run of this suite
+  // leaves that stored, so a second run would start in a layout it does not
+  // expect. Start from the default every time.
+  await js(`(function () {
+    PR.state.diffMode = PR.DIFF_MODE.UNIFIED;
+    PR.state.settings.contextCollapseLines = PR.CONTEXT.DEFAULT_COLLAPSE_LINES;
+    PR.renderFileList();
+    return true;
+  })()`);
+  await waitFor(`[...document.querySelectorAll('.diff-file')].every(s => s.dataset.hydrated === '1')`, 180_000);
+
   await check("all diff sections are highlighted and linkified", async () => {
     const stats = await js(`(() => {
       const sections = [...document.querySelectorAll('.diff-file')];
@@ -305,10 +316,13 @@ try {
 
   await check("Expand all reveals every line exactly once", async () => {
     await js(`(PR.state.settings.contextCollapseLines = 1, PR.renderFileList(), true)`);
-    await PAUSE(1500);
+    // Every section is rebuilt, and each one only grows its "Expand all" entry
+    // once it has hydrated; clicking earlier silently misses the rest.
+    await waitFor(`[...document.querySelectorAll('.diff-file')].every(s => s.dataset.hydrated === '1')`, 120_000);
+    await PAUSE(500);
 
     await js(`(document.querySelectorAll('.diff-file .js-expand-all').forEach(b => b.click()), true)`);
-    await PAUSE(3000);
+    await PAUSE(6000);
 
     const out = await js(`(() => {
       const bad = [];

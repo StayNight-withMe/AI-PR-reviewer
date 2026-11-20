@@ -118,11 +118,14 @@
       var header = section.querySelector(".diff-file-header");
       header.parentNode.insertBefore(host, header.nextSibling);
     }
+    // The table must not carry `diff-table`: that class is how the rest of the
+    // page finds a file's hunk table, and an orphan table has no colgroup, so it
+    // used to be picked first, reporting zero columns and breaking new comments.
     var table = document.createElement("table");
-    table.className = "diff-table orphan-table";
-    var tbody = document.createElement("tbody");
-    tbody.appendChild(row);
-    table.appendChild(tbody);
+    table.className = "orphan-table";
+    var body = document.createElement("tbody");
+    body.appendChild(row);
+    table.appendChild(body);
     host.appendChild(table);
   }
 

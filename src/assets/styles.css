@@ -556,29 +556,31 @@ a.tree-row { text-decoration: none; }
 }
 .diff-hunk:first-child .diff-hunk-header { border-top: none; }
 .hunk-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/** The control spans the whole row: one wide band, as GitHub draws it. */
+/** The control spans the whole row: the blue target sits over the gutter and the
+    number columns, and the rest of the row carries GitHub's dotted rule. */
 .hunk-expander {
   background: transparent;
   border: none;
   height: 24px;
 }
-.hunk-expander .diff-expander-table { table-layout: fixed; background: transparent; }
-.expander-cell {
-  padding: 0 !important; height: 24px; position: relative;
+.hunk-expander .diff-expander-table {
+  width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0;
   background: transparent;
 }
-/** The gutter block marks where the line numbers are; the rest of the band is
-    the light hunk tint, so the row reads as one control across the table. */
-.expander-cell::before {
-  content: ""; position: absolute; inset: 0;
+.diff-expander-table td { padding: 0; vertical-align: top; }
+.diff-expander-table .c-gutter { width: var(--gutter-col); }
+.diff-expander-table .c-num { width: var(--num-col); }
+.expander-cell {
+  padding: 0 !important; height: 24px; position: relative;
   background: var(--diff-hunk);
-  pointer-events: none;
 }
-.expander-cell::after {
+/** The dark block marks the gutter, where the line numbers of the file live. */
+.expander-cell::before {
   content: ""; position: absolute; left: 0; top: 0; bottom: 0;
   width: var(--gutter-col); background: var(--diff-hunk-num);
   pointer-events: none;
 }
+.expander-rest { background: var(--diff-hunk); }
 .hunk-expander-btn {
   border: none; background: transparent; color: var(--fg);
   width: 100%; height: 24px; display: inline-flex; flex-direction: row;
@@ -807,7 +809,9 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
 /** Comments whose line no longer exists in the diff, pinned to the top of the file. */
 .orphan-comments { padding: 8px 12px 0; background: var(--bg-subtle); border-bottom: 1px solid var(--border-subtle); }
 .orphan-comments .comment-box { margin: 0 0 8px; }
-.orphan-table { width: 100%; }
+/** An orphan table is not a hunk table: it only carries full-width comment rows. */
+.orphan-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.orphan-table td { padding: 0; }
 /** The note field of the submit dialog takes screenshots the same way a comment does. */
 .note-wrap { position: relative; }
 .note-wrap.drop-active .gh-textarea { border-color: var(--accent-emphasis); background: rgba(31, 111, 235, 0.06); }

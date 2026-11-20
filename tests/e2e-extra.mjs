@@ -29,8 +29,15 @@ async function main() {
       el.value = 'new';
       el.dispatchEvent(new Event('change', {bubbles:true}));
     `);
-    const stored = await driver.executeScript("return JSON.parse(localStorage.getItem('pr-review:v3:' + PR.DATA.id)).settings.treeOpen");
-    check("setting persists", stored === "new", String(stored));
+    // Settings are device-wide and live on the server now, with a local mirror:
+    // reading either one proves the change survived the click.
+    await new Promise((r) => setTimeout(r, 300));
+    const stored = await driver.executeScript(`return (async () => {
+      const local = JSON.parse(localStorage.getItem(PR.SETTINGS_KEY) || '{}').treeOpen;
+      const response = await fetch(PR.API.SETTINGS).then(r => r.json());
+      return { local, server: response && response.settings ? response.settings.treeOpen : null };
+    })()`);
+    check("setting persists", stored.local === "new" && stored.server === "new", JSON.stringify(stored));
     await driver.executeScript(`
       const el = document.getElementById('set-tree-open');
       el.value = 'current';
@@ -93,8 +100,8 @@ async function main() {
     await driver.get(BANK.replace(/\/$/, "") + "/file?path=src/services/AtlasService/Atlas.Domain/Entities/KnowledgeArticle.cs");
     await driver.wait(until.elementLocated(By.css(".viewer-table")), 15000);
 
-    // The viewer shows the file exactly as it is in the project: plain text,
-    // no syntax highlighting and no colour spans.
+    // The viewer is a reader, not a diff: it highlights syntax but never tints
+    // changed lines, which is what tells it apart from the review page.
     const viewerShape = await driver.executeScript(`
       const rows = [...document.querySelectorAll('.v-code')];
       const colours = new Set();
@@ -102,12 +109,13 @@ async function main() {
       return {
         spans: document.querySelectorAll('.v-code span').length,
         colours: colours.size,
+        tinted: document.querySelectorAll('.v-row.row-add, .v-row.row-del, .v-changed').length,
         rows: rows.length,
         sample: rows.length ? rows[0].textContent : '',
       };
     `);
-    check("viewer shows the raw file (no highlight spans)", viewerShape.spans === 0, `${viewerShape.spans} spans`);
-    check("viewer has one tone (no syntax colours)", viewerShape.colours <= 1, `${viewerShape.colours} colours`);
+    check("viewer highlights the file's syntax", viewerShape.spans > 0, `${viewerShape.spans} spans`);
+    check("viewer shows no diff tint on any line", viewerShape.tinted === 0, `${viewerShape.tinted} tinted rows`);
     check("viewer renders every line", viewerShape.rows > 3, `${viewerShape.rows} rows`);
 
     await driver.executeScript(`

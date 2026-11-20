@@ -308,17 +308,23 @@
 
   function expanderBlock(hunk, hunkIndex, direction) {
     var columns = tableColumns(hunk);
+    // The blue target covers the gutter and the number columns, exactly like a
+    // hunk header; the code column stays clear, so the expander never covers a
+    // line the reviewer is reading. In split view the left side has only two
+    // such columns, so a fixed three would swallow the code column.
+    var simple = hasNoOldSide(hunk);
+    var target = simple || !isSplit() ? 3 : 2;
+    var rest = columns.count - target;
 
-    // One wide target across the whole row, as GitHub draws it: the bar is not
-    // tied to a side, so it must not end halfway across a split table.
     return '<div class="hunk-expander" data-hunk="' + hunkIndex + '" data-dir="' + direction + '">' +
-      '<table class="diff-table diff-expander-table"><colgroup>' + columns.html + "</colgroup><tbody><tr>" +
-        '<td class="expander-cell" colspan="' + columns.count + '">' +
+      '<table class="diff-expander-table"><colgroup>' + columns.html + "</colgroup><tbody><tr>" +
+        '<td class="expander-cell" colspan="' + target + '">' +
           '<button class="hunk-expander-btn js-expand" data-dir="' + direction + '" title="' +
             (direction === PR.DIRECTION.UP ? "Show code above this change" : "Show code below this change") + '">' +
             EXPAND_SVG +
           "</button>" +
         "</td>" +
+        (rest > 0 ? '<td class="expander-rest" colspan="' + rest + '"></td>' : "") +
       "</tr></tbody></table>" +
     "</div>";
   }
