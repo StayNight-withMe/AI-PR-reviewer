@@ -1386,6 +1386,90 @@ try {
     await driver.manage().window().setRect({ width: 1440, height: 900 });
     assert.deepEqual(problems, [], problems.join(" | "));
   });
+
+  // A control that looks clickable but does nothing is worse than no control.
+  // The layout switch in the toolbar had no handler at all.
+  await check("the toolbar layout switch changes the layout and shows which one is on", async () => {
+    await driver.get(reviewState.url);
+    await waitForPage(driver);
+    await js(`(PR.setDiffMode(PR.DIFF_MODE.UNIFIED), true)`);
+    await new Promise(r => setTimeout(r, 900));
+
+    const before = await js(`(function () {
+      var split = document.querySelector('.js-mode-opt[data-mode="split"]');
+      return { pressed: split.getAttribute('aria-pressed'),
+        tables: document.querySelectorAll('.diff-table.split').length };
+    })()`);
+    assert.equal(before.pressed, "false", "the inactive layout must report itself unpressed");
+    assert.equal(before.tables, 0, "unified view must not contain split tables");
+
+    await driver.executeScript(`document.querySelector('.js-mode-opt[data-mode="split"]').click(); return true;`);
+    await new Promise(r => setTimeout(r, 1600));
+
+    const after = await js(`(function () {
+      var split = document.querySelector('.js-mode-opt[data-mode="split"]');
+      var unified = document.querySelector('.js-mode-opt[data-mode="unified"]');
+      return { mode: PR.state.diffMode,
+        pressed: split.getAttribute('aria-pressed'),
+        unifiedPressed: unified.getAttribute('aria-pressed'),
+        tables: document.querySelectorAll('.diff-table.split').length,
+        field: document.getElementById('set-diff-mode').value };
+    })()`);
+    assert.equal(after.mode, "split", "the toolbar button did not switch the layout");
+    assert.ok(after.tables > 0, "clicking Split did not render a split table");
+    assert.equal(after.pressed, "true", "the active layout must report itself pressed");
+    assert.equal(after.unifiedPressed, "false", "the other layout must report itself unpressed");
+    assert.equal(after.field, "split", "the settings field did not follow the toolbar button");
+
+    await js(`(PR.setDiffMode(PR.DIFF_MODE.UNIFIED), true)`);
+    await new Promise(r => setTimeout(r, 1200));
+  });
+
+  // On a narrow screen the sidebar used to be hidden outright, taking the
+  // review status and every comment with it.
+  await check("the sidebar stays reachable on a narrow screen", async () => {
+    const problems = [];
+    for (const width of [1440, 890, 500]) {
+      await driver.manage().window().setRect({ width, height: 850 });
+      await driver.get(reviewState.url);
+      await waitForPage(driver);
+      await driver.executeScript(`PR.state.settings.showSidebar = true; PR.applySidebar(); return true;`);
+      await new Promise(r => setTimeout(r, 400));
+
+      const state = await js(`(function () {
+        var sidebar = document.querySelector('.gh-sidebar');
+        var box = sidebar.getBoundingClientRect();
+        var modal = document.getElementById('btn-sidebar');
+        return { width: Math.round(box.width), height: Math.round(box.height),
+          display: getComputedStyle(sidebar).display,
+          text: sidebar.textContent.trim().slice(0, 12),
+          label: modal.textContent.trim(),
+          bodyScrollsSideways: document.documentElement.scrollWidth - window.innerWidth > 1 };
+      })()`);
+
+      if (state.width === 0 || state.display === "none") problems.push(`${width}px: the sidebar is not visible`);
+      if (!state.text) problems.push(`${width}px: the sidebar is empty`);
+      if (state.bodyScrollsSideways) problems.push(`${width}px: the page scrolls sideways`);
+      if (!/hide/i.test(state.label)) problems.push(`${width}px: the button says "${state.label}" while the sidebar is shown`);
+
+      // The button must actually hide and restore it.
+      await driver.executeScript(`document.getElementById('btn-sidebar').click(); return true;`);
+      await new Promise(r => setTimeout(r, 300));
+      const hidden = await js(`(function () {
+        var sidebar = document.querySelector('.gh-sidebar');
+        return { width: Math.round(sidebar.getBoundingClientRect().width),
+          label: document.getElementById('btn-sidebar').textContent.trim() };
+      })()`);
+      if (hidden.width !== 0) problems.push(`${width}px: the button did not hide the sidebar (${hidden.width}px)`);
+      if (!/show/i.test(hidden.label)) problems.push(`${width}px: the button says "${hidden.label}" after hiding`);
+
+      await driver.executeScript(`document.getElementById('btn-sidebar').click(); return true;`);
+      await new Promise(r => setTimeout(r, 300));
+    }
+
+    await driver.manage().window().setRect({ width: 1440, height: 900 });
+    assert.deepEqual(problems, [], problems.join(" | "));
+  });
 } finally {
   await driver.quit();
   await reviewState.page.close();

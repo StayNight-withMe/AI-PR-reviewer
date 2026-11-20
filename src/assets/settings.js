@@ -40,6 +40,7 @@
     PR.applySidebar();
     PR.applyTreeIndent();
     PR.syncViewedToggle();
+    if (PR.syncDiffModeButtons) PR.syncDiffModeButtons();
   };
 
   /** Indent size for the tree, in pixels per nesting level. */
@@ -101,6 +102,7 @@
     bindField(FIELDS.diffMode, function (value) {
       PR.state.diffMode = value;
       PR.renderFileList();
+      PR.syncDiffModeButtons();
     });
 
     bindField(FIELDS.hideViewed, function (value) {
@@ -180,6 +182,27 @@
       PR.store();
       PR.applySettings();
     });
+  };
+
+  /** The toolbar buttons must show which layout is on screen. */
+  PR.syncDiffModeButtons = function () {
+    var mode = PR.state.diffMode;
+    document.querySelectorAll(".js-mode-opt").forEach(function (button) {
+      var on = button.dataset.mode === mode;
+      button.classList.add("is-toggle");
+      button.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  };
+
+  /** Switches the layout from the toolbar, the way the settings field does. */
+  PR.setDiffMode = function (mode) {
+    if (!mode || mode === PR.state.diffMode) return;
+    PR.state.diffMode = mode;
+    PR.store();
+    var field = document.getElementById(FIELDS.diffMode);
+    if (field) field.value = mode;
+    PR.renderFileList();
+    PR.syncDiffModeButtons();
   };
 
   /** Sidebar visibility is a persisted layout choice, not a per-session tweak. */

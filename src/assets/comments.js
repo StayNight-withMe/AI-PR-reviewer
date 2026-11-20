@@ -172,6 +172,8 @@
     var state = PR.state;
     var open = state.comments.filter(function (comment) { return comment.resolved !== true; });
     PR.setText(PR.els.commentCount, open.length);
+    var word = document.getElementById("comment-count-word");
+    if (word) word.textContent = open.length === 1 ? "comment" : "comments";
 
     var labels = { APPROVE: "Approved", REQUEST_CHANGES: "Changes requested" };
     PR.setText(PR.els.reviewStateText, labels[PR.DATA.reviewState] || "Commented");

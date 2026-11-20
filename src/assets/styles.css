@@ -250,7 +250,23 @@ a.pr-badge:hover { background: color-mix(in srgb, var(--accent, #58a6ff) 15%, tr
 }
 /** Narrower screens keep all four tracks. */
 @media (max-width: 1440px) { .gh-layout { grid-template-columns: var(--tree-width, 320px) 6px minmax(0, 1fr) 260px; } }
-@media (max-width: 900px) { .gh-layout { grid-template-columns: 1fr; } body .gh-tree, body .tree-resizer, body .gh-sidebar { display: none; } }
+@media (max-width: 900px) {
+  /** One column means the page scrolls as a whole: a viewport-tall minimum
+      would leave a large empty band between the last file and the sidebar. */
+  .gh-layout { grid-template-columns: 1fr; min-height: 0; }
+  .gh-main { padding-bottom: 24px; }
+  /** There is no room for a column of files, so the tree goes. Its reveal
+      handle goes with it: a button that opens nothing is worse than no button. */
+  body .gh-tree, body .tree-resizer, body .tree-reveal { display: none; }
+  /** The review status and the comments are what the sidebar is for, so on a
+      narrow screen they move under the diff rather than disappear. The extra
+      `body` gives these rules priority over the base block further down. */
+  body .gh-sidebar {
+    position: static; max-height: none; overflow: visible;
+    padding: 12px 20px 20px; border-top: 1px solid var(--border);
+  }
+  body.no-sidebar .gh-sidebar { display: none; }
+}
 /** Drag handle between the tree and the diff pane. */
 .tree-resizer {
   position: sticky; top: var(--chrome-body); height: calc(100vh - var(--chrome-body));

@@ -523,12 +523,19 @@
         PR.syncViewedToggle();
         return true;
       case "back-to-last": {
-        var target = lastViewedTarget();
-        if (target && PR.revealFile(target)) { PR.toast("Jumped to " + target); return true; }
+        var last = lastViewedTarget();
+        if (last && PR.revealFile(last)) { PR.toast("Jumped to " + last); return true; }
         // Nothing has been reviewed yet: treat "last file" as the first file.
         scrollToStartOfReview();
         return true;
       }
+    }
+
+    // The layout switch in the toolbar is the one a reviewer reaches for first.
+    var modeButton = target.closest(".js-mode-opt");
+    if (modeButton) {
+      PR.setDiffMode(modeButton.dataset.mode);
+      return true;
     }
 
     if (target.classList.contains("lightbox") || target.classList.contains("lightbox-close")) {

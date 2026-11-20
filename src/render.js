@@ -105,7 +105,7 @@ export async function buildPage(meta, files, stats, allFiles, comments, reviewSt
       <span class="mode-pill">${escapeHtml(meta.modeLabel || meta.mode)}</span>
       ${meta.pr ? prBadge(meta.pr) : P.EMPTY}
       <span>${escapeHtml(meta.branch)}</span>
-      <span>${files.length} files</span>
+      <span>${files.length} ${files.length === 1 ? "file" : "files"}</span>
       <span class="stat-add">+${stats.additions}</span>
       <span class="stat-del">${P.DASH}${stats.deletions}</span>
     </div>
@@ -280,7 +280,7 @@ export async function buildPage(meta, files, stats, allFiles, comments, reviewSt
         <span class="dot dot-comment" id="review-state"></span>
         <span id="review-state-text">Commented</span>
       </div>
-      <div class="small muted"><span id="comment-count">0</span> comments</div>
+      <div class="small muted"><span id="comment-count">0</span> <span id="comment-count-word">comments</span></div>
       <div class="small muted" style="margin-top:6px"><span id="viewed-progress-2"></span></div>
     </div>
 

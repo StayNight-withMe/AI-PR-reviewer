@@ -369,11 +369,15 @@
     var s = PR.state;
     var open = s.comments.filter(function (c) { return c.resolved !== true; }).length;
     var resolved = s.comments.length - open;
+    /** "1 comment", not "1 comments": the header is read by people. */
+    var item = function (count, one, many) {
+      return '<span class="sum-item"><b>' + count + "</b> " + (count === 1 ? one : many) + "</span>";
+    };
     PR.setHtml(PR.els.headerSummary,
-      '<span class="sum-item"><b>' + s.files.length + "</b> files</span>" +
+      item(s.files.length, "file", "files") +
       '<span class="sum-item"><b>' + s.viewed.size + "</b> / " + s.files.length + " viewed</span>" +
-      '<span class="sum-item"><b>' + open + "</b> comments</span>" +
-      (resolved ? '<span class="sum-item"><b>' + resolved + "</b> resolved</span>" : "")
+      item(open, "comment", "comments") +
+      (resolved ? item(resolved, "resolved", "resolved") : "")
     );
     var tabCount = document.getElementById("tab-files-count");
     if (tabCount) tabCount.textContent = s.files.length;
