@@ -1387,6 +1387,48 @@ try {
     assert.deepEqual(problems, [], problems.join(" | "));
   });
 
+  // Additions and deletions are one figure ("+2 / -1"). They were separate flex
+  // items, so on a narrow tab `flex-wrap` pushed `-1` onto the next line while
+  // `+2` stayed at the end of the previous one.
+  await check("the additions and deletions stay on one line when the tab is narrow", async () => {
+    const widths = [1440, 1024, 768, 500];
+    const problems = [];
+
+    for (const width of widths) {
+      await driver.manage().window().setRect({ width, height: 800 });
+      await driver.get(reviewState.url);
+      await driver.wait(async () => {
+        try { return await js(`document.body.dataset.booted === '1'`); } catch { return false; }
+      }, 60000);
+      await new Promise(r => setTimeout(r, 500));
+
+      const stats = await js(`(function () {
+        var add = document.querySelector('.gh-header-meta .stat-add');
+        var del = document.querySelector('.gh-header-meta .stat-del');
+        if (!add || !del) return { missing: true };
+        var a = add.getBoundingClientRect();
+        var d = del.getBoundingClientRect();
+        return {
+          add: Math.round(a.top), del: Math.round(d.top),
+          addRight: Math.round(a.right), delLeft: Math.round(d.left),
+        };
+      })()`);
+
+      if (stats.missing) { problems.push(`${width}px: the header shows no stats`); continue; }
+      // Same line: their tops agree within a pixel.
+      if (Math.abs(stats.add - stats.del) > 1) {
+        problems.push(`${width}px: "+" sits at ${stats.add}px but "-" at ${stats.del}px`);
+      }
+      // And in reading order, with the pair not overlapping.
+      if (stats.delLeft < stats.addRight - 1) {
+        problems.push(`${width}px: "-" starts at ${stats.delLeft}px before "+" ends at ${stats.addRight}px`);
+      }
+    }
+
+    await driver.manage().window().setRect({ width: 1440, height: 900 });
+    assert.deepEqual(problems, [], problems.join(" | "));
+  });
+
   // A control that looks clickable but does nothing is worse than no control.
   // The layout switch in the toolbar had no handler at all.
   await check("the toolbar layout switch changes the layout and shows which one is on", async () => {

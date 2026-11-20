@@ -104,10 +104,8 @@ export async function buildPage(meta, files, stats, allFiles, comments, reviewSt
     <div class="gh-header-meta">
       <span class="mode-pill">${escapeHtml(meta.modeLabel || meta.mode)}</span>
       ${meta.pr ? prBadge(meta.pr) : P.EMPTY}
-      <span>${escapeHtml(meta.branch)}</span>
-      <span>${files.length} ${files.length === 1 ? "file" : "files"}</span>
-      <span class="stat-add">+${stats.additions}</span>
-      <span class="stat-del">${P.DASH}${stats.deletions}</span>
+      <span class="meta-branch" title="${escapeHtml(meta.branch)}">${escapeHtml(meta.branch)}</span>
+      <span class="stat-pair"><span class="stat-add">+${stats.additions}</span><span class="stat-del">${P.DASH}${stats.deletions}</span></span>
     </div>
   </div>
   <div class="spacer"></div>

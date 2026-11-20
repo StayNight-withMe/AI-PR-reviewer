@@ -116,8 +116,16 @@ body.selecting { user-select: none; cursor: text; }
 .header-info { display: flex; flex-direction: column; gap: 3px; min-width: 140px; flex: 1 1 0; }
 .gh-header h1 { font-size: 15px; font-weight: 400; margin: 0; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gh-muted { color: var(--fg-muted); }
-.gh-header-meta { display: flex; align-items: center; gap: 8px; color: var(--fg-muted); font-size: 11px; flex-wrap: wrap; }
+.gh-header-meta { display: flex; align-items: center; gap: 8px; color: var(--fg-muted); font-size: 11px; flex-wrap: nowrap; overflow: hidden; min-width: 0; }
 .gh-header-meta > * { white-space: nowrap; }
+/** The branch is the one item that may be cut: the pill and the diff stats say
+    more and are small enough to always fit. */
+.gh-header-meta .meta-branch { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.gh-header-meta .mode-pill, .gh-header-meta .stat-pair, .gh-header-meta .pr-badge { flex: none; }
+/** In the header the title block takes the free space; the spacer only kept
+    half of it, which squeezed the branch into an ellipsis and pushed the stats
+    onto a second row. */
+.gh-header > .spacer { flex: 0 0 0; }
 .header-summary { display: flex; gap: 16px; font-size: 12px; color: var(--fg-muted); align-items: center; }
 .header-summary b { color: var(--fg); font-weight: 600; }
 .sum-item { white-space: nowrap; }
@@ -126,6 +134,11 @@ body.selecting { user-select: none; cursor: text; }
 a.pr-badge:hover { background: color-mix(in srgb, var(--accent, #58a6ff) 15%, transparent); }
 .stat-add { color: var(--success); }
 .stat-del { color: var(--danger); }
+/** Additions and deletions belong together: on a narrow tab `flex-wrap` used to
+    put `+2` at the end of one line and `-1` at the start of the next. */
+.stat-pair { display: inline-flex; align-items: baseline; gap: 8px; }
+/** The file count and the line stats are one figure on a narrow tab. */
+.meta-pair { display: inline-flex; align-items: baseline; gap: 8px; }
 /** ------------------------------- buttons ------------------------------- */
 .gh-btn {
   display: inline-flex; align-items: center; gap: 6px;
