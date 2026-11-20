@@ -8,9 +8,19 @@
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Other"],
-  "keywords": ["review", "git", "branch", "diff", "pull request"],
-  "activationEvents": [],
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "review",
+    "git",
+    "branch",
+    "diff",
+    "pull request"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
@@ -54,7 +64,12 @@
         },
         "prReview.mode": {
           "type": "string",
-          "enum": ["branch", "uncommitted", "range", "all"],
+          "enum": [
+            "branch",
+            "uncommitted",
+            "range",
+            "all"
+          ],
           "default": "branch",
           "description": "What a click reviews. 'branch' is the current branch against its base."
         },
@@ -65,21 +80,33 @@
         },
         "prReview.showIn": {
           "type": "string",
-          "enum": ["webview", "simpleBrowser", "external"],
+          "enum": [
+            "webview",
+            "simpleBrowser",
+            "external"
+          ],
           "default": "webview",
           "description": "Where the review opens: inside the editor tab, the built-in Simple Browser, or the system browser."
+        },
+        "prReview.autoOpen": {
+          "type": "boolean",
+          "default": false,
+          "description": "Open a review of the branch as soon as a folder is opened, instead of waiting for the command."
         }
       }
     }
   },
-  "scripts": {
-    "compile": "tsc -p ./",
-    "watch": "tsc -w -p ./",
-    "vscode:prepublish": "npm run compile"
-  },
   "devDependencies": {
     "@types/node": "^20.11.0",
     "@types/vscode": "^1.85.0",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^3.1.0",
     "typescript": "^5.4.0"
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -w -p ./",
+    "test": "vscode-test",
+    "vscode:prepublish": "npm run compile"
   }
 }
