@@ -9,10 +9,11 @@ import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { promisify } from "node:util";
 import { parseDiff, diffStats, languageFor, isBinaryPath } from "../src/diff.js";
-import { resolveGitBinary, resetGitBinary, listFiles, listBranches, listBranchHeads, searchProject, diffUncommitted } from "../src/git.js";
+import { resolveGitBinary, resetGitBinary, listFiles, listBranches, listBranchHeads, searchProject, diffUncommitted, currentBranch } from "../src/git.js";
 import { buildDispatchMessage, buildDispatchPrompt, currentSessionId, dispatchToSession } from "../src/dispatch.js";
 import { readFilesForHighlight, splitLines } from "../src/fileview.js";
-import { loadScopeCommits } from "../src/models/commits.js";
+import { defaultBase, loadScopeCommits } from "../src/models/commits.js";
+import { resolveScope } from "../src/models/scope.js";
 import { computeGaps } from "../src/models/gaps.js";
 import { toFileModel } from "../src/models/diffset.js";
 import { buildProjectTree } from "../src/models/tree.js";
@@ -205,6 +206,60 @@ test("computeGaps reports no region when the hunk covers the file", () => {
 
   const { gaps } = computeGaps(file, lines);
   assert.equal(gaps.length, 0);
+});
+test("a repository without a remote still reviews its branch", async () => {
+  const root = await mkdtemp(join(tmpdir(), "pr-review-noremote-"));
+  const git = (...args) => exec(GIT.BIN, args, { cwd: root });
+
+  try {
+    await git("init", "--initial-branch", "main");
+    await git("config", "user.email", "test@example.com");
+    await git("config", "user.name", "Test");
+    await writeFile(join(root, "a.ts"), "export const a = 1;\n");
+    await git("add", "-A");
+    await git("commit", "-m", "base");
+    await git("checkout", "-b", "feature/work");
+    await writeFile(join(root, "a.ts"), "export const a = 2;\n");
+    await git("add", "-A");
+    await git("commit", "-m", "change");
+
+    // Every default base is an `origin/*` ref, and this clone has no remote at
+    // all: the review used to come back with zero files instead of failing.
+    const base = await defaultBase(root);
+    assert.equal(base, "main", `a local trunk is the base, got ${base}`);
+
+    const scope = await resolveScope(root, { mode: MODE.BRANCH });
+    assert.equal(scope.base, "main");
+    assert.match(scope.diffText, /-export const a = 1;/);
+    assert.match(scope.diffText, /\+export const a = 2;/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+test("a head branch is never used as its own base", async () => {
+  const root = await mkdtemp(join(tmpdir(), "pr-review-selfbase-"));
+  const git = (...args) => exec(GIT.BIN, args, { cwd: root });
+
+  try {
+    // A repository whose only branch is `master` and which sits on it: the local
+    // candidates would compare the branch with itself and report nothing.
+    await git("init", "--initial-branch", "master");
+    await git("config", "user.email", "test@example.com");
+    await git("config", "user.name", "Test");
+    await writeFile(join(root, "a.ts"), "export const a = 1;\n");
+    await git("add", "-A");
+    await git("commit", "-m", "base");
+    await git("checkout", "-b", "feature/work");
+    await writeFile(join(root, "a.ts"), "export const a = 3;\n");
+    await git("add", "-A");
+    await git("commit", "-m", "change");
+
+    const base = await defaultBase(root);
+    assert.equal(base, "master");
+    assert.notEqual(base, await currentBranch(root), "the base is the branch itself");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 test("git writes a path with non-ASCII letters as it is", async () => {
   const root = await mkdtemp(join(tmpdir(), "pr-review-unicode-"));

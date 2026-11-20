@@ -1,5 +1,5 @@
 /** Commit lists for a review scope. */
-import { listCommits, mergeBase, resolveCommit } from "../git.js";
+import { currentBranch, listCommits, mergeBase, resolveCommit } from "../git.js";
 import { GIT, P } from "../config.js";
 /** Commits between the merge base of `base`/`head` and `head`. */
 export async function commitsSinceMergeBase(root, base, head, limit) {
@@ -24,6 +24,16 @@ export async function defaultBase(root) {
   for (const candidate of GIT.BASE_CANDIDATES) {
     if (await resolveCommit(root, candidate)) return candidate;
   }
+
+  // No remote: a repository that was only ever local still has a trunk to
+  // compare against. Skipping the checked-out branch matters — comparing a
+  // branch with itself would report an empty review instead of its changes.
+  const current = await currentBranch(root).catch(() => null);
+  for (const candidate of GIT.LOCAL_BASE_CANDIDATES) {
+    if (candidate === current) continue;
+    if (await resolveCommit(root, candidate)) return candidate;
+  }
+
   return GIT.DEFAULT_BASE;
 }
 /** Commits that belong to the reviewed scope. */

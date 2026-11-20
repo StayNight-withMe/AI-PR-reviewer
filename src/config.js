@@ -278,6 +278,13 @@ export const GIT = {
   DEFAULT_BASE: "origin/HEAD",
   /** Base branches tried in order when the scope does not name one. */
   BASE_CANDIDATES: ["origin/dev", "origin/main", "origin/master", "origin/HEAD"],
+  /**
+   * Local branches to compare against when the repository has no remote.
+   *
+   * Without these a repository cloned nowhere — or created by `init` — had a
+   * base that does not exist, so a branch review silently came out empty.
+   */
+  LOCAL_BASE_CANDIDATES: ["main", "master", "dev"],
   /** Tracking branch of the checked-out branch, used when no base branch exists. */
   UPSTREAM_REF: "@{upstream}",
   SHORT_SHA_LENGTH: 7,
