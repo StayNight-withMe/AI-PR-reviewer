@@ -1,10 +1,17 @@
 /** Secondary UI checks: settings, split mode, light theme, viewer round-trip, API. */
 import { Builder, By, until } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox.js";
-const BANK = process.argv[2] ?? "http://127.0.0.1:5454/";
+import { createE2eReview } from "./e2e-fixture.mjs";
+const EXTERNAL_URL = process.argv[2];
+let BANK = EXTERNAL_URL ?? "http://127.0.0.1:5454/";
+let fixture;
 const results = [];
 const check = (n, ok, d = "") => { results.push({ n, ok }); console.log(`${ok ? "PASS" : "FAIL"}  ${n}${d ? ` — ${d}` : ""}`); };
 async function main() {
+  if (!EXTERNAL_URL) {
+    fixture = await createE2eReview();
+    BANK = fixture.url;
+  }
   const options = new firefox.Options().addArguments("-headless").windowSize({ width: 1700, height: 1100 });
   const driver = await new Builder().forBrowser("firefox").setFirefoxOptions(options).build();
 
@@ -218,6 +225,7 @@ async function main() {
     await driver.manage().window().setRect({ width: 1700, height: 1100 });
   } finally {
     await driver.quit();
+    await fixture?.cleanup?.();
   }
 
   const failed = results.filter((r) => !r.ok);

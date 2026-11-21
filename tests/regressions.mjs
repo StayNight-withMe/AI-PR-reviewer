@@ -6,15 +6,28 @@
 import assert from "node:assert/strict";
 import { Builder } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox.js";
-const BASE = process.argv[2] ?? "http://127.0.0.1:5454/";
+import { startReview } from "../src/core.js";
+import { GIT, MODE } from "../src/config.js";
+import { execFile } from "node:child_process";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { promisify } from "node:util";
+const exec = promisify(execFile);
+
+const EXTERNAL_BASE = process.argv[2];
 const SCRIPT_TIMEOUT = 30_000;
 const PAUSE = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 /** Target name a new browser tab is opened with. */
 const TARGET_BLANK = "_blank";
-const driver = await new Builder()
-  .forBrowser("firefox")
-  .setFirefoxOptions(new firefox.Options().addArguments("-headless").windowSize({ width: 1700, height: 1100 }))
-  .build();
+
+let driver;
+let fixtureRoot;
+let fixtureBase;
+let fixtureRemote;
+let reviewPage;
+let reviewBase;
+
 const failures = [];
 function check(name, fn) {
   return fn().then(
@@ -33,9 +46,148 @@ async function waitFor(code, timeout = SCRIPT_TIMEOUT) {
     try { return await js(code); } catch { return false; }
   }, timeout);
 }
+
+/**
+ * Builds a self-contained fixture that exercises every regression check:
+ *  - src/large.cs: >400 lines with rare changes (triggers is-deferred)
+ *  - src/models.cs: added C# file with enums/interfaces/classes, including
+ *    the `EnumNames` string the search check greps for
+ *  - src/symbols.cs: modified C# file with many visible added lines (keywords,
+ *    symbol links, usage menu entries)
+ *  - src/hunks.cpp: multi-hunk file with distant changes (expander bars)
+ *  - src/tail.cs: modified C# file whose unchanged tail hides an expander
+ *  - src/unchanged.cs: C# file not in the diff (viewer + tree checks)
+ *  - bare remote + push: the base commit becomes is-pushed in a range review
+ */
+async function createFixture() {
+  fixtureRoot = await mkdtemp(join(tmpdir(), "pr-review-regressions-"));
+  const git = (...args) => exec(GIT.BIN, args, { cwd: fixtureRoot });
+
+  // Bare remote so the base commit can be pushed (is-pushed detection).
+  const remoteRoot = await mkdtemp(join(tmpdir(), "pr-review-remote-"));
+  fixtureRemote = remoteRoot;
+  await exec(GIT.BIN, ["init", "--bare"], { cwd: remoteRoot });
+  await git("init", "--initial-branch", "main");
+  await git("config", "user.email", "test@example.com");
+  await git("config", "user.name", "Test");
+  await git("config", "core.autocrlf", "false");
+  await git("remote", "add", "origin", remoteRoot);
+
+  // 420+ line C# file; changes only at lines 90 and 200 (rare, stays deferred).
+  const csLargeLines = Array.from({ length: 420 }, (_, i) =>
+    i === 89 ? `    public int Changed90() { return 900; }` :
+    i === 199 ? `    public int Changed200() { return 1200; }` :
+    `    public int Value${i}() { return ${i}; }`
+  );
+  const csLarge = `namespace Regression\n{\n${csLargeLines.join("\n")}\n}\n`;
+
+  // Modified C#: implements IHasCode (declared in the added models.cs), so the
+  // first symbol link in the diff has a definition AND an implementation entry
+  // in its usage menu. Every change replaces two lines with four (additions >
+  // deletions, many visible added lines in one hunk).
+  const symbolsChanges = Array.from({ length: 15 }, (_, i) =>
+    `    public int Compute${i}(int x)\n    {\n        return x * ${i};\n    }\n`
+  );
+  const csSymbolsBase = `namespace Regression\n{\n    using System;\n\n    public class SymbolHost\n    {\n        public string Code { get; set; } = "host";\n\n${symbolsChanges.join("")}\n    }\n}\n`;
+  const symbolsChangeLines = Array.from({ length: 15 }, (_, i) =>
+    `    public int Compute${i}V2(int x)\n    {\n        int scaled = x * ${i};\n        return scaled + 1;\n    }\n`
+  );
+  const csSymbolsHead = `namespace Regression\n{\n    using Regression.Models;\n\n    public class SymbolHost : IHasCode\n    {\n        public string Code { get; set; } = "host";\n\n${symbolsChangeLines.join("")}\n    }\n}\n`;
+
+  // Added C# file: enums, interfaces, classes. `EnumNames` is the search
+  // target. IHasCode is implemented by SymbolHost in another diffed file, which
+  // is what the usage-menu check needs (a definition plus usage entries).
+  const csModelsHead = `namespace Regression.Models\n{\n    using System;\n    using System.Collections.Generic;\n\n    public interface IViewerTag\n    {\n        string ViewerTag { get; }\n    }\n\n    public enum StatusKind\n    {\n        Active,\n        Retired,\n        Pending,\n        Blocked,\n    }\n\n    public interface IHasUpdatedAt\n    {\n        DateTime UpdatedAt { get; }\n    }\n\n    public interface IHasCode\n    {\n        string Code { get; }\n    }\n\n    public class StatusRecord : IHasUpdatedAt, IHasCode\n    {\n        private static readonly string[] EnumNames = { "Active", "Retired", "Pending", "Blocked" };\n\n        public StatusKind Kind { get; set; }\n        public DateTime UpdatedAt { get; set; }\n        public string Code { get; set; }\n\n        public string Name => EnumNames[(int)Kind];\n\n        public override string ToString() => $"{Code} ({Name})";\n    }\n\n    public class RecordStore\n    {\n        private readonly List<StatusRecord> items = new();\n\n        public void Add(StatusRecord record) => items.Add(record);\n\n        public IReadOnlyList<StatusRecord> Items => items;\n\n        public StatusRecord Find(string code)\n        {\n            foreach (var item in items)\n            {\n                if (item.Code == code) return item;\n            }\n            return null;\n        }\n    }\n}\n`;
+
+  // Multi-hunk C++: changes at lines 5 and 60 create a large gap (expanders).
+  const cppHunks = Array.from({ length: 80 }, (_, i) =>
+    i === 4 ? `int changed_a(int x) { return x + 100; }` :
+    i === 59 ? `int changed_b(int y) { return y * 200; }` :
+    `int func_${i}(int v) { return v + ${i}; }`
+  );
+  const cppContent = cppHunks.join("\n") + "\n";
+
+  // Modified C# file with a long unchanged tail (triggers the tail expander).
+  const csTailBody = Array.from({ length: 30 }, (_, i) =>
+    `    public int Tail${i}() { return ${i}; }`
+  ).join("\n");
+  const csTailBase = `namespace Regression\n{\n    public class TailHost\n    {\n        public int Head() { return 1; }\n\n${csTailBody}\n    }\n}\n`;
+  const csTailHead = csTailBase.replace("public int Head() { return 1; }", "public int Head() { return 42; }");
+
+  // Unchanged C# file (viewer opens it, tree check uses it).
+  const csUnchanged = `namespace Viewer\n{\n    using System;\n    using Regression.Models;\n\n    public class UnchangedFile : IHasCode, IViewerTag\n    {\n        public string Code { get; set; } = "unchanged";\n        public string ViewerTag { get; set; } = "viewer";\n\n        public int First() { return 1; }\n        public int Second() { return 2; }\n        public int Third() { return 3; }\n        public int Fourth() { return 4; }\n        public int Fifth() { return 5; }\n        public int Sixth() { return 6; }\n        public int Seventh() { return 7; }\n        public int Eighth() { return 8; }\n    }\n}\n`;
+
+  const txtFile = Array.from({ length: 12 }, (_, i) => `unchanged line ${i + 1}`).join("\n") + "\n";
+
+  // Base commit: everything except the files the review adds.
+  const baseFiles = {
+    "src/large.cs": csLarge,
+    "src/symbols.cs": csSymbolsBase,
+    "src/hunks.cpp": cppContent,
+    "src/tail.cs": csTailBase,
+    "src/unchanged.cs": csUnchanged,
+    "src/notes.txt": txtFile,
+  };
+  for (const [relPath, content] of Object.entries(baseFiles)) {
+    const full = join(fixtureRoot, relPath);
+    await mkdir(join(full, ".."), { recursive: true });
+    await writeFile(full, content);
+  }
+  await git("add", "-A");
+  await git("commit", "-m", "base fixture");
+
+  // Review commit: modifications plus one brand-new (all-additions) file.
+  await writeFile(join(fixtureRoot, "src/symbols.cs"), csSymbolsHead);
+  await writeFile(join(fixtureRoot, "src/large.cs"),
+    csLarge.replace("return 900;", "return 9900;").replace("return 1200;", "return 12000;"));
+  await writeFile(join(fixtureRoot, "src/hunks.cpp"),
+    cppContent.replace("return x + 100;", "return x + 999;").replace("return y * 200;", "return y * 222;"));
+  await writeFile(join(fixtureRoot, "src/tail.cs"), csTailHead);
+  await writeFile(join(fixtureRoot, "src/models.cs"), csModelsHead);
+  await git("add", "-A");
+  await git("commit", "-m", "review changes");
+
+  // Push everything: every commit in the reviewed range is then "pushed",
+  // which the commits-tab check needs (a locked, unlockable item).
+  await git("push", "-u", "origin", "main");
+  await git("fetch", "origin");
+
+  // The range base, recorded before the remote is cleaned up.
+  const baseSha = (await git("rev-parse", "HEAD~1")).stdout.trim();
+
+  // Clean up the bare remote directory; it is no longer needed.
+  await rm(remoteRoot, { recursive: true, force: true });
+  return baseSha;
+}
+
 try {
+  if (EXTERNAL_BASE) {
+    reviewBase = EXTERNAL_BASE;
+  } else {
+    fixtureBase = await createFixture();
+    // Device-wide UI settings are stored on disk (ui-settings.json). Point the
+    // store at this run's temp dir so a stale setting from an earlier,
+    // interrupted run (e.g. openLinksInline=false) cannot be inherited and
+    // turn an in-page click into a browser navigation.
+    process.env[GIT.ARTIFACTS_DIR_ENV] = join(fixtureRoot, "artifacts");
+    reviewPage = await startReview({
+      repoPath: fixtureRoot,
+      mode: MODE.RANGE,
+      base: fixtureBase,
+      head: "HEAD",
+      host: "127.0.0.1",
+      port: 0,
+    });
+    reviewBase = reviewPage.url;
+  }
+
+  driver = await new Builder()
+    .forBrowser("firefox")
+    .setFirefoxOptions(new firefox.Options().addArguments("-headless").windowSize({ width: 1700, height: 1100 }))
+    .build();
+
   console.log("BOOT loading page");
-  await driver.get(BASE);
+  await driver.get(reviewBase);
   console.log("BOOT page loaded");
   await waitFor(`document.querySelectorAll('.diff-file').length > 0 && [...document.querySelectorAll('.diff-file')].some(s => s.dataset.hydrated === '1')`);
   console.log("BOOT first section hydrated");
@@ -251,8 +403,10 @@ try {
 
   await check("the tail of a file keeps its expander", async () => {
     // Strict folding: every hidden region gets a button, so the tail of a
-    // file can be checked on its own.
-    await js(`(PR.state.settings.contextCollapseLines = 1, PR.renderFileList(), true)`);
+    // file can be checked on its own. The earlier checks already expanded the
+    // gaps they exercised (that state is kept by design, like a user's), so
+    // reset it: this check verifies the folding policy on a fresh session.
+    await js(`(PR.state.expandedGaps.clear(), PR.state.settings.contextCollapseLines = 1, PR.renderFileList(), true)`);
     await PAUSE(1500);
 
     const info = await js(`(() => {
@@ -1046,8 +1200,12 @@ try {
 
   await check("comment editor spans the whole diff table", async () => {
     const out = await js(`(() => {
+      // A deferred or collapsed section has no rendered rows, so its width
+      // cannot be measured: skip to the first section that actually renders.
       const section = [...document.querySelectorAll('.diff-file')]
-        .find(s => s.querySelector('.js-comment'));
+        .find(s => s.querySelector('.js-comment')
+          && !s.classList.contains('is-deferred')
+          && !s.classList.contains('collapsed'));
       if (!section) return { error: "no section with a comment button" };
 
       const button = section.querySelector('.js-comment');
@@ -1140,7 +1298,7 @@ try {
 
     const original = driver.getWindowHandle();
     await driver.switchTo().newWindow("tab");
-    await driver.get(`${BASE.replace(/\/$/, "")}/file?path=${encodeURIComponent(path)}`);
+    await driver.get(`${reviewBase.replace(/\/$/, "")}/file?path=${encodeURIComponent(path)}`);
     await waitFor(`!!document.querySelector('.viewer-table')`);
 
     // Comment through the viewer's own UI, the way a user does it.
@@ -1281,7 +1439,7 @@ try {
     const path = PR.state.allFiles.map(f => f.path).find(p => p.endsWith('.cs') && !changed.has(p));
     return { path, token: PR.state.files[0].path };
   })()`);
-  const viewerUrl = `${BASE.replace(/\/$/, "")}/file?path=${encodeURIComponent(viewerInfo.path)}#L5`;
+  const viewerUrl = `${reviewBase.replace(/\/$/, "")}/file?path=${encodeURIComponent(viewerInfo.path)}#L5`;
   await driver.get(viewerUrl);
   await waitFor(`document.querySelectorAll('.viewer-table tr[data-line]').length > 5`);
   await PAUSE(500);
@@ -1353,7 +1511,11 @@ try {
     assert.ok(count > 5, `expected plus controls, found ${count}`);
   });
 } finally {
-  await driver.quit();
+  delete process.env[GIT.ARTIFACTS_DIR_ENV];
+  await driver?.quit().catch(() => {});
+  await reviewPage?.page?.close().catch(() => {});
+  if (fixtureRoot) await rm(fixtureRoot, { recursive: true, force: true }).catch(() => {});
+  if (fixtureRemote) await rm(fixtureRemote, { recursive: true, force: true }).catch(() => {});
 }
 if (failures.length) {
   console.error(`\n${failures.length} regression(s) failed:\n${failures.join("\n")}`);

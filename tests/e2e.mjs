@@ -7,13 +7,20 @@
  */
 import { Builder, By, Key, until } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox.js";
-const URL = process.argv[2] ?? "http://127.0.0.1:5454/";
+import { createE2eReview } from "./e2e-fixture.mjs";
+const EXTERNAL_URL = process.argv[2];
+let URL = EXTERNAL_URL ?? "http://127.0.0.1:5454/";
+let fixture;
 const results = [];
 function check(name, ok, detail = "") {
   results.push({ name, ok, detail });
   console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? ` — ${detail}` : ""}`);
 }
 async function main() {
+  if (!EXTERNAL_URL) {
+    fixture = await createE2eReview();
+    URL = fixture.url;
+  }
   const options = new firefox.Options().addArguments("-headless").windowSize({ width: 1700, height: 1100 });
   const driver = await new Builder().forBrowser("firefox").setFirefoxOptions(options).build();
 
@@ -324,6 +331,7 @@ async function main() {
     check("no runtime errors", !pageErrors || pageErrors.length === 0, JSON.stringify(pageErrors || []));
   } finally {
     await driver.quit();
+    await fixture?.cleanup?.();
   }
 
   const failed = results.filter((r) => !r.ok);
