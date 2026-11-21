@@ -21,6 +21,7 @@ namespace PrReview.VisualStudio
         public const string ToolWindowGuidString = "d4e5f6a7-8b9c-4d0e-9f11-2a3b4c5d6e7f";
 
         private readonly WebView2 _webView = new WebView2();
+        private bool _showing;
         private readonly TextBlock _hint = new TextBlock
         {
             Margin = new Thickness(16),
@@ -41,8 +42,10 @@ namespace PrReview.VisualStudio
         }
 
         /// <summary>Starts the server (once) and points WebView2 at the page.</summary>
-        private async System.Threading.Tasks.Task ShowReviewAsync()
+        internal async System.Threading.Tasks.Task ShowReviewAsync()
         {
+            if (_showing) return;
+            _showing = true;
             var runner = PrReviewPackage.Runner;
             if (runner == null)
             {
@@ -81,7 +84,10 @@ namespace PrReview.VisualStudio
         private async System.Threading.Tasks.Task<string> FindRepositoryRootAsync()
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            var start = PrReviewPackage.SolutionDirectory() ?? Environment.CurrentDirectory;
+            var configured = Environment.GetEnvironmentVariable("PR_REVIEW_REPO");
+            var start = !string.IsNullOrWhiteSpace(configured)
+                ? configured
+                : PrReviewPackage.Current?.SolutionDirectory() ?? Environment.CurrentDirectory;
             var directory = new DirectoryInfo(start);
             while (directory != null)
             {

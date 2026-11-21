@@ -16,6 +16,7 @@
     <CreateVsixContainer>true</CreateVsixContainer>
     <DeployExtension>false</DeployExtension>
   </PropertyGroup>
+  <Import Project="$(NuGetPackageRoot)microsoft.vssdk.buildtools\17.9.3168\tools\vssdk\Microsoft.VsSDK.targets" Condition="Exists('$(NuGetPackageRoot)microsoft.vssdk.buildtools\17.9.3168\tools\vssdk\Microsoft.VsSDK.targets')" />
   <ItemGroup>
     <PackageReference Include="Microsoft.VisualStudio.Shell.15.0" Version="17.9.37000" />
     <PackageReference Include="Microsoft.VisualStudio.Shell.Framework" Version="17.9.37000" />
@@ -31,6 +32,9 @@
     <VSCTCompile Include="PrReviewPackage.vsct">
       <ResourceName>Menus.ctmenu</ResourceName>
     </VSCTCompile>
+    <!-- The VSSDK target merges the compiled command table into a managed
+         ResourceManager container. Visual Studio cannot read a raw embedded
+         CTO file, so the generated .resources output must be used. -->
   </ItemGroup>
   <!-- The extension starts the review server itself, so the engine has to travel
        inside the .vsix: without it, an installed copy has nothing to run. The

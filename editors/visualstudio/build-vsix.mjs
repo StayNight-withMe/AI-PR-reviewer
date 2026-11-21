@@ -65,9 +65,33 @@ async function exists(path) {
 
 /** Compiles the project and produces the .pkgdef the package registration needs. */
 async function build() {
-  const msbuild = "C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\MSBuild\\Current\\Bin\\MSBuild.exe";
-  await exec(msbuild, ["PrReview.VisualStudio.csproj", "/p:Configuration=Release", "/v:minimal", "/nologo"], {
+  // Use the .NET SDK MSBuild host rather than Visual Studio's MSBuild.exe:
+  // the latter cannot resolve SDK-style projects when the machine's global
+  // dotnet installation is incomplete. DOTNET_ROOT may point at a working SDK;
+  // otherwise fall back to the local SDK installed for this machine.
+  const dotnetRoots = [
+    process.env.DOTNET_ROOT,
+    "Z:\\system\\temp\\dotnet-sdk",
+    "C:\\Program Files\\dotnet",
+  ].filter(Boolean);
+  let dotnet = null;
+  let dotnetRoot = null;
+  for (const root of dotnetRoots) {
+    const candidate = join(root, "dotnet.exe");
+    if (await exists(candidate)) {
+      dotnet = candidate;
+      dotnetRoot = root;
+      break;
+    }
+  }
+  if (!dotnet) throw new Error("No dotnet.exe found; set DOTNET_ROOT to a complete .NET SDK");
+  await exec(dotnet, ["msbuild", "PrReview.VisualStudio.csproj", "/t:Rebuild", "/p:Configuration=Release", "/v:minimal", "/nologo"], {
     cwd: HERE,
+    env: {
+      ...process.env,
+      DOTNET_ROOT: dotnetRoot,
+      PATH: `${dotnetRoot};${process.env.PATH ?? ""}`,
+    },
   });
 
   const createPkgDef = join(VSSDK, "bin", "CreatePkgDef.exe");

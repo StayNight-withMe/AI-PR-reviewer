@@ -228,6 +228,12 @@ try {
       "the manifest names a build-time placeholder instead of a file");
     assert.ok(manifest.includes("ProductArchitecture"),
       "VS 2022 rejects an installation target without an architecture");
+    assert.ok(manifest.includes('Type="Microsoft.VisualStudio.VsPackage" Path="PrReview.VisualStudio.dll"'),
+      "the VS package asset must point at the assembly, not the generated pkgdef");
+    assert.ok(project.includes("Microsoft.VsSDK.targets"),
+      "the build does not run the VSSDK VSCT compiler and CTO merge");
+    assert.ok(!project.includes("obj\\vsct\\Menus.ctmenu"),
+      "the raw CTO file is embedded instead of the merged managed resource");
   });
 
   await check("visualstudio: the packer keeps the engine's folders", async () => {

@@ -43,32 +43,27 @@ ae331e9 + ранее — backend, безопасность, треды, публ
   `Review: feature/pricing (+2 / -1)` рендерится: шапка, Files changed, дифф
   cart.ts, коммиты, сайдбар REVIEW.
 
-### Visual Studio — пакет готов, живой tool window НЕ проверен
-- `build-vsix.mjs` собирает установочный .vsix без workload. ВАЖНЫЙ БАГ,
-  ИСПРАВЛЕН (8035ad2): VSIX нёс 33 копии DLL, которые VS сама предоставляет
-  (Microsoft.VisualStudio.Shell.15.0.dll и др.) — они shadow'ят сборки IDE,
-  из-за чего в редакторе всплывали «Пакет ... не загрузился правильно».
-  Теперь сборщик: (a) при staging отбрасывает DLL, присутствующие в
-  `PublicAssemblies`/`PrivateAssemblies`/корне IDE; (b) после сборки проверяет
-  готовый архив и ПАДАЕТ, если там такой DLL. Регрессия зафиксирована в
-  `tests/editors.mjs` («the VSIX does not shadow assemblies...»).
-- Новый VSIX: 58 файлов, ~1006 KB, движок внутри, конфликтов 0. Путь:
+### Visual Studio — пакет проверен в живом Visual Studio
+- `build-vsix.mjs` собирает установочный .vsix без workload. Исправлены реальные
+  баги VSIX: VSCT теперь компилируется через VSSDK targets, CTO merge попадает
+  в managed `.resources` (Visual Studio не читает raw `Menus.ctmenu`), VSIX
+  manifest указывает DLL как `Microsoft.VisualStudio.VsPackage`, а пакет
+  регистрируется для background autoload при открытом solution.
+- Сборка использует полный .NET SDK через `dotnet msbuild` (системный SDK на
+  этой машине неполный), VSIX: 58 файлов, ~1007 KB, движок внутри, конфликтов
+  сборки DLL с IDE 0. Путь:
   `editors/visualstudio/bin/Release/net48/PrReview.VisualStudio.vsix`.
-- Дополнительно (8035ad2): репозиторий теперь ищется от КАРТОЧКИ РЕШЕНИЯ
-  (`IVsSolution::GetSolutionInfo`), а не от `Environment.CurrentDirectory`
-  (девенв стартует в папке установки — старый код ревьюил бы мусор); команде
-  дано имя `PrReview.OpenReview` в .vsct (для DTE-автоматизации).
-- **НЕ ПРОВЕРЕНО**: живое открытие tool window в VS. Автоматизация DTE
-  провалилась: `ExecuteCommand("PrReview.OpenReview")` — «команда не найдена»
-  (пакет в тот момент ещё с багом shadowing; после фикса установка в IDE НЕ
-  делалась, чтобы не мусорить редактором). Если пробовать: УСТАНОВИТЬ сначала
-  исправленный vsix (`VSIXInstaller.exe /q /a <vsix>`), потом DTE-скрипт
-  (`Z:\system\temp\pr-review-ide\vs-live.ps1` — он создаёт фикстуру, открывает
-  решение, делает ExecuteCommand, ищет окно "PR Review", снимает скрин,
-  завершает devenv). После неудачной установки делать
-  `VSIXInstaller.exe /q /u:PrReview.VisualStudio /shutdownprocesses`.
-- IDE: `C:\Program Files\Microsoft Visual Studio\18\Insiders` (devenv, MSBuild
-  Current, VSIXInstaller в Common7\IDE).
+- Живая проверка: Visual Studio 18 Insiders, реальный solution с веткой
+  `feature/pricing`; команда VSCT зарегистрирована и вызвана через DTE, tool
+  window `PR Review` открыт, bundled Node server отвечает HTTP 200, страница
+  содержит `feature/pricing`, `+1` и `-1`. Скриншот:
+  `Z:\system\temp\pr-review-ide\vs-review.png`.
+- Репозиторий для ревью определяется через solution/project/selection с
+  поддержкой `PR_REVIEW_REPO` override (нужен для DTE-фикстуры и полезен для
+  автоматизации). Tool window запускает сервер сразу по команде, а не только
+  после WPF Loaded-события.
+- IDE: `C:\Program Files\Microsoft Visual Studio\18\Insiders` (devenv, VSIXInstaller,
+  расширение установлено в профиль `C:\Users\Rog`).
 
 ### JetBrains — код готов, ЖИВАЯ СБОРКА НЕВОЗМОЖНА
 - Движок внутри плагина (7dd612a), распаковка jar в temp в `ReviewServer.kt`.
@@ -152,18 +147,15 @@ ae331e9 + ранее — backend, безопасность, треды, публ
    строку READY, убивать процесс.
 
 ## Следующие шаги (по приоритету)
-1. **VS tool window вживую**: установить исправленный vsix, прогнать
-   `vs-live.ps1` (DTE), снять скрин tool window. Только после проверки
-   установки на чистом (без shadowing) пакете.
-2. **JetBrains**: нужен JDK + Gradle — тогда собрать jar и проверить
+1. **JetBrains**: нужен JDK + Gradle — тогда собрать jar и проверить
    распаковку/запуск (блок чисто инструментальный).
-3. **Stress/edge-тесты** (обещано, не начато):
+2. **Stress/edge-тесты** (обещано, не начато):
    - `hljs-bundle.js` — audit TODO/мин в парсерах (длинные строки, спецсимволы).
    - git edge cases: пустые коммиты, мусор в stderr, пустой diff.
    - render.js: экстремально длинные имена файлов/веток.
-4. **VS Code дальше**: `simpleBrowser` и `external` режимы showIn — проверить
+3. **VS Code дальше**: `simpleBrowser` и `external` режимы showIn — проверить
    вживую; `autoOpen` — живьём.
-5. Пуш ветки — только по явной просьбе.
+4. Пуш ветки — только по явной просьбе.
 
 ## Что НЕ трогать
 - Пуш, релизы — без явной команды.

@@ -25,6 +25,8 @@
     <Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[17.0,)" DisplayName="Visual Studio core editor" />
   </Prerequisites>
   <Assets>
-    <Asset Type="Microsoft.VisualStudio.VsPackage" Path="PrReview.VisualStudio.pkgdef" />
+    <!-- The VS package asset must point at the assembly. The package's
+         generated .pkgdef is discovered separately by the VSIX engine. -->
+    <Asset Type="Microsoft.VisualStudio.VsPackage" Path="PrReview.VisualStudio.dll" />
   </Assets>
 </PackageManifest>
