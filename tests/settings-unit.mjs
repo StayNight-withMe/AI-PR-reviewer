@@ -8,14 +8,22 @@
  * Run: node --test tests/settings-unit.mjs
  */
 import assert from "node:assert/strict";
-import { rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
-import { readSettings, sanitizeSettings, settingsPath, writeSettings } from "../src/settings-store.js";
-const clean = () => rm(settingsPath(), { force: true }).catch(() => {});
+import { readSettings, sanitizeSettings, settingsPath, writeSettings, migrateLegacySettings } from "../src/settings-store.js";
+import { GIT } from "../src/config.js";
+// The tests must never touch the real per-user file: a machine's actual
+// settings live in stableUserRoot() and the user would see them "reset".
+const sandbox = await mkdtemp(join(tmpdir(), "settings-unit-"));
+const env = { [GIT.ARTIFACTS_DIR_ENV]: sandbox };
+const clean = () => rm(settingsPath(env), { force: true }).catch(() => {});
 test("the settings file lives outside any repository", () => {
-  const path = settingsPath();
+  const path = settingsPath(env);
   assert.ok(/ui-settings\.json$/.test(path), `unexpected path ${path}`);
   assert.ok(!path.includes(".pr-review"), "settings are still stored in the repo folder");
+  assert.ok(path.startsWith(sandbox), "settings leaked to the real per-user location");
 });
 test("settings round-trip through the file", async () => {
   await clean();
@@ -74,15 +82,40 @@ test("sanitizeSettings rejects a non-object", () => {
   assert.deepEqual(sanitizeSettings("nope"), {});
   assert.deepEqual(sanitizeSettings(42), {});
 });
+test("settings from the old temp location are migrated once", async () => {
+  const target = await mkdtemp(join(tmpdir(), "settings-new-"));
+  const legacy = await mkdtemp(join(tmpdir(), "settings-old-"));
+  const legacyEnv = { [GIT.SETTINGS_DIR_ENV]: target, [GIT.ARTIFACTS_DIR_ENV]: legacy };
+  await writeFile(join(legacy, "ui-settings.json"), JSON.stringify({ treeWidth: 455, theme: "light" }), "utf8");
+
+  const read = await readSettings(legacyEnv);
+  assert.equal(read.treeWidth, 455, "the old temp settings were not carried over");
+  assert.equal(read.theme, "light");
+  const copied = JSON.parse(await (await import("node:fs/promises")).readFile(join(target, "ui-settings.json"), "utf8"));
+  assert.equal(copied.treeWidth, 455, "the migrated file was not written");
+});
+test("a hand-edited file with a BOM still loads", async () => {
+  await clean();
+  const { mkdir, writeFile: write } = await import("node:fs/promises");
+  const { dirname } = await import("node:path");
+  const path = settingsPath(env);
+  await mkdir(dirname(path), { recursive: true });
+  await write(path, "\uFEFF" + JSON.stringify({ treeWidth: 410 }), "utf8");
+  try {
+    assert.equal((await readSettings(env)).treeWidth, 410);
+  } finally {
+    await clean();
+  }
+});
 test("a corrupt file reads as empty instead of throwing", async () => {
   await clean();
   const { writeFile, mkdir } = await import("node:fs/promises");
   const { dirname } = await import("node:path");
-  const path = settingsPath();
+  const path = settingsPath(env);
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, "not json{{{", "utf8");
   try {
-    assert.deepEqual(await readSettings(), {});
+    assert.deepEqual(await readSettings(env), {});
   } finally {
     await clean();
   }

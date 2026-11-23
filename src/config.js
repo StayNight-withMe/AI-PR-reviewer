@@ -267,6 +267,9 @@ export const GIT = {
   /** Where review artifacts are written when no directory is configured. */
   ARTIFACTS_DIR_ENV: "PR_REVIEW_ARTIFACTS_DIR",
   ARTIFACTS_DIR_NAME: "pr-review-mcp",
+  /** Device-wide UI settings live in a stable per-user folder. */
+  SETTINGS_DIR_ENV: "PR_REVIEW_SETTINGS_DIR",
+  SETTINGS_DIR_NAME: "pr-review",
   /** Old in-repo directory, still cleaned/migrated from. */
   LEGACY_ARTIFACT_DIR: ".pr-review",
   /** `process.platform` value for Windows, used to compare path case. */

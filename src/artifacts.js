@@ -4,6 +4,20 @@ import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { GIT, P } from "./config.js";
+/**
+ * A per-user directory that does not depend on the ambient TEMP: TEMP changes
+ * between launchers (VS, shells, schedulers), and the device-wide UI settings
+ * written under it would silently "reset" for the user.
+ */
+export function stableUserRoot(env = process.env) {
+  if (process.platform === GIT.PLATFORM_WIN32 && env.LOCALAPPDATA && env.LOCALAPPDATA.trim()) {
+    return join(env.LOCALAPPDATA.trim(), GIT.SETTINGS_DIR_NAME);
+  }
+  // macOS/Linux: XDG state home is the conventional place for mutable state.
+  const home = (env.HOME ?? env.USERPROFILE ?? P.EMPTY).trim();
+  if (home) return join(home, ".local", "state", GIT.SETTINGS_DIR_NAME);
+  return join(tmpdir(), GIT.SETTINGS_DIR_NAME);
+}
 /** The directory a repository's reviews are stored under. */
 export function artifactsRoot(env = process.env) {
   const configured = env[GIT.ARTIFACTS_DIR_ENV];

@@ -79,6 +79,24 @@ ae331e9 + ранее — backend, безопасность, треды, публ
 - IDE: `C:\Program Files\Microsoft Visual Studio\18\Insiders` (devenv, VSIXInstaller,
   расширение установлено в профиль `C:\Users\Rog`).
 
+### Настройки страницы больше не «сбрасываются» (0.1.3)
+- Причина: файл настроек лежал в `artifactsRoot()` = `os.tmpdir()/pr-review-mcp`,
+  а TEMP у VS, терминала и планировщика разный — каждый запуск читал свой пустой
+  файл, и размер дерева/тема/diff-режим возвращались к дефолту. Вдобавок тесты
+  писали и удаляли этот же файл, то есть стирали настройки пользователя.
+- Теперь: `settingsPath()` → `PR_REVIEW_SETTINGS_DIR` → `PR_REVIEW_ARTIFACTS_DIR`
+  (явно заданный sandbox) → `%LOCALAPPDATA%\pr-review\ui-settings.json`
+  (`stableUserRoot()`), то есть путь не зависит от TEMP.
+- Старый файл из temp переносится один раз (`migrateLegacySettings`), BOM в
+  ручной правке не ломает чтение.
+- Тесты изолированы: `settings-unit`/`settings-persistence` пишут в свой sandbox,
+  остальные используют `PR_REVIEW_ARTIFACTS_DIR` фикстуры — реальные настройки
+  машины они не трогают (`tests/bad-input.mjs` больше не зависит от пустого файла).
+- Выбор layout-кнопки в тулбаре (split/unified) сохраняется device-wide и
+  восстанавливается после перезагрузки — покрыто `settings-persistence`.
+- Живая проверка: сервер из установленного бандла, TEMP=`…\AppData\Local\Temp`
+  → POST `treeWidth=437` → перезапуск с TEMP=`Z:\system\temp` → GET отдаёт `437`.
+
 ### JetBrains — код готов, ЖИВАЯ СБОРКА НЕВОЗМОЖНА
 - Движок внутри плагина (7dd612a), распаковка jar в temp в `ReviewServer.kt`.
 - На машине НЕТ JDK и Gradle — jar не собрать и не проверить.

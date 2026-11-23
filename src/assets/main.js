@@ -534,6 +534,8 @@
     // The layout switch in the toolbar is the one a reviewer reaches for first.
     var modeButton = target.closest(".js-mode-opt");
     if (modeButton) {
+      // setDiffMode persists the choice through store(), so the button is
+      // remembered device-wide exactly like the settings field.
       PR.setDiffMode(modeButton.dataset.mode);
       return true;
     }

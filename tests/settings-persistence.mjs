@@ -32,7 +32,10 @@ await writeFile(dbPath, JSON.stringify({ auth: true, default: String(PR_NUMBER),
 process.env[GH.ENV_BIN] = join(ROOT, "fixtures", "mock-gh.mjs");
 process.env.MOCK_GH_DB = dbPath;
 // Start from a clean settings file so the run does not depend on the machine.
+// The sandbox also keeps the test from ever touching the real per-user file.
 const { settingsPath } = await import("../src/settings-store.js");
+const { GIT } = await import("../src/config.js");
+process.env[GIT.ARTIFACTS_DIR_ENV] = await mkdtemp(join(tmpdir(), "settings-e2e-"));
 await (await import("node:fs/promises")).rm(settingsPath(), { force: true });
 const first = await startReview({ repoPath: fixture.repo, mode: MODE.PR, pr: PR_NUMBER, port: 0, symbols: false, dispatchEnabled: false });
 const driver = await new Builder()
@@ -126,6 +129,27 @@ try {
     };`);
     assert.equal(state.diffMode, "split", "the layout was lost after a reload");
     assert.equal(state.treeIndent, 24, "the indent was lost after a reload");
+  });
+
+  await check("the toolbar layout button is remembered device-wide", async () => {
+    await openPage(first.url);
+    // The toolbar switch, not the settings dropdown: this is the control a
+    // reviewer actually clicks, and its choice used to live only in the tab.
+    await driver.executeScript(`document.querySelector('.js-mode-opt[data-mode="unified"]').click(); return true;`);
+    await PAUSE(800);
+
+    const stored = await fetch(new URL("/api/settings", first.url)).then((response) => response.json());
+    assert.equal(stored.settings.diffMode, "unified", "the toolbar choice never reached the server");
+
+    await openPage(first.url);
+    const state = await driver.executeScript(`return {
+      mode: PR.state.diffMode,
+      splitTables: document.querySelectorAll('.diff-table.split').length,
+      pressed: document.querySelector('.js-mode-opt[data-mode="unified"]').getAttribute('aria-pressed'),
+    };`);
+    assert.equal(state.mode, "unified", "the toolbar choice was lost after a reload");
+    assert.equal(state.splitTables, 0, "the page came back in the other layout");
+    assert.equal(state.pressed, "true", "the toolbar does not show the stored layout");
   });
 
   await check("a corrupt settings file does not break the page", async () => {
