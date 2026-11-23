@@ -1,10 +1,12 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
+using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 namespace PrReview.VisualStudio
 {
@@ -18,10 +20,21 @@ namespace PrReview.VisualStudio
     [Guid(ToolWindowGuidString)]
     public sealed class ReviewToolWindow : ToolWindowPane
     {
-        public const string ToolWindowGuidString = "d4e5f6a7-8b9c-4d0e-9f11-2a3b4c5d6e7f";
+        public const string ToolWindowGuidString = "f7c3d961-2a84-4b5e-9f16-73d0a8c24b51";
 
-        private readonly WebView2 _webView = new WebView2();
-        private bool _showing;
+        /*
+         * Visual Studio builds the tool window UI once, from the pane's Content,
+         * when the frame is created. Replacing Content afterwards does not
+         * re-host the frame: the window keeps showing the element it was built
+         * with, and any control added later never enters the visual tree, so it
+         * never receives a native window handle. WebView2 needs that handle to
+         * initialize, which is why a swapped-in browser stayed blank forever.
+         *
+         * Both children therefore exist from the start and the pane only toggles
+         * their visibility.
+         */
+        private readonly Grid _root = new Grid();
+        private readonly WebView2 _webView = new WebView2 { Visibility = Visibility.Collapsed };
         private readonly TextBlock _hint = new TextBlock
         {
             Margin = new Thickness(16),
@@ -29,27 +42,88 @@ namespace PrReview.VisualStudio
             Text = "Building the review of the current branch…",
         };
 
+        private bool _showing;
+
         public ReviewToolWindow() : base(null)
         {
             Caption = "PR Review";
-            Content = _hint;
-            ((FrameworkElement)Content).Loaded += OnLoaded;
+            _root.Children.Add(_hint);
+            _root.Children.Add(_webView);
+            Content = _root;
+
+            // WebView2's managed assemblies are host-provided. Its native loader
+            // lives in the IDE's PrivateAssemblies folder, which the extension
+            // folder does not inherit, so that folder is added to the search path
+            // before the browser starts. Nothing is copied into the install.
+            var assemblyDirectory = Path.GetDirectoryName(typeof(PrReviewPackage).Assembly.Location) ?? string.Empty;
+            var idePrivateAssemblies = Path.GetFullPath(Path.Combine(
+                assemblyDirectory, "..", "..", "..", "..", "..", "Common7", "IDE", "PrivateAssemblies"));
+            if (Directory.Exists(idePrivateAssemblies))
+            {
+                var searchPath = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+                var alreadyListed = Array.Exists(searchPath.Split(';'),
+                    entry => string.Equals(entry.Trim(), idePrivateAssemblies, StringComparison.OrdinalIgnoreCase));
+                if (!alreadyListed)
+                {
+                    Environment.SetEnvironmentVariable("PATH", idePrivateAssemblies + ";" + searchPath);
+                }
+            }
+
+            // A profile shared by several Visual Studio processes is locked by
+            // the first one, so each process gets its own folder.
+            var userData = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "PR Review", "WebView2",
+                System.Diagnostics.Process.GetCurrentProcess().Id.ToString());
+            Directory.CreateDirectory(userData);
+            _webView.CreationProperties = new CoreWebView2CreationProperties
+            {
+                UserDataFolder = userData,
+            };
+
+            _webView.NavigationCompleted += OnNavigationCompleted;
+            _webView.CoreWebView2InitializationCompleted += OnInitializationCompleted;
         }
 
-        private void OnLoaded(object sender, RoutedEventArgs e)
+        private void OnInitializationCompleted(object? sender, CoreWebView2InitializationCompletedEventArgs e)
         {
-            _ = ShowReviewAsync();
+            if (e.IsSuccess) return;
+
+            _showing = false;
+            ShowHint("PR Review could not start the embedded browser:\n"
+                + (e.InitializationException?.Message ?? "WebView2 initialization failed."));
         }
 
-        /// <summary>Starts the server (once) and points WebView2 at the page.</summary>
-        internal async System.Threading.Tasks.Task ShowReviewAsync()
+        private void OnNavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
+        {
+            if (e.IsSuccess)
+            {
+                _showing = false;
+                return;
+            }
+
+            _showing = false;
+            ShowHint("PR Review could not load the review page: " + e.WebErrorStatus);
+        }
+
+        /// <summary>Shows a message instead of the page.</summary>
+        private void ShowHint(string text)
+        {
+            _hint.Text = text;
+            _hint.Visibility = Visibility.Visible;
+            _webView.Visibility = Visibility.Collapsed;
+        }
+
+        /// <summary>Builds a fresh review and loads it into WebView2.</summary>
+        internal async Task ShowReviewAsync()
         {
             if (_showing) return;
             _showing = true;
             var runner = PrReviewPackage.Runner;
             if (runner == null)
             {
-                _hint.Text = "PR Review is not initialized yet.";
+                ShowHint("PR Review is not initialized yet.");
+                _showing = false;
                 return;
             }
 
@@ -58,18 +132,34 @@ namespace PrReview.VisualStudio
                 // Reading the solution folder has to happen on the UI thread; it
                 // is also the only thing here that does, so it runs first.
                 var cwd = await FindRepositoryRootAsync();
-                var info = runner.Info ?? await runner.StartAsync(NodePath(), CliPath(), cwd, "branch", null);
+                _hint.Text = "Building the review of the current branch…";
+                var info = await runner.StartAsync(NodePath(), CliPath(), cwd, "branch", null);
 
-                Content = _webView;
-                await _webView.EnsureCoreWebView2Async();
-                _webView.Source = new Uri(info.Url);
-
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
                 Caption = $"PR Review: {info.Branch} (+{info.Additions} / -{info.Deletions})";
+                await NavigateAsync(info.Url);
             }
             catch (Exception error)
             {
-                Content = _hint;
-                _hint.Text = "PR Review failed to start:\n" + error.Message;
+                _showing = false;
+                ShowHint("PR Review failed to start:\n" + error.Message);
+            }
+        }
+
+        /// <summary>Brings the browser to the front and loads the page.</summary>
+        private async Task NavigateAsync(string url)
+        {
+            try
+            {
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                _hint.Visibility = Visibility.Collapsed;
+                _webView.Visibility = Visibility.Visible;
+                _webView.Source = new Uri(url);
+            }
+            catch (Exception error)
+            {
+                _showing = false;
+                ShowHint("PR Review could not start the embedded browser:\n" + error.Message);
             }
         }
 
@@ -81,7 +171,7 @@ namespace PrReview.VisualStudio
         /// and the review ran against whatever happened to be there. The solution
         /// folder is the answer: it is where the code the user opened lives.
         /// </summary>
-        private async System.Threading.Tasks.Task<string> FindRepositoryRootAsync()
+        private async Task<string> FindRepositoryRootAsync()
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             var configured = Environment.GetEnvironmentVariable("PR_REVIEW_REPO");

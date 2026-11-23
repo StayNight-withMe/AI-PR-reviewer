@@ -20,7 +20,7 @@ namespace PrReview.VisualStudio
     [InstalledProductRegistration("PR Review", "Reviews the current branch in a tab.", "0.1.0")]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [ProvideAutoLoad(UIContextGuids80.SolutionExists, PackageAutoLoadFlags.BackgroundLoad)]
-    [ProvideToolWindow(typeof(ReviewToolWindow), Style = VsDockStyle.Tabbed, Window = ToolWindowGuids80.SolutionExplorer)]
+    [ProvideToolWindow(typeof(ReviewToolWindow), Style = VsDockStyle.MDI, MultiInstances = false, Width = 1200, Height = 800)]
     [Guid(PackageGuidString)]
     public sealed class PrReviewPackage : AsyncPackage
     {

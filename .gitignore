@@ -31,3 +31,5 @@ editors/**/*.vsix
 editors/visualstudio/obj/
 # A throwaway VS Code the extension test downloads and runs in
 editors/vscode/.vscode-test/
+# Visual Studio per-solution cache
+.vs/

@@ -54,14 +54,28 @@ ae331e9 + ранее — backend, безопасность, треды, публ
   сборки DLL с IDE 0. Путь:
   `editors/visualstudio/bin/Release/net48/PrReview.VisualStudio.vsix`.
 - Живая проверка: Visual Studio 18 Insiders, реальный solution с веткой
-  `feature/pricing`; команда VSCT зарегистрирована и вызвана через DTE, tool
-  window `PR Review` открыт, bundled Node server отвечает HTTP 200, страница
-  содержит `feature/pricing`, `+1` и `-1`. Скриншот:
-  `Z:\system\temp\pr-review-ide\vs-review.png`.
+  `feature/review-threads-and-ui-hardening`; команда VSCT зарегистрирована и
+  вызвана через DTE, tool window `PR Review` открыт в центральной вкладке,
+  bundled Node server отвечает HTTP 200, страница отрендерена в WebView2:
+  список файлов, дерево, диффы и `Submit review`. Скриншот:
+  `Z:\system\temp\pr-review-ide\vs-review-final-clean.png`.
+- Причина, по которой вкладка долго оставалась пустой («Starting the embedded
+  browser…»): `ToolWindowPane` строит UI один раз из `Content`, заданного в
+  конструкторе. Подмена `Content` на `WebView2` после создания frame ничего не
+  перехостит — окно продолжало показывать исходный `TextBlock`, а WebView2 так и
+  не попадал в visual tree, не получал HWND и не инициализировался. Теперь
+  `Content` — постоянный `Grid` с подсказкой и WebView2, переключается только
+  `Visibility` (браузер показывается до установки `Source`, иначе у скрытого
+  контрола нет HWND).
+- `WebView2Loader.dll` не копируется в папку расширения: перед стартом браузера
+  `Common7/IDE/PrivateAssemblies` добавляется в `PATH`, откуда WebView2 и берёт
+  host-provided runtime. Сами `Microsoft.Web.WebView2.*.dll` в VSIX не кладутся,
+  если они есть в IDE: своя копия WPF-обёртки другой версии ломала инициализацию.
+- Ошибки WebView2 и навигации больше не тонут: они показываются в самом окне
+  вместо бесконечной подсказки.
 - Репозиторий для ревью определяется через solution/project/selection с
   поддержкой `PR_REVIEW_REPO` override (нужен для DTE-фикстуры и полезен для
-  автоматизации). Tool window запускает сервер сразу по команде, а не только
-  после WPF Loaded-события.
+  автоматизации).
 - IDE: `C:\Program Files\Microsoft Visual Studio\18\Insiders` (devenv, VSIXInstaller,
   расширение установлено в профиль `C:\Users\Rog`).
 

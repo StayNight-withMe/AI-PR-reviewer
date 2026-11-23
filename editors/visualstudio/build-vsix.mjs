@@ -116,6 +116,14 @@ async function stage() {
     await cp(source, join(STAGE, entry));
   }
 
+  // WebView2 is host-provided by Visual Studio; its WPF wrapper, core assembly,
+  // and native loader must come from that same VS installation. The NuGet
+  // package's WPF wrapper may not match the IDE's private WebView2 runtime.
+  for (const entry of ["Microsoft.Web.WebView2.Wpf.dll", "Microsoft.Web.WebView2.Core.dll", "WebView2Loader.dll"]) {
+    if (!shared.has(entry)) continue;
+    await rm(join(STAGE, entry), { force: true });
+  }
+
   // The engine the extension starts, already copied by `npm run bundle:server`.
   // Without it an installed copy has nothing to launch.
   await cp(join(HERE, "server"), join(STAGE, "server"), { recursive: true });
