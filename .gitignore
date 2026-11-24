@@ -33,3 +33,4 @@ editors/visualstudio/obj/
 editors/vscode/.vscode-test/
 # Visual Studio per-solution cache
 .vs/
+editors/visualstudio/extension.vsixmanifest

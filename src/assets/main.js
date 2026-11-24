@@ -509,6 +509,9 @@
         bindNoteAttachments();
         PR.els.dispatchModal.classList.add("show");
         return true;
+      case "btn-publish-github":
+        publishToGitHub(target);
+        return true;
       case "btn-dispatch-submit":
         submitReview();
         return true;
@@ -810,6 +813,72 @@
         }
       })
       .catch(function (err) { PR.toast("Submit failed: " + err.message, true); });
+  }
+
+  /** Publishing is separate from the local/agent workflow. */
+  function publishToGitHub(button) {
+    if (!PR.DATA.pr || button.disabled) return;
+    var result = document.getElementById("publish-result");
+    var body = document.getElementById(PR.IDS.REVIEW_BODY).value;
+    var checked = PR.els.dispatchModal.querySelector('input[name="' + PR.VERDICT_FIELD + '"]:checked');
+    var verdict = checked ? checked.value : STATE.COMMENT;
+    if (PR.state.view.kind !== PR.VIEW_KIND.REVIEW) {
+      result.textContent = "Return to the full pull request before publishing.";
+      return;
+    }
+
+    var payload = buildReviewPayload(verdict, body, noteImages.slice());
+    // A comment already posted must not be posted again by a second click.
+    var fresh = payload.comments.filter(function (comment) { return !PR.state.published.has(comment.id); });
+    var alreadyPublished = payload.comments.length - fresh.length;
+    payload.comments = fresh;
+    payload.summary.comments = fresh.length;
+    if (!fresh.length && !String(body).trim()) {
+      result.textContent = alreadyPublished
+        ? "Already published. Edit those comments on GitHub; this page only posts new ones."
+        : "Nothing new to publish. Add a comment or a note first.";
+      return;
+    }
+    var withImages = fresh.filter(function (comment) {
+      return Array.isArray(comment.images) && comment.images.length;
+    }).length + (noteImages.length ? 1 : 0);
+
+    button.disabled = true;
+    result.textContent = "Publishing to GitHub…";
+    postJson(API.PUBLISH, payload)
+      .then(function (response) {
+        if (!response.ok || !response.published) throw new Error(response.error || "No publication confirmation received");
+        fresh.forEach(function (comment) {
+          PR.state.published.add(comment.id);
+          // Persist the mark with the comment itself, so reopening the review
+          // does not offer to post it again.
+          var stored = PR.state.comments.filter(function (c) { return c.id === comment.id; })[0];
+          if (stored) stored.published = true;
+        });
+        PR.store();
+        result.textContent = "Published to GitHub: " + response.inlineComments + " inline comment(s). ";
+        var target = response.url || PR.DATA.pr.url;
+        if (/^https:\/\/github\.com\//i.test(target)) {
+          var link = document.createElement("a");
+          link.href = target;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          link.textContent = "View on GitHub";
+          result.appendChild(link);
+        }
+        if (withImages) {
+          result.appendChild(document.createTextNode(" Screenshots stay in the local review: GitHub comments carry text only."));
+        }
+        if (alreadyPublished) {
+          result.appendChild(document.createTextNode(` ${alreadyPublished} earlier comment(s) were not posted again.`));
+        }
+        button.textContent = "Published to GitHub";
+      })
+      .catch(function (err) {
+        // The dialog, the note and the comments stay as they are: the reviewer retries.
+        result.textContent = "Could not publish: " + err.message;
+        button.disabled = false;
+      });
   }
 
   /** ---------------------------------- boot --------------------------------- */

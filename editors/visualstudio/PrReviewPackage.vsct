@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable">
   <Commands package="guidPrReviewPackage">
+    <!--
+      One command, one click away in three places:
+        * the PR Review button on the standard toolbar
+        * Tools > PR Review > Open review of the current branch
+        * View > Other Windows > PR Review (the tool window builds the review)
+
+      The button is declared ONCE. Two <Button> elements sharing the same guid/id
+      make the shell register a nameless command, so the toolbar copy is added
+      with CommandPlacement instead. A button must belong to a group, and that
+      group belongs directly to the Standard toolbar (guidSHLMainMenu here, not
+      guidVSStd97, and not a group on the navigation toolbar).
+    -->
     <Menus>
       <Menu guid="guidPrReviewCmdSet" id="PrReviewMenu" priority="0x700" type="Menu">
         <Parent guid="guidSHLMainMenu" id="IDG_VS_MM_TOOLSADDINS" />
@@ -13,25 +25,44 @@
       <Group guid="guidPrReviewCmdSet" id="PrReviewGroup" priority="0x0600">
         <Parent guid="guidPrReviewCmdSet" id="PrReviewMenu" />
       </Group>
+      <!-- Standard toolbar groups descend directly from the toolbar. -->
+      <Group guid="guidPrReviewCmdSet" id="PrReviewToolbarGroup" priority="0x0600">
+        <Parent guid="guidSHLMainMenu" id="IDM_VS_TOOL_STANDARD" />
+      </Group>
     </Groups>
     <Buttons>
       <Button guid="guidPrReviewCmdSet" id="OpenReview" priority="0x0100" type="Button">
         <Parent guid="guidPrReviewCmdSet" id="PrReviewGroup" />
+        <Icon guid="ImageCatalogGuid" id="Git" />
+        <CommandFlag>IconIsMoniker</CommandFlag>
+        <CommandFlag>IconAndText</CommandFlag>
         <Strings>
-          <ButtonText>Open review of the current branch</ButtonText>
+          <ButtonText>PR Review</ButtonText>
           <CommandName>PrReview.OpenReview</CommandName>
+          <ToolTipText>Open the review of the current branch</ToolTipText>
         </Strings>
       </Button>
     </Buttons>
   </Commands>
+  <CommandPlacements>
+    <CommandPlacement guid="guidPrReviewCmdSet" id="OpenReview" priority="0x0100">
+      <Parent guid="guidPrReviewCmdSet" id="PrReviewToolbarGroup" />
+    </CommandPlacement>
+  </CommandPlacements>
   <Symbols>
     <GuidSymbol name="guidSHLMainMenu" value="{D309F791-903F-11D0-9EFC-00A0C911004F}">
       <IDSymbol name="IDG_VS_MM_TOOLSADDINS" value="0x0104" />
+      <IDSymbol name="IDM_VS_TOOL_STANDARD" value="0x0001" />
+    </GuidSymbol>
+    <!-- Visual Studio's built-in image catalog: no images travel in the VSIX. -->
+    <GuidSymbol name="ImageCatalogGuid" value="{ae27a6b0-e345-4288-96df-5eaf394ee369}">
+      <IDSymbol name="Git" value="1407" />
     </GuidSymbol>
     <GuidSymbol name="guidPrReviewPackage" value="{b7a1c6e2-3f4d-4a9b-8c21-5de6f0a1b2c3}" />
     <GuidSymbol name="guidPrReviewCmdSet" value="{1c2e9f34-7a5b-4d68-9e01-2b3c4d5e6f70}">
       <IDSymbol name="PrReviewMenu" value="0x1020" />
       <IDSymbol name="PrReviewGroup" value="0x1030" />
+      <IDSymbol name="PrReviewToolbarGroup" value="0x1040" />
       <IDSymbol name="OpenReview" value="0x0100" />
     </GuidSymbol>
   </Symbols>

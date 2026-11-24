@@ -17,6 +17,7 @@ import { attachGapMetadata } from "./models/gaps.js";
 import { readReviewOwner, writeReviewOwner } from "./models/owner.js";
 import { markOutdated, readThreads, withSnippets, writeThreads } from "./models/threads.js";
 import { buildDispatchMessage, buildDispatchPrompt, currentSessionId, dispatchToSession, resolveSessionId, writeDispatchPrompt } from "./dispatch.js";
+import { publishReview } from "./github.js";
 export { MODE_LABELS, repoLabel };
 /** Reason returned when a submit carries no comments and no summary. */
 const AGENT_REASON_EMPTY_REVIEW = "The review has no comments or summary, so there is nothing to fix.";
@@ -226,12 +227,22 @@ export async function startReview(params) {
     dispatchEnabled: params.dispatchEnabled !== false,
   });
 
+  /**
+   * Publishing is an explicit action of its own, not a side effect of the
+   * submit: the reviewer decides when the notes reach GitHub. Only a review
+   * of a pull request can be published, so the button only exists there.
+   */
+  const onPublish = meta.pr
+    ? (review) => publishReview(root, { review, pr: meta.pr, repo: meta.pr.repo })
+    : null;
+
   const page = await servePage({
     html,
     outputDir,
     meta,
     onReview,
     onDispatch,
+    onPublish,
     symbols,
     buildFilePage: async (filePath) => {
       const file = await readFileForViewer(root, filePath, contentOptions);

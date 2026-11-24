@@ -41,6 +41,13 @@
     commitLabels: {},
     commitUnlocked: {},
     commitSelection: [],
+    /**
+     * Comments already posted to GitHub, so a second publish does not duplicate
+     * them. The mark is stored with the thread, not only in this tab: a reopened
+     * review shows the same comments, and reposting them would double the review.
+     */
+    published: new Set((DATA.comments || []).filter(function (c) { return c.published === true; })
+      .map(function (c) { return c.id; })),
     view: { kind: PR.VIEW_KIND.REVIEW },
     rendered: {},
     cache: {},
@@ -57,7 +64,7 @@
       showSidebar: true,
       treeWidth: 320,
       treeHidden: false,
-      treeIndent: 16,
+      treeIndent: PR.TREE_SIZE.DEFAULT_INDENT,
       autoScrollTree: true,
       largeFileLines: 400,
       openLinksInline: true,
@@ -240,6 +247,7 @@
         commitLabels: s.commitLabels,
         commitUnlocked: s.commitUnlocked,
         commitSelection: s.commitSelection,
+        published: Array.from(s.published),
       }));
       // Settings are per device, not per review: a new review (or a changed diff, which gets a new id)…
       PR.storeSettings();
@@ -353,6 +361,7 @@
       if (saved.commitLabels) s.commitLabels = saved.commitLabels;
       if (saved.commitUnlocked) s.commitUnlocked = saved.commitUnlocked;
       if (Array.isArray(saved.commitSelection)) s.commitSelection = saved.commitSelection;
+      if (Array.isArray(saved.published)) s.published = new Set(saved.published);
       if (saved.tab) s.tab = saved.tab;
     } catch (e) {}
     // Settings, and the diff layout that goes with them, survive a new review.

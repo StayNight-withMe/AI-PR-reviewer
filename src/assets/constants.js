@@ -15,6 +15,7 @@
     BRANCH_COMMITS: "/api/branch-commits",
     RANGE: "/api/range",
     REVIEW: "/api/review",
+    PUBLISH: "/api/publish",
     DISPATCH: "/api/dispatch",
     PATHS: "/api/paths",
     SYMBOLS: "/api/symbols",
@@ -173,7 +174,7 @@
     SNAP_WIDTH: 110,
     KEYBOARD_STEP: 16,
     /** Pixels of indentation per nesting level, the default choice. */
-    DEFAULT_INDENT: 16,
+    DEFAULT_INDENT: 4,
     /** Smallest indent that still shows the guide line clearly. */
     MIN_INDENT: 4,
     MAX_INDENT: 48,

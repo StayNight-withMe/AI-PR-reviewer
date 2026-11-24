@@ -154,6 +154,7 @@ if (argv[0] === "api") {
     number: match[2],
     event: payload.event,
     body: payload.body ?? "",
+    commit_id: payload.commit_id ?? null,
     comments: payload.comments ?? [],
   });
 

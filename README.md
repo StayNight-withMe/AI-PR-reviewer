@@ -63,21 +63,38 @@ A pull request reviewed locally can be sent back as a real GitHub review: the
 verdict plus every inline comment, attached to its file and line. Nothing
 is copied by hand and the web UI is not needed.
 
-```bash
-npm run review -- . --mode pr --pr 42
-```
-
-Review the changes, leave comments, press **Submit review** and then ask the
-agent to publish it, or call the tool directly:
+From the checkout, open the pull request with `npm run review -- --mode pr --pr 42 --open`.
+Leave notes on the diff, open **Submit review**, choose a verdict and click
+**Publish to GitHub**. The GitHub action does not send anything to the AI.
+**Submit locally** keeps the existing local/agent workflow. To publish a saved
+review from a chat instead, use:
 
 | Tool | What it does |
 | --- | --- |
 | `publish_review` | posts the review to its PR: verdict, body and inline comments |
 
 The verdict travels as it does on GitHub: **Approve**, **Request changes** or
-**Comment**. A comment with no line (a whole-file remark) is moved into the
-review body, because GitHub only attaches comments to lines. Comments marked
-resolved locally are still published — the local state stays local.
+**Comment**. A pull request review opens with **Comment** selected, so posting
+notes does not block the pull request by accident. A comment with no line (a
+whole-file remark) is moved into the review body, because GitHub only attaches
+comments to lines. Comments marked resolved locally are still published — the
+local state stays local.
+
+What the page tells you about a publish:
+
+- A comment that was already posted is not posted again; a second click reports
+  that instead of duplicating the review.
+- If GitHub refuses the review, the dialog stays open with the note and every
+  comment intact, the reason is shown, and the button is enabled to retry.
+- The review is pinned to the commit that was reviewed, so a push during the
+  review does not turn every comment into "outdated".
+- A comment whose line has changed since it was written cannot be posted
+  inline; its text goes into the review body instead of failing the whole
+  review. Comments over GitHub's 100-inline limit move there too.
+- Screenshots attached to a comment stay in the local review: a GitHub review
+  comment carries text.
+- Publishing is only offered for a pull-request review, and only from the full
+  pull request — a commit or range view has no lines GitHub would accept.
 
 ## Installation
 

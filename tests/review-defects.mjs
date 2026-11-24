@@ -195,6 +195,8 @@ try {
         hasNote: !!document.getElementById('review-body'),
         hasSend: !!document.getElementById('dispatch-send'),
         sendChecked: (document.getElementById('dispatch-send') || {}).checked,
+        // A local review has no pull request, so it must not offer GitHub.
+        hasPublish: !!document.getElementById('btn-publish-github'),
       };
       modal.querySelector('.js-close-modal').click();
       return result;
@@ -204,6 +206,7 @@ try {
     assert.equal(dialog.defaultVerdict, "REQUEST_CHANGES");
     assert.ok(dialog.hasNote, "the note field is missing");
     assert.ok(dialog.hasSend, "the send switch is missing");
+    assert.equal(dialog.hasPublish, false, "local reviews must not offer GitHub publication");
   });
 
   await check("an approval is refused when auto-send is off, and no turn starts", async () => {

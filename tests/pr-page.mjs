@@ -10,7 +10,7 @@
 import assert from "node:assert/strict";
 import { Builder, By, until } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox.js";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -95,6 +95,165 @@ try {
     const editors = await driver.findElements(By.css(".js-editor textarea"));
     assert.equal(editors.length, 1, "the comment editor did not open");
     await driver.executeScript(`document.querySelector('.js-editor .js-cancel').click(); return true;`);
+  });
+
+  await check("the submit dialog offers publishing to GitHub and defaults to Comment", async () => {
+    const state = await driver.executeScript(`return (function(){
+      document.getElementById('btn-submit').click();
+      var modal = document.getElementById('dispatch-modal');
+      var checked = modal.querySelector('input[name="review-verdict"]:checked');
+      var out = {
+        open: modal.classList.contains('show'),
+        hasPublish: !!document.getElementById('btn-publish-github'),
+        verdicts: [].slice.call(modal.querySelectorAll('input[name="review-verdict"]')).map(function (i) { return i.value; }),
+        defaultVerdict: checked ? checked.value : null,
+      };
+      modal.querySelector('.js-close-modal').click();
+      return out;
+    })();`);
+    assert.equal(state.open, true, "the dialog did not open");
+    assert.equal(state.hasPublish, true, "a pull request review must be publishable from the page");
+    assert.deepEqual(state.verdicts.sort(), ["APPROVE", "COMMENT", "REQUEST_CHANGES"]);
+    assert.equal(state.defaultVerdict, "COMMENT", "posting notes must not block the pull request by default");
+  });
+
+  await check("publishing sends the inline comment to the pull request", async () => {
+    // Leave a comment the way a reviewer does, on the added line.
+    await driver.executeScript(`return (function(){
+      var s = [].slice.call(document.querySelectorAll('.diff-file'))
+        .filter(function (n) { return n.dataset.path === 'src/app.ts'; })[0];
+      var plus = s.querySelectorAll('.line-plus');
+      plus[plus.length - 1].click();
+      return true;
+    })();`);
+    await PAUSE(300);
+    await driver.executeScript(`return (function(){
+      var ta = document.querySelector('.js-editor textarea');
+      ta.value = 'Please rename this to ready';
+      ta.dispatchEvent(new Event('input', { bubbles: true }));
+      document.querySelector('.js-editor .js-save').click();
+      return true;
+    })();`);
+    await PAUSE(400);
+
+    await driver.executeScript(`document.getElementById('btn-submit').click(); return true;`);
+    await PAUSE(200);
+    // Two clicks in a row: the button locks itself on the first one.
+    const locked = await driver.executeScript(`return (function(){
+      var button = document.getElementById('btn-publish-github');
+      button.click();
+      var afterFirst = button.disabled;
+      button.click();
+      return afterFirst;
+    })();`);
+    assert.equal(locked, true, "the publish button did not lock, so a double click can post twice");
+
+    let posted = null;
+    for (let attempt = 0; attempt < 80 && !posted; attempt += 1) {
+      const db = JSON.parse(await readFile(dbPath, "utf8"));
+      posted = (db.publishedReviews ?? []).at(-1) ?? null;
+      if (!posted) await PAUSE(250);
+    }
+    assert.ok(posted, "nothing reached GitHub");
+    assert.equal(posted.number, String(PR_NUMBER));
+    assert.equal(posted.repo, "acme/fixture");
+    assert.equal(posted.commit_id, fixture.commits.f2);
+    assert.equal(posted.event, "COMMENT");
+    assert.equal(JSON.parse(await readFile(dbPath, "utf8")).publishedReviews.length, 1, "a double click posted twice");
+    assert.equal(posted.comments.length, 1, `expected one inline comment: ${JSON.stringify(posted.comments)}`);
+    assert.equal(posted.comments[0].path, "src/app.ts");
+    assert.match(posted.comments[0].body, /rename this to ready/);
+    assert.ok(posted.comments[0].line > 0, "the inline comment carries no line");
+
+    // The page says what happened, and it stays open so the reviewer can look.
+    const shown = await driver.executeScript(`return (document.getElementById('publish-result') || {}).textContent || '';`);
+    assert.match(shown, /Published to GitHub/i, `unexpected result text: ${shown}`);
+  });
+
+  await check("a second publish does not post the same comment twice", async () => {
+    const before = JSON.parse(await readFile(dbPath, "utf8")).publishedReviews.length;
+    await driver.executeScript(`return (function(){
+      var button = document.getElementById('btn-publish-github');
+      button.disabled = false;
+      button.click();
+      return true;
+    })();`);
+    await PAUSE(1200);
+    const after = JSON.parse(await readFile(dbPath, "utf8")).publishedReviews;
+    assert.equal(after.length, before, "the same review was published again");
+    const shown = await driver.executeScript(`return (document.getElementById('publish-result') || {}).textContent || '';`);
+    assert.match(shown, /Already published|Nothing new to publish/i, `unexpected result text: ${shown}`);
+  });
+
+  await check("a failed publish keeps the comments and says what happened", async () => {
+    // A logged-out gh is what a user hits after a token expires.
+    const db = JSON.parse(await readFile(dbPath, "utf8"));
+    await writeFile(dbPath, JSON.stringify({ ...db, auth: false }));
+
+    const outcome = await driver.executeScript(`return (async function(){
+      var host = [].slice.call(document.querySelectorAll('.diff-file'))
+        .filter(function (n) { return n.dataset.path === 'src/login.ts'; })[0];
+      host.querySelector('.line-plus').click();
+      await new Promise(function (r) { setTimeout(r, 200); });
+      var ta = document.querySelector('.js-editor textarea');
+      ta.value = 'This needs a test';
+      ta.dispatchEvent(new Event('input', { bubbles: true }));
+      document.querySelector('.js-editor .js-save').click();
+      await new Promise(function (r) { setTimeout(r, 400); });
+      document.getElementById('btn-submit').click();
+      await new Promise(function (r) { setTimeout(r, 150); });
+      document.getElementById('btn-publish-github').click();
+      return true;
+    })();`);
+    assert.equal(outcome, true);
+
+    let text = "";
+    for (let attempt = 0; attempt < 80; attempt += 1) {
+      text = await driver.executeScript(`return (document.getElementById('publish-result') || {}).textContent || '';`);
+      if (/Could not publish/i.test(text)) break;
+      await PAUSE(250);
+    }
+    assert.match(text, /Could not publish/i, `the failure was not reported: ${text}`);
+    assert.match(text, /auth|login/i, `the reason is not useful: ${text}`);
+
+    // The review is still on the page, and the button can be tried again.
+    const kept = await driver.executeScript(`return (function(){
+      return {
+        modal: document.getElementById('dispatch-modal').classList.contains('show'),
+        comments: [...document.querySelectorAll('.comment-box')].filter(function (b) { return !b.classList.contains('js-editor'); }).length,
+        retry: !document.getElementById('btn-publish-github').disabled,
+      };
+    })();`);
+    assert.equal(kept.modal, true, "the dialog closed on failure");
+    assert.ok(kept.comments >= 2, `comments were lost: ${kept.comments}`);
+    assert.equal(kept.retry, true, "the publish button stayed disabled, so the reviewer cannot retry");
+    await writeFile(dbPath, JSON.stringify({ ...db, auth: true }));
+  });
+
+  await check("a reopened review does not repost comments that already went to GitHub", async () => {
+    // The mark lives with the comment on the server, not only in this tab.
+    await driver.get(started.url);
+    await driver.wait(until.elementLocated(By.css(".diff-file")), 20_000);
+    await driver.wait(async () => driver.executeScript(`return document.body.dataset.booted === '1';`), 15_000);
+    await PAUSE(400);
+
+    const restored = await driver.executeScript(`return PR.state.published.size;`);
+    assert.ok(restored >= 1, `the published mark was lost on reload: ${restored}`);
+
+    const before = JSON.parse(await readFile(dbPath, "utf8")).publishedReviews.length;
+    await driver.executeScript(`document.getElementById('btn-submit').click(); return true;`);
+    await PAUSE(200);
+    await driver.executeScript(`document.getElementById('btn-publish-github').click(); return true;`);
+
+    let posted = null;
+    for (let attempt = 0; attempt < 80 && !posted; attempt += 1) {
+      const db = JSON.parse(await readFile(dbPath, "utf8"));
+      if (db.publishedReviews.length > before) posted = db.publishedReviews.at(-1);
+      else await PAUSE(250);
+    }
+    assert.ok(posted, "the new comment was not published");
+    assert.equal(posted.comments.length, 1, `only the new comment may be posted: ${JSON.stringify(posted.comments)}`);
+    assert.match(posted.comments[0].body, /needs a test/);
   });
 
   await check("the page raised no JavaScript error", async () => {

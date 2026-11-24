@@ -17,10 +17,15 @@ namespace PrReview.VisualStudio
     /// package is only a thin host: it starts the server and shows its URL.
     /// </summary>
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
-    [InstalledProductRegistration("PR Review", "Reviews the current branch in a tab.", "0.1.0")]
+    [InstalledProductRegistration("PR Review", "Reviews the current branch in a tab.", "0.1.11")]
     [ProvideMenuResource("Menus.ctmenu", 1)]
+    // Load with a solution (the normal case) and with none, so the Tools entry
+    // and the toolbar button are there from the first second of a session.
     [ProvideAutoLoad(UIContextGuids80.SolutionExists, PackageAutoLoadFlags.BackgroundLoad)]
-    [ProvideToolWindow(typeof(ReviewToolWindow), Style = VsDockStyle.MDI, MultiInstances = false, Width = 1200, Height = 800)]
+    // No fixed size: an MDI tool window keeps the size it was created with, and
+    // a wide default is clipped by a narrow document area. The page then lays
+    // out for a viewport the user cannot see.
+    [ProvideToolWindow(typeof(ReviewToolWindow), Style = VsDockStyle.MDI, MultiInstances = false)]
     [Guid(PackageGuidString)]
     public sealed class PrReviewPackage : AsyncPackage
     {
@@ -41,6 +46,17 @@ namespace PrReview.VisualStudio
             Current = this;
 
             var commandService = await GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
+            // With the startup (NoSolution) autoload the shell may still be
+            // building its menus, and the service is not there yet. Retry
+            // instead of silently registering nothing — a package that loads
+            // without a command looks broken to the user.
+            for (var attempt = 0; commandService == null && attempt < 40; attempt++)
+            {
+                await Task.Delay(250, cancellationToken);
+                await JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+                commandService = await GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
+            }
+
             if (commandService != null)
             {
                 var commandId = new CommandID(new Guid(CommandGuids.CommandSetGuidString), CommandIds.OpenReview);

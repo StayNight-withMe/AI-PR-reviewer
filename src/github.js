@@ -310,6 +310,9 @@ export function toGitHubComment(comment) {
   // GitHub attaches a comment to a line; anything else is kept in the body by
   // the caller instead of being silently dropped.
   if (!path || !Number.isFinite(start) || start <= P.ZERO || !body) return null;
+  // A comment whose line has moved or vanished no longer has a place in the
+  // diff, and GitHub rejects the WHOLE review with 422 if it is included.
+  if (comment?.outdated === true) return null;
 
   const last = Number.isFinite(end) && end >= start ? end : start;
   const payload = { path, body, side, line: last };
@@ -343,12 +346,29 @@ export function toGitHubReview(review) {
     }
   }
 
+  // GitHub caps a review at 100 inline comments. The rest are kept in the body
+  // instead of disappearing, so nothing the reviewer wrote is lost.
+  const kept = inline.slice(P.ZERO, GH.MAX_INLINE_COMMENTS);
+  const overflow = inline.slice(GH.MAX_INLINE_COMMENTS);
+  if (overflow.length) {
+    parts.push("**Comments over GitHub's limit of " + GH.MAX_INLINE_COMMENTS + " inline comments**");
+    for (const comment of overflow) {
+      parts.push(`- \`${comment.path}\` line ${comment.line}: ${comment.body}`);
+    }
+  }
+
+  const reviewBody = parts.join("\n\n");
+  if (reviewBody.length > GH.MAX_BODY_CHARS) {
+    throw new Error(`The review body exceeds GitHub's limit of ${GH.MAX_BODY_CHARS} characters. Shorten it before publishing.`);
+  }
+
   return {
     state,
     event: state,
-    body: parts.join("\n\n").slice(P.ZERO, GH.MAX_BODY_CHARS),
-    comments: inline.slice(P.ZERO, GH.MAX_INLINE_COMMENTS),
-    droppedComments: Math.max(P.ZERO, inline.length - GH.MAX_INLINE_COMMENTS),
+    body: reviewBody,
+    comments: kept,
+    bodyComments: loose.length + overflow.length,
+    overflowComments: overflow.length,
   };
 }
 /** Publishes a locally written review to GitHub as a real pull-request review. */
@@ -372,6 +392,10 @@ export async function publishReview(repoPath, { review, pr, repo }) {
     event: payload.event,
     comments: payload.comments,
   };
+  // Pin the review to the commit the reviewer actually read. Without this,
+  // GitHub anchors the comments to whatever the head is when the request
+  // arrives, and a push in between turns every comment into "outdated".
+  if (pr.headOid) denormalized.commit_id = pr.headOid;
   const result = await gh(repoPath, [
     ...GH.ARGS_API,
     GH.FLAG_METHOD, GH.HTTP_POST,
@@ -392,7 +416,8 @@ export async function publishReview(repoPath, { review, pr, repo }) {
     published: true,
     state: payload.state,
     inlineComments: payload.comments.length,
-    droppedComments: payload.droppedComments,
+    bodyComments: payload.bodyComments,
+    overflowComments: payload.overflowComments,
     url,
   };
 }
@@ -409,7 +434,8 @@ async function publishSimpleReview(repoPath, payload, pr, repo) {
     published: true,
     state: payload.state,
     inlineComments: P.ZERO,
-    droppedComments: payload.droppedComments,
+    bodyComments: payload.bodyComments,
+    overflowComments: payload.overflowComments,
     url: pr.url ?? P.EMPTY,
   };
 }

@@ -79,12 +79,32 @@ await check("an unknown verdict falls back to COMMENT", () => {
   assert.equal(toGitHubReview({ reviewState: "LGTM" }).state, "COMMENT");
 });
 
+await check("an outdated comment is not posted inline, and its text is kept", () => {
+  const payload = toGitHubReview({
+    reviewState: "COMMENT",
+    comments: [{ path: "a.cs", side: "right", lineStart: 4, lineEnd: 4, body: "moved away", outdated: true }],
+  });
+  assert.equal(payload.comments.length, 0, "GitHub would reject the whole review for this line");
+  assert.match(payload.body, /moved away/, "the text must not disappear");});
+
+await check("comments over GitHub's limit move into the body instead of vanishing", () => {
+  const comments = Array.from({ length: GH.MAX_INLINE_COMMENTS + 2 }, (_, index) => ({
+    path: "a.cs", side: "right", lineStart: index + 1, lineEnd: index + 1, body: `note ${index + 1}`,
+  }));
+  const payload = toGitHubReview({ reviewState: "COMMENT", comments });
+  assert.equal(payload.comments.length, GH.MAX_INLINE_COMMENTS);
+  assert.equal(payload.overflowComments, 2);
+  assert.equal(payload.bodyComments, 2, "both comments over the limit must still be sent");
+  assert.match(payload.body, /note 101/);
+  assert.match(payload.body, /note 102/);
+});
+
 /* ----------------------------- publishing ---------------------------------- */
 
 await check("a review with inline comments goes through the API", async () => {
   await resetDb();
   const result = await publishReview(fixture.repo, {
-    pr,
+    pr: { ...pr, headOid: fixture.commits.f2 },
     review: {
       reviewState: "REQUEST_CHANGES",
       reviewBody: "Fix these two.",
@@ -99,11 +119,11 @@ await check("a review with inline comments goes through the API", async () => {
   assert.equal(result.state, "REQUEST_CHANGES");
   assert.equal(result.inlineComments, 2);
   assert.match(result.url, /pull\/\d+#pullrequestreview-/);
-
   const db = await readDb();
   const posted = db.publishedReviews.at(-1);
   assert.equal(posted.number, String(PR_NUMBER));
   assert.equal(posted.event, "REQUEST_CHANGES");
+  assert.equal(posted.commit_id, fixture.commits.f2);
   assert.equal(posted.body, "Fix these two.");
   assert.equal(posted.comments.length, 2);
   assert.deepEqual(posted.comments[0], { path: "src/app.cs", body: "one", side: "RIGHT", line: 5 });

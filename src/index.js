@@ -325,8 +325,8 @@ server.registerTool(
       `Pull request: #${pr.number}${result.url ? ` — ${result.url}` : P.EMPTY}`,
       `Inline comments: ${result.inlineComments}`,
     ];
-    if (result.droppedComments) {
-      lines.push(`Not included: ${result.droppedComments} comments over GitHub's limit of ${GH.MAX_INLINE_COMMENTS}.`);
+    if (result.overflowComments) {
+      lines.push(`Comments over GitHub's limit of ${GH.MAX_INLINE_COMMENTS}: ${result.overflowComments} moved into the review body.`);
     }
 
     return { content: [{ type: "text", text: lines.join("\n") }] };
@@ -354,6 +354,9 @@ async function pullRequestOf(entry, review) {
     number,
     url: entry?.prUrl ?? meta.pr?.url ?? P.EMPTY,
     repo: meta.pr?.repo ?? entry?.prRepo ?? null,
+    // The commit the review was made against, so the published comments are
+    // anchored there instead of to a head that may have moved since.
+    headOid: meta.head ?? null,
   };
 }
 server.registerTool(

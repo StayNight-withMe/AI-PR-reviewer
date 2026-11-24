@@ -43,6 +43,7 @@ namespace PrReview.VisualStudio
         };
 
         private bool _showing;
+        private bool _started;
 
         public ReviewToolWindow() : base(null)
         {
@@ -114,11 +115,29 @@ namespace PrReview.VisualStudio
             _webView.Visibility = Visibility.Collapsed;
         }
 
+        /// <summary>The pane was created (View > Other Windows > PR Review too).</summary>
+        public override void OnToolWindowCreated()
+        {
+            base.OnToolWindowCreated();
+            // Build the review once, so opening the window from View > Other
+            // Windows is enough. The toolbar/menu command owns later rebuilds.
+            _ = EnsureReviewAsync();
+        }
+
+        /// <summary>Builds the review once per session; no-op when already built.</summary>
+        internal async Task EnsureReviewAsync()
+        {
+            if (_started) return;
+            _started = true;
+            await ShowReviewAsync();
+        }
+
         /// <summary>Builds a fresh review and loads it into WebView2.</summary>
         internal async Task ShowReviewAsync()
         {
             if (_showing) return;
             _showing = true;
+            _started = true;
             var runner = PrReviewPackage.Runner;
             if (runner == null)
             {
@@ -141,6 +160,7 @@ namespace PrReview.VisualStudio
             }
             catch (Exception error)
             {
+                _started = false;
                 _showing = false;
                 ShowHint("PR Review failed to start:\n" + error.Message);
             }

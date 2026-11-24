@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { APP, ARTIFACTS, P, QUERY, REVIEW_STATE, REVIEW_STATE_LABEL, ROUTES, SERVER } from "./config.js";
+import { APP, ARTIFACTS, GH, P, QUERY, REVIEW_STATE, REVIEW_STATE_LABEL, ROUTES, SERVER } from "./config.js";
 import { readSettings, writeSettings } from "./settings-store.js";
 import { writeReviewFiles as writeReviewOutput } from "./review-output.js";
 const HEADER_CONTENT_TYPE = SERVER.HEADER_CONTENT_TYPE;
@@ -13,6 +13,7 @@ export async function servePage(options) {
     meta,
     onReview,
     onDispatch,
+    onPublish,
     buildFilePage,
     readFile,
     readFiles,
@@ -46,7 +47,7 @@ export async function servePage(options) {
       const url = new URL(request.url, `${SERVER.URL_PROTOCOL}${request.headers.host}`);
       const handled = await dispatch({
         request, response, url, html, outputDir, meta, session,
-        buildFilePage, readFile, readFiles, loadCommit, loadRange, findUsages, symbols, onReview, onDispatch,
+        buildFilePage, readFile, readFiles, loadCommit, loadRange, findUsages, symbols, onReview, onDispatch, onPublish,
         searchProject, renameCommit, listCommits, listBranches, loadBranchCommits,
         saveThreads,
       });
@@ -120,6 +121,9 @@ async function dispatch(ctx) {
 
   if (post && url.pathname === ROUTES.API_REVIEW) {
     return handleReviewSubmit(ctx);
+  }
+  if (post && url.pathname === ROUTES.API_PUBLISH) {
+    return handlePublish(ctx);
   }
   if (post && url.pathname === ROUTES.API_DISPATCH) {
     return handleDispatch(ctx);
@@ -269,6 +273,31 @@ async function handleReviewSubmit({ request, response, outputDir, meta, onReview
   session.lastReview = { ...result, review };
   send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, ...result, images: savedImages }));
   session.resolveSubmitted({ ...result, review });
+  return true;
+}
+/**
+ * Posts the review on the page to its GitHub pull request.
+ *
+ * This is deliberately separate from the submit above: publishing is an
+ * explicit outward action (it notifies people on GitHub), while a submit only
+ * saves the review and hands it to the agent. A publish therefore never
+ * resolves the waiting `waitForReview`, and a failed publish leaves the page
+ * and the typed comments untouched so the reviewer can retry.
+ */
+async function handlePublish({ request, response, meta, onPublish }) {
+  if (!onPublish) {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: GH.ERROR_NOT_A_PR }));
+    return true;
+  }
+
+  const review = normalizeReview(await readBody(request));
+  if (!review) {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.INVALID_BODY }));
+    return true;
+  }
+
+  const result = await onPublish(review, meta);
+  send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, ...result }));
   return true;
 }
 /**

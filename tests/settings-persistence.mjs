@@ -55,6 +55,8 @@ try {
   await check("settings are written to the server, not just localStorage", async () => {
     await openPage(first.url);
 
+    assert.deepEqual(await driver.executeScript(`return [document.getElementById('set-tree-indent').value, getComputedStyle(PR.els.tree).getPropertyValue('--tree-indent').trim()]`), ['4', '4px']);
+
     // Change a few settings through the real controls.
     await driver.executeScript(`return (function(){
       var mode = document.getElementById('set-diff-mode');

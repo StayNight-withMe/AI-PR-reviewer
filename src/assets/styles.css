@@ -409,7 +409,7 @@ a.tree-row { text-decoration: none; }
 .tree-row.dir { color: var(--fg); font-weight: 500; }
 /** One vertical guide per nesting level, GitHub-style. */
 .tree-indent {
-  flex: none; width: var(--tree-indent, 16px); height: 22px; position: relative;
+  flex: none; width: var(--tree-indent, 4px); height: 22px; position: relative;
 }
 .tree-indent::before {
   content: ""; position: absolute; top: 0; bottom: 0; left: 50%;

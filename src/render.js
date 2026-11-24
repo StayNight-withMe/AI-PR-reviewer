@@ -63,6 +63,10 @@ const GITHUB_MARK =
 export async function buildPage(meta, files, stats, allFiles, comments, reviewState, options = {}) {
   const assets = await loadAssets();
 
+  // A pull-request review is published to GitHub, so "comment" is the honest
+  // default there: posting notes must not block the pull request by accident.
+  const defaultVerdict = meta.pr ? REVIEW_STATE.COMMENT : REVIEW_STATE.REQUEST_CHANGES;
+
   const data = {
     id: meta.id,
     repo: meta.repo,
@@ -70,6 +74,8 @@ export async function buildPage(meta, files, stats, allFiles, comments, reviewSt
     base: meta.base,
     head: meta.head,
     mode: meta.mode,
+    // The header and the publish action need the pull request, not just its scope.
+    pr: meta.pr ? { number: meta.pr.number ?? null, url: meta.pr.url ?? P.EMPTY } : null,
     commits: meta.commits ?? P.EMPTY_ARRAY,
     files,
     allFiles,
@@ -163,6 +169,7 @@ export async function buildPage(meta, files, stats, allFiles, comments, reviewSt
       min="4" max="48" step="1" list="tree-indent-presets" title="Pixels per nesting level (4-48)">
   </label>
   <datalist id="tree-indent-presets">
+    <option value="4"></option>
     <option value="6"></option>
     <option value="10"></option>
     <option value="12"></option>
@@ -321,10 +328,19 @@ export async function buildPage(meta, files, stats, allFiles, comments, reviewSt
     </div>
     <div class="modal-body">
       <p class="small muted" style="margin-top:0">
-        The review is written to disk. Pick a verdict and add a note.
+        ${meta.pr
+          ? `Pick a verdict and add a note. Publishing posts the comments below to pull request #${meta.pr.number ?? P.EMPTY} on GitHub.`
+          : "The review is written to disk. Pick a verdict and add a note."}
       </p>
-      <label class="radio-card selected">
-        <input type="radio" name="review-verdict" value="${REVIEW_STATE.REQUEST_CHANGES}" checked>
+      ${meta.pr ? `<label class="radio-card${defaultVerdict === REVIEW_STATE.COMMENT ? " selected" : ""}">
+        <input type="radio" name="review-verdict" value="${REVIEW_STATE.COMMENT}"${defaultVerdict === REVIEW_STATE.COMMENT ? " checked" : ""}>
+        <span>
+          <span class="title">Comment</span><br>
+          <span class="desc">Post the notes without approving or blocking the pull request.</span>
+        </span>
+      </label>` : P.EMPTY}
+      <label class="radio-card${defaultVerdict === REVIEW_STATE.REQUEST_CHANGES ? " selected" : ""}">
+        <input type="radio" name="review-verdict" value="${REVIEW_STATE.REQUEST_CHANGES}"${defaultVerdict === REVIEW_STATE.REQUEST_CHANGES ? " checked" : ""}>
         <span>
           <span class="title">Request changes</span><br>
           <span class="desc">The AI fixes what the notes say.</span>
@@ -353,8 +369,10 @@ export async function buildPage(meta, files, stats, allFiles, comments, reviewSt
     </div>
     <div class="modal-footer">
       <button class="gh-btn js-close-modal">Cancel</button>
-      <button class="gh-btn gh-btn-primary" id="btn-dispatch-submit">Submit</button>
+      <button class="gh-btn ${meta.pr ? '' : 'gh-btn-primary'}" id="btn-dispatch-submit">${meta.pr ? 'Submit locally' : 'Submit'}</button>
+      ${meta.pr ? `<button type="button" class="gh-btn gh-btn-primary" id="btn-publish-github">Publish to GitHub</button>` : P.EMPTY}
     </div>
+    ${meta.pr ? `<p class="small" id="publish-result" role="status" aria-live="polite"></p>` : P.EMPTY}
   </div>
 </div>
 

@@ -104,14 +104,16 @@ async function resolvePullRequest(root, params) {
 
   const commits = await ensurePullRequestCommits(root, pr, { remote: params.remote ?? GH.DEFAULT_REMOTE });
 
+  // GitHub diffs a pull request from the merge base, not from the base tip:
+  // once main moves ahead, a two-dot diff shows main's own commits as deletions
+  // of the PR and shifts every line number. The merge base is what the review
+  // page and the published inline comments have to agree on.
+  const mergePoint = (await mergeBase(root, commits.base, commits.head)) ?? commits.base;
+
   return {
-    // A PR is diffed from its base commit to its head commit (two-dot), which is
-    // what GitHub shows. `diffBetween` uses three-dot (merge-base), and that is
-    // empty when the PR's history does not share an ancestor with the base —
-    // e.g. a PR whose branch was committed straight onto the remote.
-    diffText: await diffFromTo(root, commits.base, commits.head),
-    commits: await commitsSinceMergeBase(root, commits.base, commits.head, params.limit ?? GIT.MAX_COMMITS),
-    base: commits.base,
+    diffText: await diffFromTo(root, mergePoint, commits.head),
+    commits: await commitsSinceMergeBase(root, mergePoint, commits.head, params.limit ?? GIT.MAX_COMMITS),
+    base: mergePoint,
     head: commits.head,
     pr,
     // Content of the reviewed files must come from the PR head commit, not the

@@ -161,6 +161,38 @@ try {
     assert.equal(two.files[0].path, "src/other.ts");
   });
 
+  await check("a PR is diffed from the merge base when its base branch moved on", async () => {
+    // GitHub compares the PR against the commit where the branches parted, not
+    // against the current tip of main. Diffing against the tip showed main's own
+    // later commits as if the PR deleted them and shifted every line number.
+    const moved = await exec(fixture.binary, ["commit-tree", `${fixture.commits.bigCommit}^{tree}`,
+      "-p", fixture.commits.bigCommit, "-m", "main moved on"], {
+      cwd: fixture.repo,
+      env: { ...process.env, GIT_AUTHOR_NAME: "Main", GIT_AUTHOR_EMAIL: "m@e.com", GIT_COMMITTER_NAME: "Main", GIT_COMMITTER_EMAIL: "m@e.com" },
+    });
+    const advanced = moved.stdout.trim();
+    await exec(fixture.binary, ["update-ref", "refs/heads/main", advanced], { cwd: fixture.repo });
+
+    const advancedDb = {
+      auth: true,
+      default: String(PR_NUMBER),
+      pullRequests: {
+        [String(PR_NUMBER)]: { ...pullRequestPayload(fixture, PR_NUMBER), baseRefOid: advanced },
+      },
+    };
+    await useMockGh(advancedDb);
+    try {
+      const review = await buildReview({ repoPath: fixture.repo, mode: MODE.PR, pr: PR_NUMBER });
+      assert.equal(review.meta.base, fixture.commits.bigCommit, "the review diffed against main's new tip");
+      // Nothing from main's own history may appear as a deletion of the PR.
+      const removed = review.files.filter((f) => f.status === "deleted").map((f) => f.path);
+      assert.deepEqual(removed, ["src/removed.ts"], `main's commits leaked into the diff: ${removed.join(", ")}`);
+    } finally {
+      await exec(fixture.binary, ["update-ref", "refs/heads/main", fixture.commits.bigCommit], { cwd: fixture.repo });
+      await useMockGh(db);
+    }
+  });
+
   await check("reviewing a PR never moves or creates a remote-tracking ref", async () => {
     const before = await remoteRefValues();
     await buildReview({ repoPath: fixture.repo, mode: MODE.PR, pr: PR_NUMBER });

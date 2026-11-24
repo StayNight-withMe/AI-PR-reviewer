@@ -226,6 +226,7 @@ export const ROUTES = {
   API_SYMBOLS: "/api/symbols",
   API_PATHS: "/api/paths",
   API_REVIEW: "/api/review",
+  API_PUBLISH: "/api/publish",
   API_DISPATCH: "/api/dispatch",
   API_RESULT: "/api/result",
   API_COMMITS: "/api/commits",

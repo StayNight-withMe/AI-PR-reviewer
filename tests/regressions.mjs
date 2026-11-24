@@ -1329,6 +1329,23 @@ try {
     assert.ok(paths.includes(path), "the comment must keep its file");
   });
 
+  await check("the tree indent defaults to 4px", async () => {
+    const out = await js(`(() => {
+      const indent = [...document.querySelectorAll('.tree-indent')]
+        .find(el => el.getBoundingClientRect().width > 0);
+      return {
+        setting: PR.state.settings.treeIndent,
+        constant: PR.TREE_SIZE.DEFAULT_INDENT,
+        field: document.getElementById('set-tree-indent').value,
+        rendered: indent ? Math.round(indent.getBoundingClientRect().width) : 0,
+      };
+    })()`);
+    assert.equal(out.constant, 4, "the documented default changed");
+    assert.equal(out.setting, 4, `stored default is ${out.setting}`);
+    assert.equal(out.field, "4", `the settings field shows ${out.field}`);
+    assert.equal(out.rendered, 4, `rendered indent is ${out.rendered}px`);
+  });
+
   await check("tree indent size is configurable by typing any value", async () => {
     const out = await js(`(() => {
       const field = document.getElementById('set-tree-indent');
