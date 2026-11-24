@@ -17,7 +17,7 @@ namespace PrReview.VisualStudio
     /// package is only a thin host: it starts the server and shows its URL.
     /// </summary>
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
-    [InstalledProductRegistration("PR Review", "Reviews the current branch in a tab.", "0.1.11")]
+    [InstalledProductRegistration("PR Review", "Reviews the current branch in a tab.", "0.1.12")]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     // Load with a solution (the normal case) and with none, so the Tools entry
     // and the toolbar button are there from the first second of a session.
