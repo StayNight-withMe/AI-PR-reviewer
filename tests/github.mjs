@@ -1,20 +1,4 @@
-/**
- * The GitHub pull-request scope (`mode=pr`).
- *
- * A PR is reviewed through the GitHub CLI, so this test has two layers:
- *
- *   1. Pure: the `gh pr view --json` payload maps onto the fields the page
- *      uses, and the review id / title derive from it. No network, no gh.
- *   2. Live, skipped when `gh` is missing or unauthenticated: a real PR on a
- *      real repository is read and turned into a range review.
- *
- * The live layer picks a repository from the environment (PR_REVIEW_TEST_REPO)
- * or the current checkout, and a PR number that `gh pr list` returns. When no
- * PR is reachable the layer reports "skipped" instead of failing: a checkout
- * without PRs is normal, not a broken build.
- *
- * Run: node tests/github.mjs
- */
+
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -104,11 +88,11 @@ await check("ghBinary honours the override and falls back to gh", () => {
   assert.equal(ghBinary({}), GH.BIN);
   assert.equal(ghBinary({ [GH.ENV_BIN]: "   " }), GH.BIN);
 });
-/* --------------------------- live layer (optional) -------------------------- */
+
 async function liveRepo() {
-  // Opt-in only: the default test run must not depend on a real repository,
-  // a real GitHub account or the network. `test:pr` covers the live paths with
-  // a mock gh and a local fixture instead.
+
+
+
   const repo = process.env.PR_REVIEW_TEST_REPO;
   if (!repo) return null;
   try {
@@ -141,7 +125,7 @@ if (!live) {
     assert.ok(review.meta.title.startsWith(`PR #${live.number}`), `unexpected title ${review.meta.title}`);
     assert.ok(Array.isArray(review.files), "the diff has no files array");
 
-    // The id must be a PR id, not a bare commit-range id.
+
     assert.ok(review.meta.id, "the review has no id");
     console.log(`  PR #${live.number}: ${review.files.length} files, ${review.meta.base.slice(0, 7)}…${review.meta.head.slice(0, 7)}`);
   });

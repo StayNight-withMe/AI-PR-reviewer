@@ -41,7 +41,7 @@ export function escapeHtml(value) {
     .replace(/>/g, RENDER.HTML_GT)
     .replace(/"/g, RENDER.HTML_QUOTE);
 }
-/** The PR badge in the header: a link to the pull request, with its state. */
+
 function prBadge(pr) {
   if (!pr) return P.EMPTY;
   const label = pr.number ? `#${pr.number}` : "PR";
@@ -63,6 +63,10 @@ const GITHUB_MARK =
 export async function buildPage(meta, files, stats, allFiles, comments, reviewState, options = {}) {
   const assets = await loadAssets();
 
+
+
+  const defaultVerdict = meta.pr ? REVIEW_STATE.COMMENT : REVIEW_STATE.REQUEST_CHANGES;
+
   const data = {
     id: meta.id,
     repo: meta.repo,
@@ -70,6 +74,8 @@ export async function buildPage(meta, files, stats, allFiles, comments, reviewSt
     base: meta.base,
     head: meta.head,
     mode: meta.mode,
+
+    pr: meta.pr ? { number: meta.pr.number ?? null, url: meta.pr.url ?? P.EMPTY } : null,
     commits: meta.commits ?? P.EMPTY_ARRAY,
     files,
     allFiles,
@@ -104,10 +110,8 @@ export async function buildPage(meta, files, stats, allFiles, comments, reviewSt
     <div class="gh-header-meta">
       <span class="mode-pill">${escapeHtml(meta.modeLabel || meta.mode)}</span>
       ${meta.pr ? prBadge(meta.pr) : P.EMPTY}
-      <span>${escapeHtml(meta.branch)}</span>
-      <span>${files.length} files</span>
-      <span class="stat-add">+${stats.additions}</span>
-      <span class="stat-del">${P.DASH}${stats.deletions}</span>
+      <span class="meta-branch" title="${escapeHtml(meta.branch)}">${escapeHtml(meta.branch)}</span>
+      <span class="stat-pair"><span class="stat-add">+${stats.additions}</span><span class="stat-del">${P.DASH}${stats.deletions}</span></span>
     </div>
   </div>
   <div class="spacer"></div>
@@ -165,6 +169,7 @@ export async function buildPage(meta, files, stats, allFiles, comments, reviewSt
       min="4" max="48" step="1" list="tree-indent-presets" title="Pixels per nesting level (4-48)">
   </label>
   <datalist id="tree-indent-presets">
+    <option value="4"></option>
     <option value="6"></option>
     <option value="10"></option>
     <option value="12"></option>
@@ -280,7 +285,7 @@ export async function buildPage(meta, files, stats, allFiles, comments, reviewSt
         <span class="dot dot-comment" id="review-state"></span>
         <span id="review-state-text">Commented</span>
       </div>
-      <div class="small muted"><span id="comment-count">0</span> comments</div>
+      <div class="small muted"><span id="comment-count">0</span> <span id="comment-count-word">comments</span></div>
       <div class="small muted" style="margin-top:6px"><span id="viewed-progress-2"></span></div>
     </div>
 
@@ -323,10 +328,19 @@ export async function buildPage(meta, files, stats, allFiles, comments, reviewSt
     </div>
     <div class="modal-body">
       <p class="small muted" style="margin-top:0">
-        The review is written to disk. Pick a verdict and add a note.
+        ${meta.pr
+          ? `Pick a verdict and add a note. Publishing posts the comments below to pull request #${meta.pr.number ?? P.EMPTY} on GitHub.`
+          : "The review is written to disk. Pick a verdict and add a note."}
       </p>
-      <label class="radio-card selected">
-        <input type="radio" name="review-verdict" value="${REVIEW_STATE.REQUEST_CHANGES}" checked>
+      ${meta.pr ? `<label class="radio-card${defaultVerdict === REVIEW_STATE.COMMENT ? " selected" : ""}">
+        <input type="radio" name="review-verdict" value="${REVIEW_STATE.COMMENT}"${defaultVerdict === REVIEW_STATE.COMMENT ? " checked" : ""}>
+        <span>
+          <span class="title">Comment</span><br>
+          <span class="desc">Post the notes without approving or blocking the pull request.</span>
+        </span>
+      </label>` : P.EMPTY}
+      <label class="radio-card${defaultVerdict === REVIEW_STATE.REQUEST_CHANGES ? " selected" : ""}">
+        <input type="radio" name="review-verdict" value="${REVIEW_STATE.REQUEST_CHANGES}"${defaultVerdict === REVIEW_STATE.REQUEST_CHANGES ? " checked" : ""}>
         <span>
           <span class="title">Request changes</span><br>
           <span class="desc">The AI fixes what the notes say.</span>
@@ -340,7 +354,11 @@ export async function buildPage(meta, files, stats, allFiles, comments, reviewSt
         </span>
       </label>
       <p class="small muted" style="margin:14px 0 6px">Note (optional)</p>
-      <textarea class="gh-textarea" id="review-body" placeholder="Anything the AI should know about this review…"></textarea>
+      <div class="note-wrap" id="review-note-wrap">
+        <div class="editor-attach js-note-chips" id="review-note-chips"></div>
+        <textarea class="gh-textarea" id="review-body" placeholder="Anything the AI should know about this review… (paste a screenshot with Ctrl+V)"></textarea>
+      </div>
+      <div class="small muted" style="margin-top:4px">Ctrl+V / drag-drop to attach a screenshot to the note.</div>
       <div class="dispatch-mode" style="margin-top:14px">
         <label class="radio-line">
           <input type="checkbox" id="dispatch-send" checked>
@@ -351,8 +369,10 @@ export async function buildPage(meta, files, stats, allFiles, comments, reviewSt
     </div>
     <div class="modal-footer">
       <button class="gh-btn js-close-modal">Cancel</button>
-      <button class="gh-btn gh-btn-primary" id="btn-dispatch-submit">Submit</button>
+      <button class="gh-btn ${meta.pr ? '' : 'gh-btn-primary'}" id="btn-dispatch-submit">${meta.pr ? 'Submit locally' : 'Submit'}</button>
+      ${meta.pr ? `<button type="button" class="gh-btn gh-btn-primary" id="btn-publish-github">Publish to GitHub</button>` : P.EMPTY}
     </div>
+    ${meta.pr ? `<p class="small" id="publish-result" role="status" aria-live="polite"></p>` : P.EMPTY}
   </div>
 </div>
 
@@ -428,8 +448,8 @@ ${assets.hljsScript ? `<script>${assets.hljsScript}</script>` : P.EMPTY}
 }
 export function buildMarkdown(meta, review) {
   const lines = [];
-  // A submit may omit the summary (an API client, an older page, a test): the
-  // Markdown must still be produced instead of failing the whole request.
+
+
   const summary = review.summary ?? P.EMPTY_OBJECT;
   const pending = summary.files === undefined;
 
@@ -474,6 +494,10 @@ export function buildMarkdown(meta, review) {
     lines.push(review.reviewBody);
   }
 
+  for (const image of review.noteImages ?? P.EMPTY_ARRAY) {
+    if (image.file) lines.push(P.EMPTY, `![attachment](${image.file})`);
+  }
+
   lines.push(P.EMPTY);
   lines.push("## Inline comments");
   lines.push(P.EMPTY);
@@ -492,7 +516,10 @@ export function buildMarkdown(meta, review) {
             ? `${comment.lineStart}${P.DASH}${comment.lineEnd}`
             : `${comment.lineStart}`;
           const resolved = comment.resolved === true ? " ~~resolved~~" : P.EMPTY;
-          lines.push(`- **line ${range}** (${side}): ${comment.body}${resolved}`);
+          const outdated = comment.outdated === true
+            ? ` _(outdated: ${comment.outdatedReason ?? P.EMPTY})_`
+            : P.EMPTY;
+          lines.push(`- **line ${range}** (${side}): ${comment.body}${resolved}${outdated}`);
           for (const image of comment.images ?? P.EMPTY_ARRAY) {
             if (image.file) lines.push(`  ![attachment](${image.file})`);
           }

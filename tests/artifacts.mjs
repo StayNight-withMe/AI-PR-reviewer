@@ -1,11 +1,4 @@
-/**
- * Review artifacts must not pollute the repository.
- *
- * Review artifacts live in the OS temp directory (or `PR_REVIEW_ARTIFACTS_DIR`),
- * never inside the checkout, so a review leaves the working tree clean.
- *
- * Run: node tests/artifacts.mjs
- */
+
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
@@ -73,7 +66,7 @@ try {
   });
 
   await check("an old in-repo .pr-review is removed on the next review", async () => {
-    // Simulate a folder left by an older version, then start another review.
+
     await mkdir(join(root, ".pr-review", "aaaaaaaaaaaa"), { recursive: true });
     await writeFile(join(root, ".pr-review", "aaaaaaaaaaaa", "page.json"), "{}");
 
@@ -87,7 +80,7 @@ try {
   });
 
   await check("a user's own .pr-review content is never deleted", async () => {
-    // A folder with a non-review entry is not ours; it must stay.
+
     await mkdir(join(root, ".pr-review"), { recursive: true });
     await writeFile(join(root, ".pr-review", "notes.txt"), "keep me");
 

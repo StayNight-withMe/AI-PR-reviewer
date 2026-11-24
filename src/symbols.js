@@ -1,13 +1,13 @@
 import { git } from "./git.js";
 import { readFilesForHighlight } from "./fileview.js";
 import { GIT, P, SYMBOL_INDEX, SYMBOL_KIND } from "./config.js";
-/** Go-to-definition / find-usages index for C# (plus a few other languages). */
+
 const SKIP_EXTENSIONS = new Set([
   "png", "jpg", "jpeg", "gif", "webp", "ico", "bmp", "svg",
   "pdf", "zip", "gz", "tar", "7z", "rar", "dll", "exe", "so", "pdb",
   "woff", "woff2", "ttf", "otf", "mp3", "mp4", "mov", "wav", "nupkg", "lock",
 ]);
-/** Language keywords and ubiquitous BCL names: never turned into links. */
+
 const NEVER_LINK = new Set([
   "using", "namespace", "class", "struct", "interface", "enum", "record", "delegate", "event",
   "public", "private", "protected", "internal", "static", "readonly", "const", "sealed",
@@ -44,7 +44,7 @@ const INHERITS_RE = new RegExp(
 
 export async function buildSymbolIndex(repoRoot) {
   const paths = await listScannableFiles(repoRoot);
-  // tree: new files are not in HEAD, and edited files have moved declarations.
+
   const files = await readFilesForHighlight(repoRoot, paths);
   const declarations = new Map();
   const implementations = new Map();
@@ -61,13 +61,13 @@ export async function buildSymbolIndex(repoRoot) {
     symbols: symbols.symbols,
     definitions: symbols.definitions,
     implementations: buildImplementations(implementations),
-    // Usage counts come from the same scan, so they include untracked files and
-    // are already on disk — no per-symbol `git grep` on click.
+
+
     usages: buildUsages(paths, files, symbols.symbols),
   };
 }
 
-/** Counts every occurrence of each known symbol, grouped by file. */
+
 function buildUsages(paths, files, symbols) {
   const names = new Set(Object.keys(symbols));
   const usages = {};
@@ -123,8 +123,8 @@ function buildSymbols(declarations) {
   for (const [name, entries] of declarations) {
     if (NEVER_LINK.has(name)) continue;
     if (entries[P.ZERO].kind === SYMBOL_KIND.METHOD && SYMBOL_INDEX.LOWER_START.test(name)) continue;
-    // Duplicated names (the same class in several services) are still real
-    // symbols: keep every definition so the client can pick the nearest one.
+
+
     definitions[name] = entries.map((entry) => ({ path: entry.path, line: entry.line, kind: entry.kind }));
     symbols[name] = definitions[name][P.ZERO];
   }
@@ -212,7 +212,7 @@ function isCommentOrString(line) {
   return quotes % P.TWO === P.ONE;
 }
 
-/** Fast usage counter: one `git grep` over the working tree, grouped by file. */
+
 export async function findSymbolUsages(repoRoot, name) {
   if (!name || !SYMBOL_INDEX.IDENTIFIER_SIMPLE.test(name)) return [];
 

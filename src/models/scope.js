@@ -1,4 +1,4 @@
-/** Review scope resolution: one place that answers "which diff are we reviewing?". */
+
 import {
   diffBetween,
   diffFromTo,
@@ -40,9 +40,9 @@ async function resolveCommits(root, params) {
     if (!sha) throw new Error(`${SCOPE_ERROR_COMMIT_NOT_FOUND}${ref}`);
     resolved.push(sha);
   }
-  // same file is often touched by two selected commits, and concatenating the
-  // patches listed it twice. The UI keys "viewed"/collapse by path, so two
-  // sections of one path shared a single flag and the second click cleared it.
+
+
+
   const ordered = await orderCommits(root, resolved);
   const head = ordered[P.ZERO];
   const oldest = ordered[ordered.length - P.ONE];
@@ -61,7 +61,7 @@ async function describeCommits(root, ordered) {
   return ordered.map((sha) => log.find((commit) => commit.sha === sha)
     ?? { sha, shortSha: sha.slice(P.ZERO, GIT.SHORT_SHA_LENGTH), subject: sha.slice(P.ZERO, GIT.SHORT_SHA_LENGTH), authorName: P.EMPTY, authorEmail: P.EMPTY, date: P.EMPTY });
 }
-/** Commits of the reviewed line of work. */
+
 async function resolveBranch(root, params) {
   const base = params.base ?? (await defaultBase(root));
   const head = params.head ?? GIT.DEFAULT_REF;
@@ -91,7 +91,7 @@ async function resolveAll(root, params) {
     head: GIT.DEFAULT_REF,
   };
 }
-/** A GitHub pull request: one range from the PR's base commit to its head commit. */
+
 async function resolvePullRequest(root, params) {
   const selector = {
     number: params.pr ?? params.prNumber,
@@ -104,18 +104,20 @@ async function resolvePullRequest(root, params) {
 
   const commits = await ensurePullRequestCommits(root, pr, { remote: params.remote ?? GH.DEFAULT_REMOTE });
 
+
+
+
+
+  const mergePoint = (await mergeBase(root, commits.base, commits.head)) ?? commits.base;
+
   return {
-    // A PR is diffed from its base commit to its head commit (two-dot), which is
-    // what GitHub shows. `diffBetween` uses three-dot (merge-base), and that is
-    // empty when the PR's history does not share an ancestor with the base —
-    // e.g. a PR whose branch was committed straight onto the remote.
-    diffText: await diffFromTo(root, commits.base, commits.head),
-    commits: await commitsSinceMergeBase(root, commits.base, commits.head, params.limit ?? GIT.MAX_COMMITS),
-    base: commits.base,
+    diffText: await diffFromTo(root, mergePoint, commits.head),
+    commits: await commitsSinceMergeBase(root, mergePoint, commits.head, params.limit ?? GIT.MAX_COMMITS),
+    base: mergePoint,
     head: commits.head,
     pr,
-    // Content of the reviewed files must come from the PR head commit, not the
-    // working tree: the checkout can be on any branch while a PR is reviewed.
+
+
     ref: commits.head,
     scopeKey: pullRequestScope(pr),
     label: pullRequestTitle(pr),

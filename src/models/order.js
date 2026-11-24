@@ -1,6 +1,6 @@
-/** A single ordering rule shared by the sidebar tree and the diff list, so the review reads… */
+
 import { P } from "../config.js";
-/** Every ancestor directory implied by a set of paths. */
+
 function collectDirectories(paths) {
   const directories = new Set();
 
@@ -13,7 +13,7 @@ function collectDirectories(paths) {
 
   return directories;
 }
-/** Comparator over full paths that reproduces a folder-first tree walk. */
+
 function comparePaths(left, right, directories) {
   const leftParts = left.split(P.SLASH);
   const rightParts = right.split(P.SLASH);
@@ -26,14 +26,14 @@ function comparePaths(left, right, directories) {
     const rightPrefix = rightParts.slice(P.ZERO, index + P.ONE).join(P.SLASH);
     const leftIsDir = directories.has(leftPrefix);
     const rightIsDir = directories.has(rightPrefix);
-    // At the same level a folder comes before a file, matching the tree.
+
     if (leftIsDir !== rightIsDir) return leftIsDir ? -P.ONE : P.ONE;
     return leftParts[index].localeCompare(rightParts[index]);
   }
-  // An ancestor folder sorts before anything nested inside it.
+
   return leftParts.length - rightParts.length;
 }
-/** Sorts entries (strings or objects with `.path`) into the exact order the sidebar tree renders… */
+
 export function sortLikeTree(entries) {
   const paths = entries.map((entry) => (typeof entry === P.TYPE_STRING ? entry : entry.path));
   const directories = collectDirectories(paths);

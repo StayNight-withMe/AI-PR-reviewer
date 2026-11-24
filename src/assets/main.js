@@ -1,13 +1,13 @@
-﻿/** Entry point: wires DOM events to the modules and boots the page. */
+
 (function () {
   "use strict";
 
   var PR = window.PR;
   var API = PR.API;
   var STATE = PR.REVIEW_STATE;
-  var JSON_HEADERS = { "content-type": "application/json" };
+  var JSON_HEADERS = { "content-type": PR.HTTP.JSON };
 
-  /** -------------------------------- clicking ------------------------------- */
+
   document.addEventListener("click", function (event) {
     var target = event.target;
     if (target.closest(".js-close-inline")) { PR.closeInlineFile(); return; }
@@ -15,20 +15,20 @@
     var symbolLink = target.closest(".sym-link");
     if (symbolLink) {
       if (PR.state.settings.symbolLinks === PR.SYMBOL_LINKS.OFF) return;
-      // Ctrl/Cmd/Shift always means "new tab", matching the browser.
+
       if (wantsNewTab(event)) {
         event.preventDefault();
         openInNewTab(symbolLink.getAttribute("href"));
         return;
       }
-      // Always show the usage menu first: it lists every place the symbol is used, so the user picks…
+
       event.preventDefault();
       var section = symbolLink.closest(PR.SELECTORS.DIFF_FILE);
       PR.state.currentPath = section ? section.dataset.path : PR.P_EMPTY;
       PR.showSymbolPopover(symbolLink, symbolLink.dataset.name);
       return;
     }
-    // Clicking a definition/usage entry inside the popover navigates the same way a tree click does:…
+
     var popoverLink = target.closest(".sym-def, .sym-use");
     if (popoverLink && popoverLink.closest(".sym-pop")) {
       if (wantsNewTab(event)) {
@@ -44,7 +44,7 @@
         return;
       }
       return;
-    // default navigation
+
     }
     if (target.closest(".sym-pop") || target.closest("#" + PR.IDS.BTN_SETTINGS)) return;
     PR.hideSymbolPopover();
@@ -56,7 +56,7 @@
     handleChromeClick(target);
   });
 
-  /** Middle-click on a tree row opens the file viewer in a new tab. */
+
   document.addEventListener("auxclick", function (event) {
     if (event.button !== 1) return;
 
@@ -80,12 +80,12 @@
     return true;
   }
 
-  /** Ctrl/Cmd/Shift/middle-click: the browser convention for "new tab". */
+
   function wantsNewTab(event) {
     return event.ctrlKey || event.metaKey || event.shiftKey;
   }
 
-  /** Opens a file in a new tab and switches to it. */
+
   function openInNewTab(href) {
     var tab = window.open(href, PR.UI.TARGET_BLANK);
     if (!tab) {
@@ -97,11 +97,11 @@
       tab.opener = null;
       tab.focus();
     } catch (error) {
-    // A browser that refuses the assignment still opened the tab.
+
     }
 
     setTimeout(function () {
-      try { tab.focus(); } catch (error) { /** tab closed already */ }
+      try { tab.focus(); } catch (error) {   }
     }, PR.UI.FOCUS_RETRY_MS);
   }
 
@@ -118,7 +118,7 @@
     }
 
     var path = row.dataset.path;
-    // Ctrl/Cmd/Shift on any file row opens the standalone viewer in a new tab, exactly like…
+
     if (wantsNewTab(event)) {
       event.preventDefault();
       openInNewTab(row.getAttribute("href"));
@@ -137,13 +137,13 @@
       openInNewTab(row.getAttribute("href"));
       return true;
     }
-    // Opening an unchanged file must behave like a changed one: stay in the review and scroll there…
+
     event.preventDefault();
     PR.openInlineFile(path, row);
     return true;
   }
 
-  /** Opens a `/file?path=…#L<n>` link the same way a tree click does: a changed file scrolls to its… */
+
   PR.openTarget = function (name, href) {
     var target = parseFileHref(href);
     if (!target) return;
@@ -169,7 +169,7 @@
     }
   }
 
-  /** Marks and scrolls to a single line inside an already-rendered diff. */
+
   function flashLine(path, line) {
     var section = document.getElementById(PR.anchorId(path));
     if (!section) return;
@@ -182,13 +182,13 @@
     setTimeout(function () { row.classList.remove(PR.SELECTORS.SELECTED_ROW); }, PR.UI.FLASH_MS);
   }
 
-  /** Renders an unchanged file as a section inside the review, right where the user is, so the same… */
+
   PR.openInlineFile = function (path, treeRow, line) {
     var host = document.getElementById(PR.IDS.INLINE_HOST);
     if (!host) return;
 
     PR.closeInlineFile();
-    host.classList.remove("hidden");
+    host.classList.remove(PR.SELECTORS.HIDDEN);
     PR.setHtml(host, '<div class="loading-row">Loading ' + PR.escapeHtml(path) + "…</div>");
 
     fetch(PR.API.FILE + "?path=" + encodeURIComponent(path))
@@ -197,7 +197,7 @@
         return response.json();
       })
       .then(function (file) {
-        // highlightIn() reads lines from this cache, so seed it first or the section renders without any…
+
         if (file && file.lines) {
           PR.state.cache[path] = file;
           PR.state.highlightCache[path] = PR.highlightLines(file.lines.join("\n"), file.language);
@@ -225,8 +225,8 @@
     if (!file) return;
 
     PR.state.loaded.add(path);
-    section.classList.remove("is-deferred", "collapsed");
-    // Hydration is keyed by this flag; the section was never rendered before,
+    section.classList.remove("is-deferred", PR.SELECTORS.COLLAPSED);
+
 
     delete section.dataset.hydrated;
 
@@ -236,7 +236,7 @@
     var header = section.querySelector(".diff-file-header");
     var loadButton = header.querySelector(".js-load-file");
     if (loadButton) {
-      // "Expand all" is decided once the content is known (a small file has nothing to expand, so it…
+
       loadButton.remove();
       PR.refreshFileMenu(section);
     }
@@ -247,11 +247,11 @@
   PR.closeInlineFile = function () {
     var host = document.getElementById(PR.IDS.INLINE_HOST);
     if (!host) return;
-    host.classList.add("hidden");
+    host.classList.add(PR.SELECTORS.HIDDEN);
     PR.setHtml(host, PR.P_EMPTY);
   };
 
-  /** Builds the section used for an unchanged file inside the review. */
+
   PR.renderInlineSection = function (file) {
     var lines = file.lines || [];
     var rows = lines.map(function (text, index) {
@@ -303,7 +303,7 @@
     if (!section) return false;
 
     if (section.classList.contains(PR.SELECTORS.COLLAPSED)) PR.toggleCollapse(section);
-    // they are inserted, and a scroll done before that lands on the wrong place.
+
     PR.applyContextPolicy(section).then(function () {
       scrollToSection(section);
     });
@@ -314,7 +314,7 @@
     return true;
   }
 
-  /** Scrolls a file into view. */
+
   function scrollToSection(section) {
     section.scrollIntoView({ behavior: "smooth", block: "start" });
     section.classList.add(PR.SELECTORS.FLASH);
@@ -328,7 +328,7 @@
     }, PR.UI.SCROLL_SETTLE_MS);
   }
 
-  /** The file "Last file" should jump to: the one the user looked at most recently, as long as it… */
+
   function lastViewedTarget() {
     var state = PR.state;
     if (state.lastViewedFile && state.viewed.has(state.lastViewedFile)) return state.lastViewedFile;
@@ -337,7 +337,7 @@
     return viewed.length ? viewed[viewed.length - 1] : null;
   }
 
-  /** Falls back to the top of the review when no file is marked Viewed. */
+
   function scrollToStartOfReview() {
     var first = PR.els.diffFiles.querySelector(PR.SELECTORS.DIFF_FILE);
     if (first) first.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -391,7 +391,7 @@
       var section = openFile.closest(PR.SELECTORS.DIFF_FILE);
       var path = section ? section.dataset.path : PR.P_EMPTY;
       var href = openFile.getAttribute("href");
-      // Ctrl/Cmd/Shift always means "new tab", matching the browser.
+
       if (wantsNewTab(event)) {
         event.preventDefault();
         openInNewTab(href);
@@ -399,19 +399,19 @@
       }
 
       var mode = PR.state.settings.viewFileMode;
-      // is read side by side.
+
       if (mode === PR.VIEW_FILE_MODE.TAB) {
         event.preventDefault();
         openInNewTab(href);
         return true;
       }
-      // An embedded panel: the file opens inside the review, like a tab of its own, without leaving…
+
       if (mode === PR.VIEW_FILE_MODE.PANEL) {
         event.preventDefault();
         PR.openInlineFile(path, null);
         return true;
       }
-      // opens in the standalone viewer.
+
       if (PR.state.changedPaths.has(path)) {
         event.preventDefault();
         PR.revealFile(path);
@@ -431,7 +431,7 @@
     var plus = target.closest(".js-comment");
     if (plus) {
       event.preventDefault();
-      // click; opening it again would move it and steal focus.
+
       if (Date.now() < PR.state.suppressPlusUntil) return true;
       var line = parseInt(plus.dataset.line, 10);
       if (!line) return true;
@@ -506,7 +506,11 @@
 
     switch (target.id) {
       case "btn-submit":
+        bindNoteAttachments();
         PR.els.dispatchModal.classList.add("show");
+        return true;
+      case "btn-publish-github":
+        publishToGitHub(target);
         return true;
       case "btn-dispatch-submit":
         submitReview();
@@ -522,12 +526,21 @@
         PR.syncViewedToggle();
         return true;
       case "back-to-last": {
-        var target = lastViewedTarget();
-        if (target && PR.revealFile(target)) { PR.toast("Jumped to " + target); return true; }
-        // Nothing has been reviewed yet: treat "last file" as the first file.
+        var last = lastViewedTarget();
+        if (last && PR.revealFile(last)) { PR.toast("Jumped to " + last); return true; }
+
         scrollToStartOfReview();
         return true;
       }
+    }
+
+
+    var modeButton = target.closest(".js-mode-opt");
+    if (modeButton) {
+
+
+      PR.setDiffMode(modeButton.dataset.mode);
+      return true;
     }
 
     if (target.classList.contains("lightbox") || target.classList.contains("lightbox-close")) {
@@ -537,7 +550,7 @@
     return false;
   }
 
-  /** -------------------------------- filtering ------------------------------ */
+
   document.addEventListener("input", function (event) {
     var input = event.target;
 
@@ -562,12 +575,12 @@
     input.setSelectionRange(input.value.length, input.value.length);
   }
 
-  /** --------------------------- multiline selection ------------------------- */
-  document.addEventListener("mousedown", function (event) {
+
+  document.addEventListener(PR.EVENT.MOUSEDOWN, function (event) {
     if (event.button !== 0) return;
-    // must not start there, or preventDefault would swallow its click.
+
     if (event.target.closest(".hunk-expander")) return;
-    // Selection starts on the "+" gutter, like GitHub, not on line numbers.
+
     var cell = event.target.closest(PR.SELECTORS.GUTTER_CELL);
     if (!cell) return;
 
@@ -597,7 +610,7 @@
     PR.selectRowRange(section, drag.startRow, row, drag.side);
   });
 
-  document.addEventListener("mouseup", function () {
+  document.addEventListener(PR.EVENT.MOUSEUP, function () {
     var drag = PR.state.drag;
     if (!drag) return;
 
@@ -616,7 +629,7 @@
       return;
     }
 
-    // The verdict cards show which option is chosen; the radio itself decides.
+
     if (event.target.name === PR.VERDICT_FIELD) {
       var cards = PR.els.dispatchModal.querySelectorAll(".radio-card");
       for (var i = 0; i < cards.length; i += 1) {
@@ -628,7 +641,7 @@
 
     if (event.target.id === PR.IDS.SCOPE_MODE) {
       PR.syncScopeVisibility();
-      // A range needs concrete commits, so offer the picker right away.
+
       if (event.target.value === PR.MODE.RANGE) PR.openCommitPicker();
       return;
     }
@@ -643,9 +656,9 @@
     }
   });
 
-  document.addEventListener("keydown", function (event) {
-    if (event.key !== "Escape") return;
-    // Esc closes the topmost overlay first: the submit dialogs sit above the page, so they must go…
+  document.addEventListener(PR.EVENT.KEYDOWN, function (event) {
+    if (event.key !== PR.KEY.ESCAPE) return;
+
     if (PR.els.dispatchModal.classList.contains("show")) {
       PR.els.dispatchModal.classList.remove("show");
       return;
@@ -656,7 +669,7 @@
     PR.hideSymbolPopover();
   });
 
-  /** --------------------------------- submit -------------------------------- */
+
   function copyPath() {
     fetch(API.PATHS)
       .then(function (r) { return r.json(); })
@@ -668,7 +681,7 @@
       });
   }
 
-  /** Copies one file's repository path from its header button. */
+
   function copyFilePath(path, anchor) {
     PR.pressFeedback(anchor);
     navigator.clipboard.writeText(path).then(
@@ -682,7 +695,7 @@
       .then(function (r) { return r.json(); });
   }
 
-  function buildReviewPayload(reviewState, body) {
+  function buildReviewPayload(reviewState, body, images) {
     var state = PR.state;
     return {
       id: PR.DATA.id,
@@ -695,6 +708,8 @@
         return { path: file.path, status: file.status, additions: file.additions, deletions: file.deletions };
       }),
       comments: state.comments,
+
+      noteImages: Array.isArray(images) ? images : [],
       viewedFiles: Array.from(state.viewed),
       reviewState: reviewState,
       reviewBody: body,
@@ -708,7 +723,45 @@
     };
   }
 
-  /** Submits the review with the verdict chosen in the dialog. */
+
+  var noteImages = [];
+  var noteBound = false;
+
+
+  function bindNoteAttachments() {
+    if (noteBound) return;
+    var wrap = document.getElementById(PR.IDS.REVIEW_NOTE_WRAP);
+    var textarea = document.getElementById(PR.IDS.REVIEW_BODY);
+    if (!wrap || !textarea) return;
+    noteBound = true;
+
+    PR.bindImageInput(textarea, wrap, function (image) {
+      noteImages.push(image);
+      renderNoteChips();
+    });
+
+    renderNoteChips();
+  }
+
+  function renderNoteChips() {
+    var chips = document.getElementById(PR.IDS.REVIEW_NOTE_CHIPS);
+    if (!chips) return;
+    chips.innerHTML = noteImages.map(function (image, index) {
+      return '<span class="attach-chip">' +
+        '<img src="' + PR.escapeHtml(image.dataUrl || image.file || "") + '" alt="">' +
+        '<button class="attach-remove" data-i="' + index + '" title="Remove">×</button>' +
+      "</span>";
+    }).join("");
+
+    chips.onclick = function (event) {
+      var button = event.target.closest(".attach-remove");
+      if (!button) return;
+      noteImages.splice(parseInt(button.dataset.i, 10), 1);
+      renderNoteChips();
+    };
+  }
+
+
   function submitReview() {
     var modal = PR.els.dispatchModal;
     var checked = modal.querySelector('input[name="' + PR.VERDICT_FIELD + '"]:checked');
@@ -716,11 +769,12 @@
     var body = document.getElementById(PR.IDS.REVIEW_BODY).value;
     var send = document.getElementById(PR.IDS.DISPATCH_SEND);
     var sendToAgent = !send || send.checked;
-    submit(verdict, body, sendToAgent);
+    submit(verdict, body, sendToAgent, noteImages.slice());
   }
 
-  function submit(reviewState, body, sendToAgent) {
-    postJson(API.REVIEW, buildReviewPayload(reviewState, body))
+  function submit(reviewState, body, sendToAgent, images) {
+    var payload = buildReviewPayload(reviewState, body, images);
+    postJson(API.REVIEW, payload)
       .then(function (res) {
         var shouldDispatch = sendToAgent && PR.DATA.dispatchEnabled;
         if (!shouldDispatch) return res;
@@ -728,7 +782,7 @@
           reviewId: PR.DATA.id,
           jsonPath: res.jsonPath,
           markdownPath: res.markdownPath,
-          review: buildReviewPayload(reviewState, body),
+          review: payload,
         }).then(function (dispatchResult) {
           res.agent = dispatchResult ? dispatchResult.agent : null;
           res.targetSessionId = dispatchResult ? dispatchResult.targetSessionId : null;
@@ -737,7 +791,11 @@
       })
       .then(function (res) {
         PR.els.dispatchModal.classList.remove("show");
-        // Say plainly whether the fix turn actually started, and where it went: silently showing "saved"…
+
+        noteImages = [];
+        renderNoteChips();
+        document.getElementById(PR.IDS.REVIEW_BODY).value = PR.P_EMPTY;
+
         var approved = reviewState === STATE.APPROVE;
         var agent = res ? res.agent : null;
         var target = res && res.targetSessionId ? res.targetSessionId.slice(0, 12) : null;
@@ -748,7 +806,7 @@
         } else if (agent) {
           PR.toast("Review saved. Auto-send not started: " + (agent.reason || "unknown reason"), true);
         } else if (res && res.dispatched === false) {
-          // An empty review is a valid submit; it just has nothing to fix.
+
           PR.toast("Review saved — " + (res.reason || "nothing to fix"), true);
         } else {
           PR.toast(approved ? "Approved — review saved" : "Review saved");
@@ -757,17 +815,83 @@
       .catch(function (err) { PR.toast("Submit failed: " + err.message, true); });
   }
 
-  /** ---------------------------------- boot --------------------------------- */
+
+  function publishToGitHub(button) {
+    if (!PR.DATA.pr || button.disabled) return;
+    var result = document.getElementById("publish-result");
+    var body = document.getElementById(PR.IDS.REVIEW_BODY).value;
+    var checked = PR.els.dispatchModal.querySelector('input[name="' + PR.VERDICT_FIELD + '"]:checked');
+    var verdict = checked ? checked.value : STATE.COMMENT;
+    if (PR.state.view.kind !== PR.VIEW_KIND.REVIEW) {
+      result.textContent = "Return to the full pull request before publishing.";
+      return;
+    }
+
+    var payload = buildReviewPayload(verdict, body, noteImages.slice());
+
+    var fresh = payload.comments.filter(function (comment) { return !PR.state.published.has(comment.id); });
+    var alreadyPublished = payload.comments.length - fresh.length;
+    payload.comments = fresh;
+    payload.summary.comments = fresh.length;
+    if (!fresh.length && !String(body).trim()) {
+      result.textContent = alreadyPublished
+        ? "Already published. Edit those comments on GitHub; this page only posts new ones."
+        : "Nothing new to publish. Add a comment or a note first.";
+      return;
+    }
+    var withImages = fresh.filter(function (comment) {
+      return Array.isArray(comment.images) && comment.images.length;
+    }).length + (noteImages.length ? 1 : 0);
+
+    button.disabled = true;
+    result.textContent = "Publishing to GitHub…";
+    postJson(API.PUBLISH, payload)
+      .then(function (response) {
+        if (!response.ok || !response.published) throw new Error(response.error || "No publication confirmation received");
+        fresh.forEach(function (comment) {
+          PR.state.published.add(comment.id);
+
+
+          var stored = PR.state.comments.filter(function (c) { return c.id === comment.id; })[0];
+          if (stored) stored.published = true;
+        });
+        PR.store();
+        result.textContent = "Published to GitHub: " + response.inlineComments + " inline comment(s). ";
+        var target = response.url || PR.DATA.pr.url;
+        if (/^https:\/\/github\.com\//i.test(target)) {
+          var link = document.createElement("a");
+          link.href = target;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          link.textContent = "View on GitHub";
+          result.appendChild(link);
+        }
+        if (withImages) {
+          result.appendChild(document.createTextNode(" Screenshots stay in the local review: GitHub comments carry text only."));
+        }
+        if (alreadyPublished) {
+          result.appendChild(document.createTextNode(` ${alreadyPublished} earlier comment(s) were not posted again.`));
+        }
+        button.textContent = "Published to GitHub";
+      })
+      .catch(function (err) {
+
+        result.textContent = "Could not publish: " + err.message;
+        button.disabled = false;
+      });
+  }
+
+
   function boot() {
     PR.restore();
-    // Settings live on the server (a review page's port changes between reviews, so localStorage…
+
     PR.loadSettings().then(function () {
       PR.applySettings();
       startUi();
     });
   }
 
-  /** Renders the page once the settings are known. */
+
   function startUi() {
     PR.bindSettings();
     PR.bindSearch();
@@ -788,21 +912,32 @@
     bindScrollSpy();
     bindStorageSync();
     bindStickyHeaderOffset();
-    // A marker tests and embedders can wait for: the page is fully wired, so a change made now is…
+    bindActionBarHeight();
+
     document.body.dataset.booted = "1";
   }
 
-  /** Keeps the sticky file header below the sticky toolbar. */
+
   function bindStickyHeaderOffset() {
+    var header = document.querySelector(".gh-header");
+    var tabs = document.querySelector(".gh-tabs");
     var toolbar = document.querySelector(".gh-sticky-toolbar");
     if (!toolbar) return;
+    var root = document.documentElement;
+    var height = function (el) { return el ? el.getBoundingClientRect().height : 0; };
 
     function update() {
-      // header must stick at that offset PLUS the toolbar's own height, or it would slide under the…
-      var rect = toolbar.getBoundingClientRect();
-      var stickyTop = parseFloat(getComputedStyle(toolbar).top) || 0;
-      var top = Math.max(0, Math.round(stickyTop + rect.height));
-      document.documentElement.style.setProperty("--diff-header-top", top + "px");
+
+
+
+
+      var headerHeight = Math.round(height(header));
+      var tabsHeight = Math.round(height(tabs));
+      root.style.setProperty("--header-h", headerHeight + "px");
+
+      var barTop = headerHeight + tabsHeight;
+      root.style.setProperty("--chrome-body", barTop + "px");
+      root.style.setProperty("--diff-header-top", Math.round(barTop + height(toolbar)) + "px");
     }
 
     update();
@@ -811,7 +946,22 @@
     window.addEventListener("resize", update);
   }
 
-  /** Picks up comments written in another tab (the standalone file viewer). */
+
+  function bindActionBarHeight() {
+    var bar = document.querySelector(".action-bar");
+    if (!bar) return;
+    var root = document.documentElement;
+
+    function update() {
+      root.style.setProperty("--action-h", Math.round(bar.getBoundingClientRect().height) + "px");
+    }
+
+    update();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(update).catch(function () {});
+    window.addEventListener("resize", update);
+  }
+
+
   function bindStorageSync() {
     window.addEventListener("storage", function (event) {
       if (event.key !== PR.STORAGE_KEY) return;
@@ -823,15 +973,15 @@
     });
   }
 
-  /** Keeps the tree highlight on whichever file is currently at the top of the viewport, so… */
+
   function bindScrollSpy() {
     var ticking = false;
 
     function update() {
       ticking = false;
-      // A navigation pin stays until the user scrolls on their own.
+
       if (PR.state.spySuppressed) return;
-      // content-visibility makes off-screen sections report estimated sizes, so their rects cannot be…
+
       var probe = document.elementFromPoint(
         Math.round(window.innerWidth / 2),
         PR.UI_SCROLL_SPY_OFFSET,
@@ -847,7 +997,7 @@
       var best = null;
       for (var i = 0; i < sections.length; i += 1) {
         var rect = sections[i].getBoundingClientRect();
-        // Skip sections the engine is not rendering (estimate-only boxes).
+
         if (rect.height === 0) continue;
         if (rect.top <= PR.UI_SCROLL_SPY_OFFSET) best = sections[i];
         else break;
@@ -860,10 +1010,10 @@
       ticking = true;
       window.requestAnimationFrame(update);
     }, { passive: true });
-    // Jumping to a file scrolls the window; keep the pinned file highlighted until the user takes…
+
     window.addEventListener("wheel", PR.releaseTreePin, { passive: true });
     window.addEventListener("touchmove", PR.releaseTreePin, { passive: true });
-    window.addEventListener("keydown", function (event) {
+    window.addEventListener(PR.EVENT.KEYDOWN, function (event) {
       if (["PageUp", "PageDown", "Home", "End", "ArrowUp", "ArrowDown", " "].indexOf(event.key) >= 0) {
         PR.releaseTreePin();
       }
@@ -873,7 +1023,7 @@
   try {
     boot();
   } catch (error) {
-    // Never leave a blank page: show what broke instead of failing silently.
+
     PR.setHtml(PR.els.diffFiles,
       '<div class="empty-state" style="padding:24px;color:var(--danger)">' +
         "Failed to start the review UI: " + PR.escapeHtml(error.message) +

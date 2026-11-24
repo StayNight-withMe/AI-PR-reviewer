@@ -1,4 +1,4 @@
-/** Project-wide search: one input, results as links into the file viewer. */
+
 (function () {
   "use strict";
 
@@ -43,7 +43,7 @@
     else PR.openSearch();
   };
 
-  /** Debounced so typing does not fire one `git grep` per keystroke. */
+
   PR.scheduleSearch = function (query) {
     state.query = String(query || "");
 
@@ -65,7 +65,7 @@
       .then(function (response) { return response.json(); })
       .then(function (result) {
         if (state.query !== query) return;
-        // a newer query won the race
+
         state.hits = result && result.ok ? result.hits || [] : [];
         render();
       })
@@ -97,7 +97,7 @@
     }).join("");
   }
 
-  /** Marks the matched text inside the preview line, and trims long indentation. */
+
   function highlight(text, query) {
     var trimmed = String(text).replace(/^\s+/, "");
     var needle = String(query).trim();
@@ -111,7 +111,7 @@
       PR.escapeHtml(trimmed.slice(index + needle.length));
   }
 
-  /** Closes the panel on outside clicks and on Escape. */
+
   PR.bindSearch = function () {
     var button = document.getElementById(PR.IDS.BTN_SEARCH);
     if (button) {
@@ -124,8 +124,8 @@
     var field = input();
     if (field) {
       field.addEventListener("input", function () { PR.scheduleSearch(field.value); });
-      field.addEventListener("keydown", function (event) {
-        if (event.key === "Escape") { event.preventDefault(); PR.closeSearch(); }
+      field.addEventListener(PR.EVENT.KEYDOWN, function (event) {
+        if (event.key === PR.KEY.ESCAPE) { event.preventDefault(); PR.closeSearch(); }
       });
     }
 
@@ -151,7 +151,7 @@
     });
   };
 
-  /** A hit inside the current diff scrolls there in this tab, like the file tree; anything else… */
+
   PR.openSearchHit = function (hit) {
     if (PR.state.changedPaths.has(hit.path) && PR.revealFile(hit.path)) return;
     window.location.href = PR.fileUrl(hit.path, hit.line);

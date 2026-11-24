@@ -1,15 +1,4 @@
-/**
- * Resolving review comments, from the page and from the agent.
- *
- * A review comment can be marked resolved when it is fixed: on the page with
- * the "Resolve" button, and by the agent through the `resolve_comments` MCP tool,
- * which writes the same `review.json`/`review.md` the page shows.
- *
- * Also checks that a re-review after a code change is a NEW review: the old
- * "Viewed" flags must not carry over, which was a stale-state bug.
- *
- * Run: node tests/resolve.mjs
- */
+
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -52,7 +41,7 @@ try {
     await driver.wait(until.elementLocated(By.css(".diff-file")), 20_000);
     await PAUSE(2000);
 
-    // Write the comment the way a user does: the + gutter, then save.
+
     const opened = await driver.executeScript(`return (function(){
       var section = Array.prototype.slice.call(document.querySelectorAll('.diff-file'))
         .filter(function (s) { return s.dataset.path === 'src/app.ts'; })[0];
@@ -134,9 +123,9 @@ try {
   });
 
   await check("a re-review after a code change gets a new id (Viewed does not carry over)", async () => {
-    // The real scenario: an uncommitted review, the agent edits the working
-    // tree, the review is opened again. The id must change, or every file keeps
-    // its stale "Viewed" flag.
+
+
+
     const first = await buildReview({ repoPath: fixture.repo, mode: MODE.UNCOMMITTED, includeStaged: false, includeUntracked: true });
     const workFile = join(fixture.repo, "src/work-in-progress.ts");
     await writeFile(workFile, "export const a = 1;\n");

@@ -1,11 +1,4 @@
-/**
- * The review page has to outlive the process that started it.
- *
- * The MCP server can be restarted at any time; the page in the browser must
- * keep working, otherwise a submit dies with the chat connection. This test
- * starts the page in a helper process, lets that helper exit and then checks
- * that the page still answers.
- */
+
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
@@ -13,7 +6,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
-import { findPageRegistry, findFreePort, stopPageProcess } from "../src/page-process.js";
+import { fetchPageResult, findPageRegistry, findFreePort, stopPageProcess, waitForPageRegistry } from "../src/page-process.js";
 import { GIT, MODE } from "../src/config.js";
 const exec = promisify(execFile);
 const ROOT = dirname(fileURLToPath(import.meta.url));
@@ -44,7 +37,7 @@ try {
 
   const port = await findFreePort();
 
-  // The helper starts the page and exits right away: the page has to survive.
+
   await exec(process.execPath, [HELPER, repo, String(port)], { cwd: repo, timeout: 120_000 });
 
   let registry = null;
@@ -73,6 +66,30 @@ try {
     const payload = await response.json();
     assert.equal(payload.ok, true);
     assert.equal(payload.review, null, "nothing was submitted yet");
+  });
+
+  await check("the helper that waits for a submit can reach the page", async () => {
+
+
+
+    const payload = await fetchPageResult(registry);
+    assert.ok(payload, "the page state is unreadable through the helper");
+    assert.equal(payload.ok, true);
+    assert.ok("review" in payload, "the helper does not report the review");
+  });
+
+  await check("a page is found by its own id, not by whichever came first", async () => {
+
+
+    const mine = await findPageRegistry(repo, { match: (entry) => entry.pid === registry.pid });
+    assert.ok(mine, "the page was not found by its process id");
+    assert.equal(mine.reviewId, registry.reviewId);
+
+    const other = await findPageRegistry(repo, { match: (entry) => entry.pid === registry.pid + 1 });
+    assert.equal(other, null, "a page was returned for a process id it does not belong to");
+
+    const missing = await waitForPageRegistry(repo, { pid: -1, timeoutMs: 600 });
+    assert.equal(missing, null, "waiting for another process returned this page");
   });
 
   await check("the page process can be stopped", async () => {

@@ -1,11 +1,12 @@
-/** Device-wide UI settings, stored on the server. */
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+
+import { mkdir, readFile, writeFile, access } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { artifactsRoot } from "./artifacts.js";
-import { ARTIFACTS, P, SERVER } from "./config.js";
-/** The settings file name inside the artifacts root. */
+import { stableUserRoot } from "./artifacts.js";
+import { ARTIFACTS, GIT, P, SERVER } from "./config.js";
+
 const SETTINGS_FILE = "ui-settings.json";
-/** The known setting keys, so an unknown or hostile key is never stored. */
+
 export const SETTING_KEYS = [
   "treeOpen",
   "hideViewed",
@@ -25,25 +26,70 @@ export const SETTING_KEYS = [
 ];
 const NUMERIC_KEYS = new Set(["treeWidth", "treeIndent", "largeFileLines", "contextCollapseLines"]);
 const BOOLEAN_KEYS = new Set(["hideViewed", "collapseViewed", "showSidebar", "treeHidden", "autoScrollTree", "openLinksInline"]);
-/** The settings file path. */
+
 export function settingsPath(env = process.env) {
-  return join(artifactsRoot(env), SETTINGS_FILE);
+  const explicit = env[GIT.SETTINGS_DIR_ENV];
+  if (explicit && explicit.trim()) return join(explicit.trim(), SETTINGS_FILE);
+
+
+  const artifacts = env[GIT.ARTIFACTS_DIR_ENV];
+  if (artifacts && artifacts.trim()) return join(artifacts.trim(), SETTINGS_FILE);
+  return join(stableUserRoot(env), SETTINGS_FILE);
 }
-/** Reads the stored settings, or an empty object when none were saved. */
-export async function readSettings(env = process.env) {
+
+
+function legacySettingsPath(env = process.env) {
+  return join(env[GIT.ARTIFACTS_DIR_ENV] ?? join(tmpdir(), GIT.ARTIFACTS_DIR_NAME), SETTINGS_FILE);
+}
+
+
+function parseSettings(raw) {
+  return JSON.parse(String(raw).replace(/^\uFEFF/, P.EMPTY));
+}
+
+
+export async function migrateLegacySettings(env = process.env) {
+  const target = settingsPath(env);
   try {
-    const raw = await readFile(settingsPath(env), SERVER.FILE_ENCODING);
-    const parsed = JSON.parse(raw);
-    return sanitizeSettings(parsed);
+    await access(target);
+    return target;
+  } catch {
+
+  }
+  try {
+    const raw = await readFile(legacySettingsPath(env), SERVER.FILE_ENCODING);
+    const merged = sanitizeSettings(parseSettings(raw));
+    if (Object.keys(merged).length) {
+      await mkdir(join(target, ".."), { recursive: true }).catch(() => {});
+      await writeFile(target, JSON.stringify(merged, null, SERVER.JSON_INDENT), SERVER.FILE_ENCODING);
+    }
+  } catch {
+
+  }
+  return target;
+}
+
+export async function readSettings(env = process.env) {
+  const path = settingsPath(env);
+  try {
+    const raw = await readFile(path, SERVER.FILE_ENCODING);
+    return sanitizeSettings(parseSettings(raw));
+  } catch {
+
+  }
+  await migrateLegacySettings(env);
+  try {
+    const raw = await readFile(path, SERVER.FILE_ENCODING);
+    return sanitizeSettings(parseSettings(raw));
   } catch {
     return {};
   }
 }
-/** Writes the settings, keeping only the known keys with a correct type. */
+
 export async function writeSettings(patch, env = process.env) {
   const current = await readSettings(env);
-  // Sanitize the patch BEFORE merging: a rejected value must not overwrite the
-  // good stored one (a typo in a number field would otherwise erase it).
+
+
   const clean = sanitizeSettings(patch);
   const merged = { ...current, ...clean };
 
@@ -52,7 +98,7 @@ export async function writeSettings(patch, env = process.env) {
   await writeFile(path, JSON.stringify(merged, null, SERVER.JSON_INDENT), SERVER.FILE_ENCODING);
   return merged;
 }
-/** Drops unknown keys and coerces known ones to their type. */
+
 export function sanitizeSettings(raw) {
   const result = {};
   if (!raw || typeof raw !== "object") return result;

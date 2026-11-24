@@ -1,17 +1,37 @@
 import { readFile as readTextFile } from "node:fs/promises";
-import { join } from "node:path";
+import { isAbsolute, join, relative, resolve as resolvePath } from "node:path";
 import { git, readBlobs } from "./git.js";
 import { languageFor } from "./diff.js";
 import { DIFF, FILEVIEW, GIT, P } from "./config.js";
-/** Splits file content into lines the way every viewer and the diff count them. */
+
+export function repoPathOf(repoRoot, filePath) {
+  const value = String(filePath ?? P.EMPTY);
+  if (!value || isAbsolute(value)) return null;
+
+  const normalized = value.replace(/\\/g, P.SLASH);
+  const root = resolvePath(repoRoot);
+  const target = resolvePath(root, normalized);
+  const within = relative(root, target);
+
+
+  if (!within || within === ".." || within.startsWith("../") || within.startsWith("..\\")) return null;
+  return within.replace(/\\/g, P.SLASH);
+}
+
 export function splitLines(text) {
   const value = String(text ?? P.EMPTY);
   if (value === P.EMPTY) return P.EMPTY_ARRAY;
   const body = value.endsWith(P.NEWLINE) ? value.slice(P.ZERO, -P.ONE) : value;
   return body.split(P.NEWLINE);
 }
-/** Content of one file plus the set of lines changed vs its base. */
-export async function readFileForViewer(repoRoot, filePath, { refs = [GIT.DEFAULT_REF], range = null } = {}) {
+
+export async function readFileForViewer(repoRoot, requestedPath, options = {}) {
+  const safePath = repoPathOf(repoRoot, requestedPath);
+  if (!safePath) throw new Error(`${FILEVIEW.ERROR_OUTSIDE_REPO}${requestedPath}`);
+
+  return readReviewedFile(repoRoot, safePath, options);
+}
+async function readReviewedFile(repoRoot, filePath, { refs = [GIT.DEFAULT_REF], range = null } = {}) {
   const preferRef = range?.head ?? null;
   const fromHead = preferRef
     ? await git(repoRoot, [GIT.SHOW, `${preferRef}:${filePath}`])
@@ -44,12 +64,23 @@ export async function readFileForViewer(repoRoot, filePath, { refs = [GIT.DEFAUL
     changed: content.deleted ? allLines(lines.length) : Array.from(changed).sort((a, b) => a - b),
   };
 }
-/** Lightweight content reader for syntax highlighting. */
+
 export async function readFilesForHighlight(repoRoot, paths, { refs = [GIT.DEFAULT_REF], preferRef = null } = {}) {
-  const wanted = paths.filter(Boolean);
-  if (!wanted.length) return {};
-  // A PR (or any committed range) is reviewed at a commit that may not be
-  // checked out, so the working tree is the wrong source. Read that commit.
+
+
+
+  const result = {};
+  const accepted = [];
+  for (const requested of paths.filter(Boolean)) {
+    const safePath = repoPathOf(repoRoot, requested);
+    if (safePath === null) { result[requested] = null; continue; }
+    accepted.push({ requested, safePath });
+  }
+  if (!accepted.length) return result;
+
+  const wanted = accepted.map((entry) => entry.safePath);
+
+
   const diskReads = preferRef
     ? wanted.map(() => ({ ok: false, text: P.EMPTY }))
     : await Promise.all(wanted.map((filePath) => readFromDisk(repoRoot, filePath)));
@@ -65,33 +96,32 @@ export async function readFilesForHighlight(repoRoot, paths, { refs = [GIT.DEFAU
     missing = missing.filter((filePath) => !texts.has(filePath));
   }
 
-  const result = {};
-  wanted.forEach((filePath, index) => {
+  accepted.forEach(({ requested, safePath }, index) => {
     const disk = diskReads[index];
-    const text = disk.ok ? disk.text : (texts.get(filePath) ?? null);
+    const text = disk.ok ? disk.text : (texts.get(safePath) ?? null);
 
-    if (text === null) { result[filePath] = null; return; }
+    if (text === null) { result[requested] = null; return; }
     if (text.length > GIT.MAX_REVIEW_FILE_BYTES) {
-      result[filePath] = { path: filePath, language: languageFor(filePath), lines: P.EMPTY_ARRAY, tooLarge: true };
+      result[requested] = { path: safePath, language: languageFor(safePath), lines: P.EMPTY_ARRAY, tooLarge: true };
       return;
     }
 
-    result[filePath] = {
-      path: filePath,
-      language: languageFor(filePath),
+    result[requested] = {
+      path: safePath,
+      language: languageFor(safePath),
       lines: splitLines(text),
     };
   });
 
   return result;
 }
-/** New files come from the disk; modified files from disk or the index; a DELETED file exists… */
+
 async function readCurrentContent(repoRoot, filePath, fromHead, refs, preferRef) {
-  // A pinned ref (a PR head) wins over the disk: the checkout is irrelevant.
+
   if (preferRef) {
     const pinned = await git(repoRoot, [GIT.SHOW, `${preferRef}:${filePath}`]);
     if (pinned.ok) return { ok: true, text: pinned.stdout };
-    // Absent at the pinned head: it was deleted, so read it from the base.
+
     for (const ref of refs ?? P.EMPTY_ARRAY) {
       if (!ref) continue;
       const fromRef = await git(repoRoot, [GIT.SHOW, `${ref}:${filePath}`]);
@@ -107,7 +137,7 @@ async function readCurrentContent(repoRoot, filePath, fromHead, refs, preferRef)
   if (staged.ok) return { ok: true, text: staged.stdout };
 
   if (fromHead && fromHead.ok) return { ok: true, text: fromHead.stdout, deleted: true };
-  // A file deleted inside a range is gone from both disk and HEAD.
+
   for (const ref of refs ?? P.EMPTY_ARRAY) {
     const fromRef = await git(repoRoot, [GIT.SHOW, `${ref}:${filePath}`]);
     if (fromRef.ok) return { ok: true, text: fromRef.stdout, deleted: true };
@@ -129,7 +159,7 @@ function allLines(count) {
 }
 async function changedLines(repoRoot, filePath, range) {
   const changed = new Set();
-  // A pinned review (a PR) compares the file between its base and head commits;
+
 
   const args = range
     ? [...GIT.ARGS.DIFF, GIT.FLAG_UNIFIED_ZERO, range.base, range.head, GIT.FLAGS.HEAD, filePath]

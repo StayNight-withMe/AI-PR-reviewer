@@ -1,18 +1,4 @@
-/**
- * The editor integrations are thin hosts over ONE contract: they run
- * `src/cli.js`, read the one `PR_REVIEW_READY` line and show its URL.
- *
- * This test guards that contract without needing any GUI editor installed:
- *
- *   1. Every shipped bundle actually exists and contains the engine.
- *   2. A bundled engine launches, serves a real page and stops on signal —
- *      i.e. the copy the editor runs is not stale or incomplete.
- *   3. The compiled VS Code `ReviewSession` starts and stops that same engine
- *      (it is plain CommonJS and imports no `vscode`, so Node can drive it).
- *   4. The Visual Studio and Zed receipts point at the same launcher contract.
- *
- * Run: node tests/editors.mjs
- */
+
 import assert from "node:assert/strict";
 import { execFile, spawn } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -25,13 +11,13 @@ import { APP, CLI, GIT, ROUTES } from "../src/config.js";
 const exec = promisify(execFile);
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PROJECT = join(ROOT, "..");
-/** True when `artifact` is missing or older than `source`. */
+
 function isStale(artifact, source) {
   if (!existsSync(artifact)) return true;
   if (!existsSync(source)) return false;
   return statSync(artifact).mtimeMs < statSync(source).mtimeMs;
 }
-/** host key -> the bundle directory its code looks in. */
+
 const BUNDLES = {
   vscode: join(PROJECT, "editors", "vscode", "server"),
   visualstudio: join(PROJECT, "editors", "visualstudio", "server"),
@@ -49,7 +35,7 @@ function check(name, fn) {
       },
     );
 }
-/** Runs a launcher and resolves with its ready payload; rejects on failure. */
+
 function runLauncher(cliPath, args, { cwd }) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [cliPath, ...args], {
@@ -80,7 +66,7 @@ function runLauncher(cliPath, args, { cwd }) {
     });
   });
 }
-/* A throwaway repository so the test never touches the working checkout. */
+
 const repo = await mkdtemp(join(tmpdir(), "pr-review-editors-"));
 const git = (...args) => exec(GIT.BIN, args, { cwd: repo });
 try {
@@ -92,7 +78,7 @@ try {
   await git("add", "-A");
   await git("commit", "-m", "init");
 
-  /* 1. Every bundle is present and complete. */
+
   for (const [host, destination] of Object.entries(BUNDLES)) {
     await check(`${host}: the engine bundle exists`, async () => {
       const cli = join(destination, "src", "cli.js");
@@ -109,7 +95,7 @@ try {
     });
   }
 
-  /* 2. A bundled engine launches and serves a real page, then stops. */
+
   for (const [host, destination] of Object.entries(BUNDLES)) {
     await check(`${host}: the bundled engine serves the page and stops`, async () => {
       const cli = join(destination, "src", "cli.js");
@@ -130,12 +116,12 @@ try {
     });
   }
 
-  /* 3. The compiled VS Code session drives the real engine. */
+
   await check("vscode: ReviewSession starts and stops the engine", async () => {
     const sessionModule = join(PROJECT, "editors", "vscode", "out", "session.js");
     if (isStale(sessionModule, join(PROJECT, "editors", "vscode", "src", "session.ts"))) {
-      // The TypeScript is not compiled, or is older than its source: build it
-      // so the test never exercises a stale bundle.
+
+
       await exec("npx", ["tsc", "-p", "./"], { cwd: join(PROJECT, "editors", "vscode"), shell: true });
     }
 
@@ -162,7 +148,7 @@ try {
     assert.equal(session.isOpen, false, "the session should be closed after stop");
   });
 
-  /* 4. A bad CLI path fails fast and leaves nothing running. */
+
   await check("vscode: a failed launch rejects and stops cleanly", async () => {
     const sessionModule = join(PROJECT, "editors", "vscode", "out", "session.js");
     const { ReviewSession } = await import(pathToFileURL(sessionModule).href);
@@ -180,7 +166,7 @@ try {
     assert.equal(session.isOpen, false, "a failed launch must not stay open");
   });
 
-  /* 5. The other hosts point at the same contract. */
+
   await check("visualstudio: ServerRunner reads the same ready prefix", async () => {
     const text = await readFile(join(PROJECT, "editors", "visualstudio", "ServerRunner.cs"), "utf8");
     assert.ok(text.includes(`"${CLI.READY_PREFIX}"`), "the ready prefix is not the shared one");
@@ -204,6 +190,55 @@ try {
     assert.ok(text.includes("server/src/cli.js"), "the bundled engine path is missing");
   });
 
+
+  await check("jetbrains: the plugin unpacks its bundled engine", async () => {
+    const text = await readFile(
+      join(PROJECT, "editors", "jetbrains", "src", "main", "kotlin", "com", "prreview", "jetbrains", "ReviewServer.kt"),
+      "utf8",
+    );
+    assert.ok(text.includes("JarFile"), "the plugin does not read its own jar");
+    assert.ok(text.includes("entries"), "the plugin does not walk the jar's entries");
+
+    const build = await readFile(join(PROJECT, "editors", "jetbrains", "build.gradle.kts"), "utf8");
+    assert.ok(/from\("server"\)/.test(build), "the engine is not copied into the plugin resources");
+  });
+
+  await check("visualstudio: the package carries the engine and names its asset", async () => {
+    const project = await readFile(join(PROJECT, "editors", "visualstudio", "PrReview.VisualStudio.csproj"), "utf8");
+    assert.ok(project.includes('Include="server\\**\\*"'), "the engine is not part of the package");
+
+    const manifest = await readFile(join(PROJECT, "editors", "visualstudio", "source.extension.vsixmanifest"), "utf8");
+    assert.ok(!manifest.includes("PkgdefProjectOutputGroup"),
+      "the manifest names a build-time placeholder instead of a file");
+    assert.ok(manifest.includes("ProductArchitecture"),
+      "VS 2022 rejects an installation target without an architecture");
+    assert.ok(manifest.includes('Type="Microsoft.VisualStudio.VsPackage" Path="PrReview.VisualStudio.dll"'),
+      "the VS package asset must point at the assembly, not the generated pkgdef");
+    assert.ok(project.includes("Microsoft.VsSDK.targets"),
+      "the build does not run the VSSDK VSCT compiler and CTO merge");
+    assert.ok(!project.includes("obj\\vsct\\Menus.ctmenu"),
+      "the raw CTO file is embedded instead of the merged managed resource");
+  });
+
+  await check("visualstudio: the packer keeps the engine's folders", async () => {
+    const builder = await readFile(join(PROJECT, "editors", "visualstudio", "build-vsix.mjs"), "utf8");
+
+    assert.ok(!builder.includes("byBaseName"), "files are matched by name, which overwrites a namesake");
+    assert.ok(builder.includes("file.name"), "the staged paths are not used as archive names");
+  });
+
+  await check("visualstudio: the VSIX does not shadow assemblies from the host", async () => {
+    const builder = await readFile(join(PROJECT, "editors", "visualstudio", "build-vsix.mjs"), "utf8");
+    assert.ok(builder.includes("async function sharedWithEditor()"),
+      "the build does not check which DLLs Visual Studio already provides");
+    assert.ok(builder.includes("shared.has(entry)"),
+      "the staging step does not omit host-provided assemblies");
+    assert.ok(builder.includes("const shipped = files.map"),
+      "the completed VSIX is not checked for accidental assembly shadowing");
+    assert.ok(builder.includes("if (shipped.length)"),
+      "the build can succeed while shipping conflicting Visual Studio DLLs");
+  });
+
   await check("neovim: the Lua module uses the shared contract", async () => {
     const text = await readFile(join(PROJECT, "editors", "neovim", "lua", "pr-review.lua"), "utf8");
     assert.ok(text.includes(`"${CLI.READY_PREFIX}"`), "the ready prefix is not the shared one");
@@ -218,7 +253,7 @@ try {
     assert.ok(emacs.includes(`"${CLI.READY_PREFIX}"`), "emacs: ready prefix mismatch");
   });
 
-  /* 6. Bundles are byte-for-byte the current engine source. */
+
   await check("bundles match the current engine source", async () => {
     for (const destination of Object.values(BUNDLES)) {
       const original = await readFile(join(PROJECT, "src", "cli.js"), "utf8");
@@ -227,8 +262,8 @@ try {
     }
   });
 } finally {
-  // Windows keeps a handle on the temp directory for a moment after the page
-  // process exits; a couple of retries avoids a spurious EBUSY failure.
+
+
   await rm(repo, { recursive: true, force: true }).catch(async () => {
     await new Promise((r) => setTimeout(r, 500));
     await rm(repo, { recursive: true, force: true }).catch(() => {});

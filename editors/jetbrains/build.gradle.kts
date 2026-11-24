@@ -30,10 +30,19 @@ intellijPlatform {
         }
     }
 }
+
 tasks {
     // The engine bundle is copied in with scripts/bundle-server.mjs; the plugin
     // finds it at <plugin>/server/src/cli.js, exactly like VS Code.
     buildSearchableOptions {
         enabled = false
+    }
+
+    // Without this the engine stays out of the zip: the plugin would install and
+    // then have nothing to start, which is the one thing it is for.
+    processResources {
+        from("server") {
+            into("server")
+        }
     }
 }

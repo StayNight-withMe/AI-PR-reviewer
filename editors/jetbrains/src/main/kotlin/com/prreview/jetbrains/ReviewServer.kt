@@ -164,17 +164,56 @@ object ReviewServer {
 /**
  * Finds the bundled engine next to the plugin.
  *
- * Mirrors VS Code's `resolveCliPath`: the plugin ships `server/src/cli.js`
- * beside its classes, so it works without a separate checkout of the engine.
+ * The engine ships inside the plugin jar, because the IntelliJ platform loads a
+ * plugin as a jar rather than a folder. A Node process needs real files on disk,
+ * so the jar's `server/` tree is unpacked once into a cache folder and the path
+ * to that copy is returned.
  */
 fun bundledCli(): File? {
     val fromClasses = locateFrom(ReviewServer::class.java.protectionDomain?.codeSource?.location?.toURI())
     if (fromClasses != null) return fromClasses
 
+    val extracted = unpackFromJar()
+    if (extracted != null) return extracted
+
     // A development checkout: ~/.pr-review-mcp/server/src/cli.js.
     val home = System.getProperty("user.home") ?: return null
     return File(home, ".pr-review-mcp/server/src/cli.js").takeIf { it.isFile }
 }
+
+/**
+ * Unpacks the engine that travels inside the plugin jar.
+ *
+ * Called once per process: the cache folder is keyed by the jar's size and
+ * timestamp, so a plugin update unpacks the new engine instead of running the
+ * previous one forever.
+ */
+private fun unpackFromJar(): File? {
+    val jar = ReviewServer::class.java.protectionDomain?.codeSource?.location?.toURI()
+        ?.let { File(it) }?.takeIf { it.isFile } ?: return null
+
+    val stamp = "${jar.length()}-${jar.lastModified()}"
+    val cache = File(System.getProperty("java.io.tmpdir"), "pr-review-engine/$stamp")
+    val cli = File(cache, "server/src/cli.js")
+    if (cli.isFile) return cli
+
+    return try {
+        java.util.jar.JarFile(jar).use { archive ->
+            val entries = archive.entries()
+            while (entries.hasMoreElements()) {
+                val entry = entries.nextElement()
+                if (entry.isDirectory || !entry.name.startsWith("server/")) continue
+                val target = File(cache, entry.name)
+                target.parentFile?.mkdirs()
+                archive.getInputStream(entry).use { input -> target.outputStream().use { input.copyTo(it) } }
+            }
+        }
+        cli.takeIf { it.isFile }
+    } catch (_: Exception) {
+        null
+    }
+}
+
 private fun locateFrom(codeSource: java.net.URI?): File? {
     if (codeSource == null) return null
     var directory = File(codeSource).let { if (it.isFile) it.parentFile else it }

@@ -1,5 +1,5 @@
 import { DIFF, P } from "./config.js";
-/** The `diff --git` header line pins the two paths with their `a/` and `b/` prefixes; an optional… */
+
 const HEADER_PATTERN = DIFF.PATTERN.HEADER;
 const HUNK_PATTERN = DIFF.PATTERN.HUNK;
 const LANG_DEFAULT = DIFF.LANGUAGE.PLAINTEXT;
@@ -7,7 +7,7 @@ const LANGS = DIFF.LANGUAGE;
 const STATUS = DIFF.STATUS;
 const KIND = DIFF.LINE_KIND;
 const PREFIX = DIFF.PREFIX;
-/** C-style single-character escapes git may write inside a quoted path. */
+
 const PATH_ESCAPE_CHARS = { n: P.NEWLINE, t: P.TAB, r: "\r", [P.QUOTE]: P.QUOTE, [P.BACKSLASH]: P.BACKSLASH };
 function stripPrefix(value) {
   if (value.startsWith(PREFIX.A) || value.startsWith(PREFIX.B)) {
@@ -15,7 +15,7 @@ function stripPrefix(value) {
   }
   return value;
 }
-/** Decodes the escapes of a git-quoted path. */
+
 function unquote(value) {
   if (!value.includes(P.BACKSLASH)) return value;
 
@@ -40,16 +40,16 @@ function unquote(value) {
 
   return new TextDecoder().decode(Uint8Array.from(bytes));
 }
-/** The UTF-8 bytes of a single code point. */
+
 function utf8Bytes(char) {
   return Array.from(new TextEncoder().encode(char));
 }
-/** Splits a unified diff into the file/hunk/row model the UI renders. */
+
 export function parseDiff(text) {
-  // git always terminates its output with a newline. A plain split leaves one
-  // trailing empty line, which became a phantom `meta` row at the bottom of
-  // every file's last hunk. Dropping a single trailing empty line is exact:
-  // every real hunk line carries a prefix (`+`, `-`, ` `) or is a marker.
+
+
+
+
   const normalized = String(text ?? P.EMPTY).replace(/\r\n/g, P.NEWLINE);
   const body = normalized.endsWith(P.NEWLINE) ? normalized.slice(P.ZERO, -P.ONE) : normalized;
   const lines = body.split(P.NEWLINE);

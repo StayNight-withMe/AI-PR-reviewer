@@ -23,6 +23,18 @@ Development Host, or package it:
 ```sh
 npx vsce package
 ```
+## Test
+```sh
+npm test
+```
+This runs the extension inside a real VS Code through `@vscode/test-cli`: the
+editor loads the package from its manifest, runs `prReview.open`, checks that a
+webview tab appears, writes a comment through the page API, resolves it the way
+the agent does, closes the review and opens it again to see the resolved
+comment. A throwaway VS Code is used, so the machine's own editor and extensions
+are untouched.
+`node test-in-editor.mjs` additionally installs the packaged `.vsix` into a
+separate profile and starts the engine from the installed folder.
 ## Bundle the server into the VSIX
 The extension looks for the server at `<extension>/server/src/cli.js`. From the
 repository root, one script copies the engine into every host that ships one:

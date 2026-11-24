@@ -1,21 +1,21 @@
-/** Syntax highlighting + safe symbol linkification. */
+
 (function () {
   "use strict";
 
   var PR = window.PR;
 
-  /** Examines with an unknown name may answer with an inherited member; callers need an array. */
+
   function listOf(value) {
     return Array.isArray(value) ? value : [];
   }
 
-  /** hljs classes whose text must never become a link (keywords, strings, comments...). */
+
   var SKIP_HLJS = /hljs-(keyword|string|comment|number|literal|meta|attr|built_in|symbol|bullet|link)/;
 
-  /** Qualification lines never contain symbol references. */
+
   var USING_OR_NAMESPACE = /^\s*(using|namespace)\b/;
 
-  /** Identifier + context rules used to colour non-symbol code. */
+
   var IDENTIFIER = /\b[A-Za-z_]\w*\b/g;
   var CALL_SUFFIX = /^\s*\(/;
 
@@ -35,7 +35,7 @@
     return splitSpans(raw);
   };
 
-  /** Splits highlighted HTML into lines, re-opening spans so each line is valid HTML. */
+
   function splitSpans(html) {
     var out = [], open = [], buf = "", i = 0;
 
@@ -64,7 +64,7 @@
     return out;
   }
 
-  /** Fetches + caches file text and its highlighted lines. */
+
   PR.getFileData = function (path) {
     var state = PR.state;
     if (state.cache[path]) return Promise.resolve(state.cache[path]);
@@ -87,7 +87,7 @@
     return PR.escapeHtml(fallbackText) || " ";
   };
 
-  /** Applies highlighting to every code cell inside a container. */
+
   PR.highlightIn = function (root, path, language) {
     var cells = root.querySelectorAll("td.diff-code");
     for (var i = 0; i < cells.length; i += 1) {
@@ -110,7 +110,7 @@
     }
   };
 
-  /** Wraps the changed character range of a modified line in a stronger background, like GitHub's… */
+
   PR.applyWordMark = function (cell) {
     var start = parseInt(cell.dataset.wmStart, 10);
     var end = parseInt(cell.dataset.wmEnd, 10);
@@ -150,11 +150,11 @@
     });
   };
 
-  /** Wraps known identifiers in links, walking only real text nodes so markup never breaks. */
+
   PR.linkifyCell = function (cell) {
     if (cell.dataset.linked === "1") return;
     cell.dataset.linked = "1";
-    // `using`/`namespace` lines are qualified namespace paths, not symbol references; linking their…
+
     if (USING_OR_NAMESPACE.test(cell.textContent)) return;
 
     var walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT, null);
@@ -182,7 +182,7 @@
       var name = match[1];
       var target = PR.SYMBOLS[name] || (PR.IMPLS[name] && PR.IMPLS[name][0]);
       if (!target) continue;
-      // Only symbols that are actually referenced somewhere become links; a name that only exists at…
+
       if (!isUsed(name)) continue;
 
       if (!fragment) fragment = document.createDocumentFragment();
@@ -198,16 +198,16 @@
     textNode.parentNode.replaceChild(fragment, textNode);
   }
 
-  /** Used = appears at least once outside its own declaration line. */
+
   function isUsed(name) {
     var usages = PR.USAGES[name];
     if (!Array.isArray(usages) || !usages.length) return true;
-    // unknown: keep the old behaviour
+
     var total = usages.reduce(function (sum, usage) { return sum + usage.count; }, 0);
     return total > 1 || usages.length > 1;
   }
 
-  /** GitHub's C# colouring: keywords/strings/comments/literals come from hljs, method declarations… */
+
   PR.colorizeCell = function (cell, language) {
     if (language !== PR.COLORIZED_LANGUAGE.CSHARP) return;
     if (cell.dataset.colored === "1") return;
@@ -229,7 +229,7 @@
     nodes.forEach(colorizeNode);
   };
 
-  /** Class/struct/enum names must not be purple or salmon in a C# diff. */
+
   function neutraliseTypeTitles(cell) {
     var titles = cell.querySelectorAll(".hljs-title, .hljs-subst");
     for (var i = 0; i < titles.length; i += 1) titles[i].classList.add("hljs-plain");
@@ -263,7 +263,7 @@
     textNode.parentNode.replaceChild(fragment, textNode);
   }
 
-  /** Only a call gets a colour. */
+
   function identifierClass(value, index, word) {
     var after = value.slice(index + word.length);
     if (CALL_SUFFIX.test(after)) return PR.SYM_CLASS.CALL;
@@ -272,7 +272,7 @@
 
   function buildSymbolLink(name, target, colourClass) {
     var a = document.createElement("a");
-    // Links must keep the token's own colour; GitHub underlines code links instead of recolouring…
+
     a.className = "sym-link" + (colourClass ? " " + colourClass : "");
     a.dataset.name = name;
     a.setAttribute("href", PR.fileUrl(target.path, target.line));
@@ -287,7 +287,7 @@
     return a;
   }
 
-  /** ---------------------------- usage popover ----------------------------- */
+
   PR.showSymbolPopover = function (anchor, name) {
     PR.hideSymbolPopover();
 
@@ -331,7 +331,7 @@
     var margin = PR.UI.POPOVER_MARGIN;
     var offset = PR.UI.POPOVER_OFFSET;
     var width = Math.min(PR.UI.POPOVER_WIDTH, window.innerWidth - margin * 2);
-    // Prefer below the anchor; flip above when there is no room, so the popover never sits on top of…
+
     var spaceBelow = window.innerHeight - rect.bottom;
     var height = Math.min(pop.offsetHeight || PR.UI.POPOVER_MAX_HEIGHT, PR.UI.POPOVER_MAX_HEIGHT);
     var top = spaceBelow > height + offset ? rect.bottom + offset : Math.max(margin, rect.top - height - offset);
@@ -343,7 +343,7 @@
     pop.style.left = Math.round(Math.max(margin, left)) + "px";
   }
 
-  /** Usage list from the precomputed index: current file first, others after. */
+
   function loadUsages(pop, name) {
     var el = pop.querySelector(".js-usage");
     if (!el) return;

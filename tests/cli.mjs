@@ -1,11 +1,4 @@
-/**
- * The launcher contract every editor integration relies on.
- *
- * VS Code, Visual Studio and Zed all run `src/cli.js`, read the one
- * `PR_REVIEW_READY` line from stdout and take the URL from it. If that line,
- * its fields or the exit behaviour change, all three break at once — so this
- * test runs the real program and checks the contract end to end.
- */
+
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { execFile } from "node:child_process";
@@ -31,7 +24,7 @@ function check(name, fn) {
       },
     );
 }
-/** Runs the launcher and resolves with the parsed ready line, or rejects. */
+
 function runCli(args, { cwd }) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [CLI_SCRIPT, ...args], {
@@ -70,12 +63,12 @@ try {
   await git("add", "-A");
   await git("commit", "-m", "init");
 
-  // The base a branch review resolves to. Without it the branch scope has no
-  // diff to show, which is what a fresh clone without remotes looks like.
+
+
   const trunk = (await git("rev-parse", "HEAD")).stdout.trim();
   await git("update-ref", "refs/remotes/origin/dev", trunk);
 
-  // An uncommitted change, for the uncommitted scope.
+
   await writeFile(join(repo, "src/app.ts"), "export const value = 2;\n");
 
   let child = null;
@@ -121,8 +114,8 @@ try {
   });
 
   await check("the launcher stops when it is signalled", async () => {
-    // On Windows a killed child reports a null code, so the exit itself is the
-    // assertion: the process must not outlive the signal.
+
+
     const exited = new Promise((resolve) => child.once("exit", resolve));
     child.kill();
     await exited;

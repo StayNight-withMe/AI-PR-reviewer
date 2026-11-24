@@ -1,11 +1,4 @@
-/**
- * Settings must survive across reviews and page restarts.
- *
- * Settings are stored on the server under a device key, so they survive a new
- * review, a changed diff and a page restart.
- *
- * Run: node tests/settings-persistence.mjs
- */
+
 import assert from "node:assert/strict";
 import { Builder, By, until } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox.js";
@@ -31,20 +24,23 @@ const dbPath = join(dbDir, "db.json");
 await writeFile(dbPath, JSON.stringify({ auth: true, default: String(PR_NUMBER), pullRequests: { [PR_NUMBER]: pullRequestPayload(fixture, PR_NUMBER) } }));
 process.env[GH.ENV_BIN] = join(ROOT, "fixtures", "mock-gh.mjs");
 process.env.MOCK_GH_DB = dbPath;
-// Start from a clean settings file so the run does not depend on the machine.
+
+
 const { settingsPath } = await import("../src/settings-store.js");
+const { GIT } = await import("../src/config.js");
+process.env[GIT.ARTIFACTS_DIR_ENV] = await mkdtemp(join(tmpdir(), "settings-e2e-"));
 await (await import("node:fs/promises")).rm(settingsPath(), { force: true });
 const first = await startReview({ repoPath: fixture.repo, mode: MODE.PR, pr: PR_NUMBER, port: 0, symbols: false, dispatchEnabled: false });
 const driver = await new Builder()
   .forBrowser("firefox")
   .setFirefoxOptions(new firefox.Options().addArguments("-headless").windowSize({ width: 1200, height: 900 }))
   .build();
-/** Opens a page and waits until it is fully wired (settings loaded, handlers bound). */
+
 async function openPage(url) {
   await driver.get(url);
   await driver.wait(until.elementLocated(By.css(".diff-file")), 20_000);
-  // `body.dataset.booted` is set once settings are loaded and the controls are
-  // bound, so a change made now is actually handled and saved.
+
+
   await driver.wait(async () => driver.executeScript(`return document.body.dataset.booted === '1';`), 15_000);
   await PAUSE(300);
 }
@@ -52,7 +48,9 @@ try {
   await check("settings are written to the server, not just localStorage", async () => {
     await openPage(first.url);
 
-    // Change a few settings through the real controls.
+    assert.deepEqual(await driver.executeScript(`return [document.getElementById('set-tree-indent').value, getComputedStyle(PR.els.tree).getPropertyValue('--tree-indent').trim()]`), ['4', '4px']);
+
+
     await driver.executeScript(`return (function(){
       var mode = document.getElementById('set-diff-mode');
       mode.value = 'split';
@@ -69,7 +67,7 @@ try {
     })();`);
     await PAUSE(600);
 
-    // The server is the source of truth: a new port must still see them.
+
     const response = await fetch(new URL("/api/settings", first.url));
     const payload = await response.json();
     assert.equal(payload.ok, true);
@@ -92,8 +90,8 @@ try {
   });
 
   await check("a different review on the same device keeps the settings", async () => {
-    // A second review gets its own port, so localStorage cannot carry anything:
-    // the server file must do it.
+
+
     const otherFile = join(fixture.repo, "src/another.ts");
     await writeFile(otherFile, "export const another = 1;\n");
 
@@ -126,6 +124,27 @@ try {
     };`);
     assert.equal(state.diffMode, "split", "the layout was lost after a reload");
     assert.equal(state.treeIndent, 24, "the indent was lost after a reload");
+  });
+
+  await check("the toolbar layout button is remembered device-wide", async () => {
+    await openPage(first.url);
+
+
+    await driver.executeScript(`document.querySelector('.js-mode-opt[data-mode="unified"]').click(); return true;`);
+    await PAUSE(800);
+
+    const stored = await fetch(new URL("/api/settings", first.url)).then((response) => response.json());
+    assert.equal(stored.settings.diffMode, "unified", "the toolbar choice never reached the server");
+
+    await openPage(first.url);
+    const state = await driver.executeScript(`return {
+      mode: PR.state.diffMode,
+      splitTables: document.querySelectorAll('.diff-table.split').length,
+      pressed: document.querySelector('.js-mode-opt[data-mode="unified"]').getAttribute('aria-pressed'),
+    };`);
+    assert.equal(state.mode, "unified", "the toolbar choice was lost after a reload");
+    assert.equal(state.splitTables, 0, "the page came back in the other layout");
+    assert.equal(state.pressed, "true", "the toolbar does not show the stored layout");
   });
 
   await check("a corrupt settings file does not break the page", async () => {

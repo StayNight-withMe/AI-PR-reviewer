@@ -1,7 +1,7 @@
 import { diffStats, isBinaryPath, languageFor, parseDiff } from "../diff.js";
 import { P } from "../config.js";
 import { sortLikeTree } from "./order.js";
-/** Turns a raw git diff into the file model the UI consumes. */
+
 export function toFileModel(diffText) {
   const files = parseDiff(diffText).map((file) => ({
     path: file.path,
@@ -14,14 +14,14 @@ export function toFileModel(diffText) {
     changeCount: file.additions + file.deletions,
     language: languageFor(file.path),
     hunks: file.hunks,
-    // Filled in by attachGapMetadata(): the hidden regions of unchanged lines.
+
     gaps: [],
     totalLines: P.ZERO,
   }));
 
   return sortLikeTree(files);
 }
-/** File + stats bundle used by the commit / range endpoints. */
+
 export function toDiffSet(diffText) {
   const files = toFileModel(diffText);
   return { files, stats: diffStats(files) };

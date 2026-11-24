@@ -25,3 +25,12 @@ chromedriver/
 Thumbs.db
 # History builder scratch
 .history-*
+
+# Extension packages are build output, not source.
+editors/**/*.vsix
+editors/visualstudio/obj/
+# A throwaway VS Code the extension test downloads and runs in
+editors/vscode/.vscode-test/
+# Visual Studio per-solution cache
+.vs/
+editors/visualstudio/extension.vsixmanifest

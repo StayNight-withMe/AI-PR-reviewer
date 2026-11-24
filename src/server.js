@@ -1,8 +1,9 @@
 import { createServer } from "node:http";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { APP, ARTIFACTS, P, QUERY, ROUTES, SERVER } from "./config.js";
+import { APP, ARTIFACTS, GH, P, QUERY, REVIEW_STATE, REVIEW_STATE_LABEL, ROUTES, SERVER } from "./config.js";
 import { readSettings, writeSettings } from "./settings-store.js";
+import { writeReviewFiles as writeReviewOutput } from "./review-output.js";
 const HEADER_CONTENT_TYPE = SERVER.HEADER_CONTENT_TYPE;
 const HEADER_CACHE_CONTROL = SERVER.HEADER_CACHE_CONTROL;
 export async function servePage(options) {
@@ -12,6 +13,7 @@ export async function servePage(options) {
     meta,
     onReview,
     onDispatch,
+    onPublish,
     buildFilePage,
     readFile,
     readFiles,
@@ -23,6 +25,7 @@ export async function servePage(options) {
     listCommits,
     listBranches,
     loadBranchCommits,
+    saveThreads,
     port = SERVER.DEFAULT_PORT,
     host = SERVER.HOST,
     symbols = P.EMPTY_OBJECT,
@@ -38,11 +41,15 @@ export async function servePage(options) {
 
   const server = createServer(async (request, response) => {
     try {
+      const rejected = rejectForeignRequest(request, response);
+      if (rejected) return;
+
       const url = new URL(request.url, `${SERVER.URL_PROTOCOL}${request.headers.host}`);
       const handled = await dispatch({
         request, response, url, html, outputDir, meta, session,
-        buildFilePage, readFile, readFiles, loadCommit, loadRange, findUsages, symbols, onReview, onDispatch,
+        buildFilePage, readFile, readFiles, loadCommit, loadRange, findUsages, symbols, onReview, onDispatch, onPublish,
         searchProject, renameCommit, listCommits, listBranches, loadBranchCommits,
+        saveThreads,
       });
       if (!handled) {
         send(response, SERVER.STATUS_NOT_FOUND, SERVER.MIME.TEXT, SERVER.DEFAULT_ERROR);
@@ -52,7 +59,11 @@ export async function servePage(options) {
         response.destroy();
         return;
       }
-      send(response, SERVER.STATUS_ERROR, SERVER.MIME.JSON, JSON.stringify({
+
+      const status = error?.message === SERVER.BODY_TOO_LARGE
+        ? SERVER.STATUS_BAD_REQUEST
+        : SERVER.STATUS_ERROR;
+      send(response, status, SERVER.MIME.JSON, JSON.stringify({
         ok: false,
         error: String(error?.message ?? error),
       }));
@@ -111,6 +122,9 @@ async function dispatch(ctx) {
   if (post && url.pathname === ROUTES.API_REVIEW) {
     return handleReviewSubmit(ctx);
   }
+  if (post && url.pathname === ROUTES.API_PUBLISH) {
+    return handlePublish(ctx);
+  }
   if (post && url.pathname === ROUTES.API_DISPATCH) {
     return handleDispatch(ctx);
   }
@@ -134,7 +148,7 @@ async function dispatch(ctx) {
     }));
     return true;
   }
-  // Device-wide UI settings: one small file shared by every review page of
+
 
   if (get && url.pathname === ROUTES.API_SETTINGS) {
     send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, settings: await readSettings() }));
@@ -192,6 +206,10 @@ async function dispatch(ctx) {
     return handleUsages(ctx);
   }
 
+  if (post && url.pathname === ROUTES.API_THREADS) {
+    return handleThreadsSave(ctx);
+  }
+
   if (get && url.pathname === ROUTES.FAVICON) {
     send(response, SERVER.STATUS_NO_CONTENT, SERVER.MIME.TEXT, P.EMPTY);
     return true;
@@ -199,7 +217,7 @@ async function dispatch(ctx) {
 
   return false;
 }
-/** --------------------------------- handlers -------------------------------- */
+
 async function handleFileView({ response, url, buildFilePage }) {
   const filePath = url.searchParams.get(QUERY.PATH) ?? P.EMPTY;
   if (!filePath) {
@@ -219,7 +237,7 @@ async function handleFileJson({ response, url, readFile }) {
   }
   return true;
 }
-/** Batch variant of /api/file: one request for many files. */
+
 async function handleFilesBatch({ request, response, readFiles }) {
   const payload = JSON.parse(await readBody(request));
   const paths = Array.isArray(payload.paths) ? payload.paths.slice(P.ZERO, SERVER.MAX_BATCH_FILES) : P.EMPTY_ARRAY;
@@ -243,7 +261,12 @@ function handlePaths({ response, outputDir }) {
   return true;
 }
 async function handleReviewSubmit({ request, response, outputDir, meta, onReview, session }) {
-  const review = JSON.parse(await readBody(request));
+  const review = normalizeReview(await readBody(request));
+  if (!review) {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.INVALID_BODY }));
+    return true;
+  }
+
   const savedImages = await persistImages(outputDir, review);
   const result = await onReview(review, meta);
 
@@ -252,8 +275,106 @@ async function handleReviewSubmit({ request, response, outputDir, meta, onReview
   session.resolveSubmitted({ ...result, review });
   return true;
 }
+
+async function handlePublish({ request, response, meta, onPublish }) {
+  if (!onPublish) {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: GH.ERROR_NOT_A_PR }));
+    return true;
+  }
+
+  const review = normalizeReview(await readBody(request));
+  if (!review) {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.INVALID_BODY }));
+    return true;
+  }
+
+  const result = await onPublish(review, meta);
+  send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, ...result }));
+  return true;
+}
+
+function rejectForeignRequest(request, response) {
+  const host = String(request.headers.host ?? P.EMPTY);
+  const hostname = host.replace(/:\d+$/, P.EMPTY).toLowerCase();
+
+  if (!SERVER.ALLOWED_HOSTS.includes(hostname)) {
+    send(response, SERVER.STATUS_FORBIDDEN, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.BAD_HOST }));
+    return true;
+  }
+
+
+
+  if (request.method === SERVER.METHOD_POST) {
+    const type = String(request.headers[HEADER_CONTENT_TYPE] ?? P.EMPTY);
+    if (!type.toLowerCase().startsWith(SERVER.JSON_CONTENT_TYPE_PREFIX)) {
+      send(response, SERVER.STATUS_FORBIDDEN, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.BAD_CONTENT_TYPE }));
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export function normalizeReview(raw) {
+  let payload;
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  const review = payload && typeof payload === "object" && !Array.isArray(payload) ? payload : {};
+
+  return {
+    ...review,
+    reviewState: Object.hasOwn(REVIEW_STATE_LABEL, review.reviewState ?? P.EMPTY)
+      ? review.reviewState
+      : REVIEW_STATE.COMMENT,
+    reviewBody: clampText(review.reviewBody, SERVER.MAX_REVIEW_BODY_CHARS),
+    comments: toComments(review.comments),
+    noteImages: toImages(review.noteImages),
+    viewedFiles: Array.isArray(review.viewedFiles)
+      ? review.viewedFiles.filter((path) => typeof path === P.TYPE_STRING)
+      : P.EMPTY_ARRAY,
+    summary: review.summary && typeof review.summary === "object" ? review.summary : undefined,
+  };
+}
+function clampText(value, max) {
+  const text = typeof value === P.TYPE_STRING ? value : P.EMPTY;
+  return text.length > max ? text.slice(P.ZERO, max) : text;
+}
+
+export function toComments(comments) {
+  if (!Array.isArray(comments)) return P.EMPTY_ARRAY;
+
+  return comments
+    .filter((comment) => comment && typeof comment === "object" && typeof comment.path === P.TYPE_STRING && comment.path)
+    .slice(P.ZERO, SERVER.MAX_COMMENTS_PER_REVIEW)
+    .map((comment) => ({
+      ...comment,
+      body: typeof comment.body === P.TYPE_STRING ? comment.body : P.EMPTY,
+
+
+      resolved: comment.resolved === true,
+      images: toImages(comment.images),
+    }));
+}
+
+export function toImages(images) {
+  if (!Array.isArray(images)) return P.EMPTY_ARRAY;
+
+  return images
+    .filter((image) => image && typeof image === "object" && typeof image.dataUrl === P.TYPE_STRING)
+    .slice(P.ZERO, SERVER.MAX_IMAGES_PER_REVIEW);
+}
 async function handleDispatch({ request, response, onDispatch, session }) {
-  const payload = JSON.parse(await readBody(request));
+  let payload;
+  try {
+    payload = JSON.parse(await readBody(request));
+  } catch {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.INVALID_BODY }));
+    return true;
+  }
+
   session.lastDispatch = payload;
   const result = onDispatch ? await onDispatch(payload) : { ok: true };
   send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, ...result }));
@@ -324,6 +445,29 @@ async function handleSearch({ response, url, searchProject }) {
   }
   return true;
 }
+async function handleThreadsSave({ request, response, saveThreads }) {
+  if (!saveThreads) {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.THREADS_UNAVAILABLE }));
+    return true;
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(await readBody(request));
+  } catch {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.INVALID_BODY }));
+    return true;
+  }
+
+  const comments = toComments(payload?.comments);
+  try {
+    const saved = await saveThreads(comments);
+    send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, saved }));
+  } catch (error) {
+    send(response, SERVER.STATUS_ERROR, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: String(error.message) }));
+  }
+  return true;
+}
 async function handleCommitRename({ request, response, renameCommit }) {
   if (!renameCommit) {
     send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.RENAME_UNAVAILABLE }));
@@ -353,7 +497,7 @@ async function handleCommitRename({ request, response, renameCommit }) {
   }
   return true;
 }
-/** --------------------------------- helpers -------------------------------- */
+
 function send(response, status, contentType, body) {
   response.writeHead(status, {
     [HEADER_CONTENT_TYPE]: contentType,
@@ -365,59 +509,68 @@ function readBody(request) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let size = P.ZERO;
+    let tooLarge = false;
 
     request.on("data", (chunk) => {
+      if (tooLarge) return;
       size += chunk.length;
+
+
       if (size > SERVER.MAX_BODY_BYTES) {
+        tooLarge = true;
         reject(new Error(SERVER.BODY_TOO_LARGE));
-        request.destroy();
         return;
       }
       chunks.push(chunk);
     });
 
-    request.on("end", () => resolve(Buffer.concat(chunks).toString(SERVER.CHARSET)));
-    request.on("error", reject);
+    request.on("end", () => {
+      if (!tooLarge) resolve(Buffer.concat(chunks).toString(SERVER.CHARSET));
+    });
+    request.on("error", (error) => {
+      if (!tooLarge) reject(error);
+    });
   });
 }
 function delay(ms, value) {
   return new Promise((resolve) => setTimeout(() => resolve(value), ms));
 }
-/** Images pasted into comments arrive as data URLs; store them as real files. */
+
 async function persistImages(outputDir, review) {
   const saved = [];
   const imagesDir = join(outputDir, ARTIFACTS.IMAGES_DIR);
 
-  for (const comment of review.comments ?? P.EMPTY_ARRAY) {
-    if (!Array.isArray(comment.images) || comment.images.length === P.ZERO) continue;
+  const collect = async (images, prefix) => {
+    if (!Array.isArray(images) || images.length === P.ZERO) return;
 
-    await mkdir(imagesDir, { recursive: true });
-
-    for (const [index, image] of comment.images.entries()) {
+    for (const [index, image] of images.entries()) {
       const match = SERVER.DATA_URL_PATTERN.exec(image.dataUrl ?? P.EMPTY);
       if (!match) continue;
 
-      const extension = match[1].split(P.SLASH)[1].replace(SERVER.XML_SUFFIX, P.EMPTY).replace(SERVER.JPEG_SUFFIX, SERVER.JPG_EXTENSION);
-      const fileName = `${comment.id}${P.DASH}${index}${P.DOT}${extension}`;
-      await writeFile(join(imagesDir, fileName), Buffer.from(match[2], SERVER.BASE64));
+
+
+
+      const extension = SERVER.IMAGE_TYPES[match[P.ONE].toLowerCase()];
+      if (!extension) continue;
+
+      await mkdir(imagesDir, { recursive: true });
+      const fileName = `${prefix}${P.DASH}${index}${P.DOT}${extension}`;
+      await writeFile(join(imagesDir, fileName), Buffer.from(match[P.TWO], SERVER.BASE64));
 
       image.file = `${ARTIFACTS.IMAGES_DIR}${P.SLASH}${fileName}`;
       saved.push(image.file);
     }
+  };
+
+  for (const [index, comment] of (review.comments ?? P.EMPTY_ARRAY).entries()) {
+    await collect(comment.images, `comment-${index}`);
   }
+
+
+  await collect(review.noteImages, SERVER.NOTE_IMAGE_PREFIX);
 
   return saved;
 }
 export async function writeReviewFiles(outputDir, meta, review, markdown) {
-  await mkdir(outputDir, { recursive: true });
-
-  const jsonPath = join(outputDir, ARTIFACTS.REVIEW_JSON);
-  const markdownPath = join(outputDir, ARTIFACTS.REVIEW_MARKDOWN);
-
-  await Promise.all([
-    writeFile(jsonPath, JSON.stringify({ meta, review }, null, SERVER.JSON_INDENT), SERVER.FILE_ENCODING),
-    writeFile(markdownPath, markdown, SERVER.FILE_ENCODING),
-  ]);
-
-  return { jsonPath, markdownPath, markdown };
+  return writeReviewOutput(outputDir, meta, review, markdown);
 }

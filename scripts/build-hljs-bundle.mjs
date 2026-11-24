@@ -1,14 +1,4 @@
-/**
- * Rebuilds `src/assets/hljs-bundle.js` from the installed highlight.js.
- *
- * The page ships one hand-assembled bundle instead of a loader: the review opens
- * from `file://`-free localhost, but must still work with no network and no
- * bundler. Every language listed here is registered up front, so a diff of a Go,
- * Java or Rust file is coloured too — a language missing from the bundle was
- * rendering as plain white text.
- *
- * Run: node scripts/build-hljs-bundle.mjs
- */
+
 import { readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
@@ -21,7 +11,7 @@ const HLJS_LIB = dirname(require.resolve("highlight.js/lib/core"));
 const LANGUAGES_DIR = join(HLJS_LIB, "languages");
 const OUTPUT = join(ROOT, "..", "src", FILES.ASSETS_DIR, ASSETS.BUNDLE);
 
-/** Languages registered into the bundle, in the order they are defined. */
+
 const LANGUAGES = [
   "csharp",
   "javascript",

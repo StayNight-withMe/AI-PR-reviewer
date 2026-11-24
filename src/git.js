@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { promisify } from "node:util";
 import { GIT, P } from "./config.js";
 const exec = promisify(execFile);
-/** Absolute path of the git executable, or the plain name when it is on PATH. */
+
 let gitBinary = null;
 export function resolveGitBinary(env = process.env) {
   if (gitBinary) return gitBinary;
@@ -16,20 +16,20 @@ export function resolveGitBinary(env = process.env) {
       return gitBinary;
     }
   }
-  // Fall back to the PATH lookup: git may live in a custom location.
+
   gitBinary = GIT.BIN;
   return gitBinary;
 }
-/** Clears the cached git path (used by tests that change the environment). */
+
 export function resetGitBinary() {
   gitBinary = null;
 }
-/** Runs git with safe arguments. */
+
 export async function git(repoPath, args, { allowFailure = true, input } = {}) {
   const binary = resolveGitBinary();
-  // Without this, git writes a path with non-ASCII letters as an octal
-  // escape ("docs/\320\275.md"), and the review would show the escape
-  // instead of the real name of the file.
+
+
+
   const safeArgs = [...GIT.ARGS.QUOTE_PATH_OFF, ...args];
   try {
     const { stdout } = await exec(binary, safeArgs, {
@@ -68,7 +68,7 @@ export async function remoteUrl(repoPath) {
   const { ok, stdout } = await git(repoPath, GIT.ARGS.REMOTE);
   return ok ? stdout.trim() : null;
 }
-/** The branches of the repository, remote ones included. */
+
 export async function listBranches(repoPath) {
   const { ok, stdout } = await git(repoPath, GIT.ARGS.BRANCHES);
   if (!ok) return [];
@@ -80,25 +80,37 @@ export async function listBranches(repoPath) {
       .filter((name) => name && name !== GIT.HEAD_ALIAS),
   )].sort();
 }
+
+export function safeRef(ref) {
+  const value = String(ref ?? P.EMPTY).trim();
+  if (!value || !GIT.REF_PATTERN.test(value)) throw new Error(`${GIT.ERROR_BAD_REF}${ref}`);
+  return value;
+}
 export async function resolveCommit(repoPath, ref) {
-  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.REV_PARSE_COMMIT, GIT.FLAGS.VERIFY, `${ref}${GIT.COMMIT_SUFFIX}`]);
+  const { ok, stdout } = await git(repoPath, [
+    ...GIT.ARGS.REV_PARSE_COMMIT, GIT.FLAGS.VERIFY, GIT.END_OF_OPTIONS, `${safeRef(ref)}${GIT.COMMIT_SUFFIX}`,
+  ]);
   return ok ? stdout.trim() : null;
 }
 export async function mergeBase(repoPath, base, head) {
-  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.MERGE_BASE, base, head]);
+  const { ok, stdout } = await git(repoPath, [
+    ...GIT.ARGS.MERGE_BASE, GIT.END_OF_OPTIONS, safeRef(base), safeRef(head),
+  ]);
   return ok ? stdout.trim() : null;
 }
-/** The commit itself, or the empty tree when it has no parent (a root commit). */
+
 export async function parentOrEmptyTree(repoPath, sha) {
-  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.REV_PARSE_COMMIT, `${sha}${GIT.TILDE}`]);
+  const { ok, stdout } = await git(repoPath, [
+    ...GIT.ARGS.REV_PARSE_COMMIT, GIT.END_OF_OPTIONS, `${safeRef(sha)}${GIT.TILDE}`,
+  ]);
   return ok && stdout.trim() ? stdout.trim() : GIT.EMPTY_TREE_OBJECT;
 }
-/** Patch between two revisions (a tree or a commit), straight from `from` to `to`. */
+
 export async function diffFromTo(repoPath, from, to) {
-  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.DIFF, from, to]);
+  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.DIFF, GIT.END_OF_OPTIONS, safeRef(from), safeRef(to)]);
   return ok ? stdout : P.EMPTY;
 }
-/** The commits in newest-first order, without walking their ancestors. */
+
 export async function orderCommits(repoPath, shas) {
   const { ok, stdout } = await git(repoPath, [...GIT.ARGS.REV_LIST_NO_WALK, ...shas]);
   if (!ok || !stdout.trim()) return shas;
@@ -106,11 +118,13 @@ export async function orderCommits(repoPath, shas) {
   const ordered = stdout.split(P.NEWLINE).map((line) => line.trim()).filter(Boolean);
   return ordered.length ? ordered : shas;
 }
-/** Commits of a range, newest first. */
+
 export async function listCommits(repoPath, { range, head, excludeRemotes = false, limit = GIT.MAX_COMMITS } = {}) {
   const args = [...GIT.ARGS.LOG, `${GIT.FLAG_MAX_COUNT}${limit}`];
-  if (range) args.push(range);
-  if (excludeRemotes) args.push(head ?? GIT.DEFAULT_REF, ...GIT.ARGS.LOG_NOT_REMOTES);
+
+
+  if (range) args.push(safeRef(range));
+  if (excludeRemotes) args.push(...GIT.ARGS.LOG_NOT_REMOTES, safeRef(head ?? GIT.DEFAULT_REF));
 
   const { ok, stdout } = await git(repoPath, args);
   if (!ok) return [];
@@ -123,7 +137,7 @@ export async function listCommits(repoPath, { range, head, excludeRemotes = fals
       return { sha, shortSha, subject, authorName, authorEmail, date };
     });
 }
-/** The head commit of every branch. */
+
 export async function listBranchHeads(repoPath, branches) {
   return Promise.all(branches.map(async (name) => {
     const { ok, stdout } = await git(repoPath, [...GIT.ARGS.LOG, `${GIT.FLAG_MAX_COUNT}1`, name]);
@@ -133,15 +147,19 @@ export async function listBranchHeads(repoPath, branches) {
     return { name, sha: sha ?? P.EMPTY, shortSha: shortSha ?? P.EMPTY, subject: subject ?? P.EMPTY, authorName: authorName ?? P.EMPTY, date: date ?? P.EMPTY };
   }));
 }
-/** Full-text project search: one `git grep` over the working tree. */
+
 export async function searchProject(repoPath, query, { limit = GIT.MAX_SEARCH_HITS } = {}) {
   const trimmed = String(query ?? P.EMPTY).trim();
   if (trimmed.length < GIT.MIN_SEARCH_LENGTH) return [];
-  // files are searched as well: a query of a file name has to find that file.
+
   const [content, paths] = await Promise.all([
     git(repoPath, [
       ...GIT.ARGS.GREP_LINES,
       GIT.FLAG_IGNORE_CASE,
+
+
+
+      GIT.FLAG_PATTERN,
       trimmed,
       GIT.FLAGS.HEAD,
       GIT.FLAGS.DOT,
@@ -177,7 +195,7 @@ export async function searchProject(repoPath, query, { limit = GIT.MAX_SEARCH_HI
     })
     .slice(P.ZERO, limit);
 }
-/** Parses one line of `git grep`: path, line number and the text of the line. */
+
 function parseGrepLine(line) {
   const first = line.indexOf(P.COLON);
   const second = line.indexOf(P.COLON, first + P.ONE);
@@ -193,14 +211,14 @@ function parseGrepLine(line) {
   };
 }
 export async function commitDiff(repoPath, sha) {
-  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.SHOW_STAT, sha]);
+  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.SHOW_STAT, GIT.END_OF_OPTIONS, safeRef(sha)]);
   return ok ? stdout : P.EMPTY;
 }
-/** SHAs already reachable from any remote ref: these must never be rewritten. */
+
 export async function pushedShas(repoPath) {
   const { ok, stdout } = await git(repoPath, GIT.ARGS.REV_LIST_UNPUSHED);
   if (!ok) return new Set();
-  // Everything reachable from HEAD minus everything not on a remote.
+
   const unpushed = new Set(stdout.split(P.NEWLINE).filter(Boolean));
   const { ok: headOk, stdout: headOut } = await git(repoPath, GIT.ARGS.REV_LIST_HEAD);
   if (!headOk) return new Set();
@@ -211,18 +229,25 @@ export async function pushedShas(repoPath) {
   }
   return pushed;
 }
-/** Rewrites the message of a commit. */
+
 export async function renameCommit(repoPath, sha, message, { allowPushed = false } = {}) {
   const resolved = await resolveCommit(repoPath, sha);
-  if (!resolved) throw new Error(`Commit not found: ${sha}`);
+  if (!resolved) throw new Error(`${GIT.ERROR_COMMIT_NOT_FOUND}${sha}`);
 
   if (!allowPushed) {
     const pushed = await pushedShas(repoPath);
-    if (pushed.has(resolved)) throw new Error("This commit is already pushed; allow rewriting it explicitly.");
+    if (pushed.has(resolved)) throw new Error(GIT.ERROR_COMMIT_PUSHED);
   }
 
   const head = await resolveCommit(repoPath, GIT.DEFAULT_REF);
-  if (!head) throw new Error("No commits to rewrite.");
+  if (!head) throw new Error(GIT.ERROR_NOTHING_TO_REWRITE);
+
+
+
+  if (!(await isAncestor(repoPath, resolved, head))) {
+    throw new Error(`${GIT.ERROR_COMMIT_NOT_ON_BRANCH}${resolved.slice(P.ZERO, GIT.SHORT_SHA_LENGTH)}`);
+  }
+
   if (resolved === head) {
     await amendMessage(repoPath, message);
     return resolveCommit(repoPath, GIT.DEFAULT_REF);
@@ -230,17 +255,22 @@ export async function renameCommit(repoPath, sha, message, { allowPushed = false
 
   return replayWithNewMessage(repoPath, resolved, head, message);
 }
+
+async function isAncestor(repoPath, sha, ref) {
+  const { ok } = await git(repoPath, [...GIT.ARGS.MERGE_BASE, GIT.ARGS.IS_ANCESTOR, GIT.END_OF_OPTIONS, sha, ref]);
+  return ok;
+}
 async function amendMessage(repoPath, message) {
   const { ok, stderr } = await git(repoPath, [...GIT.ARGS.COMMIT_AMEND_MESSAGE, message]);
   if (!ok) throw new Error(stderr?.trim() || "git commit --amend failed.");
 }
-/** Rewrites an older commit and replays everything above it. */
+
 async function replayWithNewMessage(repoPath, sha, head, message) {
   const parent = await firstParent(repoPath, sha);
   const tree = await revParse(repoPath, `${sha}${GIT.TREE_SUFFIX}`);
-  if (!tree) throw new Error("Cannot read the commit tree.");
+  if (!tree) throw new Error(GIT.ERROR_NO_TREE);
 
-  const backup = `${GIT.BACKUP_REF_PREFIX}${sha.slice(0, GIT.SHORT_SHA_LENGTH)}`;
+  const backup = `${GIT.BACKUP_REF_PREFIX}${sha.slice(P.ZERO, GIT.SHORT_SHA_LENGTH)}`;
   await git(repoPath, [...GIT.ARGS.UPDATE_REF, backup, head]);
 
   const created = await git(repoPath, [
@@ -251,17 +281,21 @@ async function replayWithNewMessage(repoPath, sha, head, message) {
   ]);
 
   const newSha = created.ok ? created.stdout.trim() : null;
-  if (!newSha) throw new Error(created.stderr?.trim() || "git commit-tree failed.");
+  if (!newSha) throw new Error(created.stderr?.trim() || GIT.ERROR_COMMIT_TREE_FAILED);
 
+
+
+
+  const branch = await currentBranch(repoPath);
   const rebaseArgs = parent
-    ? [...GIT.ARGS.REBASE_ONTO, newSha, parent, GIT.DEFAULT_REF]
-    : [...GIT.ARGS.REBASE_ROOT, newSha, GIT.DEFAULT_REF];
+    ? [...GIT.ARGS.REBASE_ONTO, newSha, parent, branch]
+    : [...GIT.ARGS.REBASE_ROOT, newSha, branch];
 
   const rebased = await git(repoPath, rebaseArgs);
   if (!rebased.ok) {
     await git(repoPath, GIT.ARGS.REBASE_ABORT);
-    await git(repoPath, [GIT.ARGS.RESET[0], GIT.ARGS.RESET[1], head]);
-    throw new Error(rebased.stderr?.trim() || `Rewrite failed; restored ${backup}.`);
+    await git(repoPath, [...GIT.ARGS.RESET, head]);
+    throw new Error(rebased.stderr?.trim() || `${GIT.ERROR_REWRITE_FAILED}${backup}.`);
   }
 
   return resolveCommit(repoPath, GIT.DEFAULT_REF);
@@ -269,7 +303,7 @@ async function replayWithNewMessage(repoPath, sha, head, message) {
 async function firstParent(repoPath, sha) {
   const { ok, stdout } = await git(repoPath, [GIT.REV_LIST, GIT.FLAGS.PARENTS, GIT.FLAGS.MAX_COUNT_ONE, sha]);
   if (!ok) return null;
-  // Output is "<sha> <parent>..." — the commit itself is the first field.
+
   const parts = stdout.trim().split(P.SPACE).filter(Boolean);
   return parts.length > P.ONE ? parts[P.ONE] : null;
 }
@@ -281,13 +315,13 @@ export async function diffUncommitted(repoPath, { includeStaged = true, includeU
   const parts = [];
   const pathspec = [GIT.FLAGS.HEAD, GIT.FLAGS.DOT, ...GIT.EXCLUDE_PATHSPEC];
 
-  // One `git diff HEAD` covers the index AND the working tree in a single
-  // patch. Asking for `--cached HEAD` and then `diff` separately listed a file
-  // twice whenever it was staged as new and edited again afterwards: once as
-  // "added", once as "modified". The UI keys sections by path, so both copies
-  // rendered the same lines and the last line of the file appeared twice.
-  // Without staged changes the plain `git diff` (index vs working tree) is the
-  // right question, so the flag is passed as an explicit revision instead.
+
+
+
+
+
+
+
   const trackedArgs = includeStaged
     ? [...GIT.ARGS.DIFF, GIT.DEFAULT_REF, ...pathspec]
     : [...GIT.ARGS.DIFF, ...pathspec];
@@ -304,30 +338,32 @@ export async function diffUncommitted(repoPath, { includeStaged = true, includeU
       }
     }
   }
-  // Each `git diff` already ends with a newline, and `git diff --no-index`
-  // exits with code 1 but still writes a full patch. Joining the parts with
-  // another newline left a blank line between hunks, which the diff parser
-  // turned into a phantom empty "meta" row at the end of the file.
+
+
+
+
   return parts
     .filter(Boolean)
     .map((part) => part.replace(/\n+$/, P.NEWLINE))
     .join(P.EMPTY);
 }
 export async function diffBetween(repoPath, base, head) {
-  const { ok, stdout } = await git(repoPath, [...GIT.ARGS.DIFF, `${base}${GIT.RANGE_SEPARATOR}${head ?? GIT.DEFAULT_REF}`]);
+  const { ok, stdout } = await git(repoPath, [
+    ...GIT.ARGS.DIFF, GIT.END_OF_OPTIONS, `${safeRef(base)}${GIT.RANGE_SEPARATOR}${safeRef(head ?? GIT.DEFAULT_REF)}`,
+  ]);
   return ok ? stdout : P.EMPTY;
 }
 export async function fileContent(repoPath, ref, filePath) {
-  const { ok, stdout } = await git(repoPath, [GIT.SHOW, `${ref}:${filePath}`]);
+  const { ok, stdout } = await git(repoPath, [GIT.SHOW, GIT.END_OF_OPTIONS, `${ref}:${filePath}`]);
   return ok ? stdout : null;
 }
-/** Returns every tracked file path in the repository. */
+
 export async function listFiles(repoPath, { ref = GIT.DEFAULT_REF } = {}) {
   const { ok, stdout } = await git(repoPath, [...GIT.ARGS.LS_TREE, ref]);
   if (!ok) return [];
   return stdout.split(P.NEWLINE).map((line) => line.trim()).filter(Boolean);
 }
-/** Tracked file -> change status map. */
+
 export async function fileStatus(repoPath, { base, head } = {}) {
   const range = base && head
     ? `${base}${GIT.RANGE_SEPARATOR}${head}`
@@ -350,7 +386,7 @@ export async function fileStatus(repoPath, { base, head } = {}) {
   }
   return map;
 }
-/** Working-tree status for the uncommitted scope. */
+
 export async function workingTreeStatus(repoPath) {
   const [changed, untracked] = await Promise.all([
     git(repoPath, [...GIT.ARGS.DIFF_NAME_STATUS, GIT.DEFAULT_REF]),
@@ -373,7 +409,7 @@ export async function workingTreeStatus(repoPath) {
 
   if (untracked.ok && untracked.stdout) {
     for (const path of untracked.stdout.split(P.NEWLINE).map((line) => line.trim()).filter(Boolean)) {
-      // Our own artifacts never count as the user's changes.
+
       if (path.startsWith(`${GIT.LEGACY_ARTIFACT_DIR}${P.SLASH}`)) continue;
       if (!map[path]) map[path] = GIT.STATUS_ADDED_NAME;
     }
@@ -382,13 +418,13 @@ export async function workingTreeStatus(repoPath) {
   return map;
 }
 function toStatus(code) {
-  // codes must be mapped to the same names the diff parser uses.
+
   if (code.startsWith(GIT.STATUS_RENAME)) return GIT.STATUS_RENAMED;
   if (code === GIT.STATUS_ADDED) return GIT.STATUS_ADDED_NAME;
   if (code === GIT.STATUS_DELETED) return GIT.STATUS_DELETED_NAME;
   return GIT.STATUS_MODIFIED;
 }
-/** Reads many blobs in a single `git cat-file --batch` call. */
+
 export async function readBlobs(repoPath, paths, { ref = GIT.DEFAULT_REF } = {}) {
   const unique = Array.from(new Set(paths)).filter(Boolean);
   const result = new Map();
