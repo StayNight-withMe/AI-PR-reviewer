@@ -1,25 +1,23 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
+using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 namespace PrReview.VisualStudio
 {
-    /// <summary>
-    /// A dockable window that shows the review page.
-    ///
-    /// The page is a normal localhost HTTP app; WebView2 renders it exactly as
-    /// a browser would, so comments, screenshots and the "send to the AI" button
-    /// all behave the same as in the standalone page.
-    /// </summary>
+
     [Guid(ToolWindowGuidString)]
     public sealed class ReviewToolWindow : ToolWindowPane
     {
-        public const string ToolWindowGuidString = "d4e5f6a7-8b9c-4d0e-9f11-2a3b4c5d6e7f";
+        public const string ToolWindowGuidString = "f7c3d961-2a84-4b5e-9f16-73d0a8c24b51";
 
-        private readonly WebView2 _webView = new WebView2();
+        private readonly Grid _root = new Grid();
+        private readonly WebView2 _webView = new WebView2 { Visibility = Visibility.Collapsed };
         private readonly TextBlock _hint = new TextBlock
         {
             Margin = new Thickness(16),
@@ -27,60 +25,151 @@ namespace PrReview.VisualStudio
             Text = "Building the review of the current branch…",
         };
 
+        private bool _showing;
+        private bool _started;
+
         public ReviewToolWindow() : base(null)
         {
             Caption = "PR Review";
-            Content = _hint;
-            ((FrameworkElement)Content).Loaded += OnLoaded;
+            _root.Children.Add(_hint);
+            _root.Children.Add(_webView);
+            Content = _root;
+
+            var assemblyDirectory = Path.GetDirectoryName(typeof(PrReviewPackage).Assembly.Location) ?? string.Empty;
+            var idePrivateAssemblies = Path.GetFullPath(Path.Combine(
+                assemblyDirectory, "..", "..", "..", "..", "..", "Common7", "IDE", "PrivateAssemblies"));
+            if (Directory.Exists(idePrivateAssemblies))
+            {
+                var searchPath = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+                var alreadyListed = Array.Exists(searchPath.Split(';'),
+                    entry => string.Equals(entry.Trim(), idePrivateAssemblies, StringComparison.OrdinalIgnoreCase));
+                if (!alreadyListed)
+                {
+                    Environment.SetEnvironmentVariable("PATH", idePrivateAssemblies + ";" + searchPath);
+                }
+            }
+
+            var userData = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "PR Review", "WebView2",
+                System.Diagnostics.Process.GetCurrentProcess().Id.ToString());
+            Directory.CreateDirectory(userData);
+            _webView.CreationProperties = new CoreWebView2CreationProperties
+            {
+                UserDataFolder = userData,
+            };
+
+            _webView.NavigationCompleted += OnNavigationCompleted;
+            _webView.CoreWebView2InitializationCompleted += OnInitializationCompleted;
         }
 
-        private void OnLoaded(object sender, RoutedEventArgs e)
+        private void OnInitializationCompleted(object? sender, CoreWebView2InitializationCompletedEventArgs e)
         {
-            _ = ShowReviewAsync();
+            if (e.IsSuccess) return;
+
+            _showing = false;
+            ShowHint("PR Review could not start the embedded browser:\n"
+                + (e.InitializationException?.Message ?? "WebView2 initialization failed."));
         }
 
-        /// <summary>Starts the server (once) and points WebView2 at the page.</summary>
-        private async System.Threading.Tasks.Task ShowReviewAsync()
+        private void OnNavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
         {
+            if (e.IsSuccess)
+            {
+                _showing = false;
+                return;
+            }
+
+            _showing = false;
+            ShowHint("PR Review could not load the review page: " + e.WebErrorStatus);
+        }
+
+        private void ShowHint(string text)
+        {
+            _hint.Text = text;
+            _hint.Visibility = Visibility.Visible;
+            _webView.Visibility = Visibility.Collapsed;
+        }
+
+        public override void OnToolWindowCreated()
+        {
+            base.OnToolWindowCreated();
+
+            _ = EnsureReviewAsync();
+        }
+
+        internal async Task EnsureReviewAsync()
+        {
+            if (_started) return;
+            _started = true;
+            await ShowReviewAsync();
+        }
+
+        internal async Task ShowReviewAsync()
+        {
+            if (_showing) return;
+            _showing = true;
+            _started = true;
             var runner = PrReviewPackage.Runner;
             if (runner == null)
             {
-                _hint.Text = "PR Review is not initialized yet.";
+                ShowHint("PR Review is not initialized yet.");
+                _showing = false;
                 return;
             }
 
             try
             {
-                var cwd = FindRepositoryRoot();
-                var info = runner.Info ?? await runner.StartAsync(NodePath(), CliPath(), cwd, "branch", null);
 
-                Content = _webView;
-                await _webView.EnsureCoreWebView2Async();
-                _webView.Source = new Uri(info.Url);
+                var cwd = await FindRepositoryRootAsync();
+                _hint.Text = "Building the review of the current branch…";
+                var info = await runner.StartAsync(NodePath(), CliPath(), cwd, "branch", null);
 
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
                 Caption = $"PR Review: {info.Branch} (+{info.Additions} / -{info.Deletions})";
+                await NavigateAsync(info.Url);
             }
             catch (Exception error)
             {
-                Content = _hint;
-                _hint.Text = "PR Review failed to start:\n" + error.Message;
+                _started = false;
+                _showing = false;
+                ShowHint("PR Review failed to start:\n" + error.Message);
             }
         }
 
-        /// <summary>The repository of the open solution, or the current directory.</summary>
-        private static string FindRepositoryRoot()
+        private async Task NavigateAsync(string url)
         {
-            var directory = new DirectoryInfo(Environment.CurrentDirectory);
+            try
+            {
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                _hint.Visibility = Visibility.Collapsed;
+                _webView.Visibility = Visibility.Visible;
+                _webView.Source = new Uri(url);
+            }
+            catch (Exception error)
+            {
+                _showing = false;
+                ShowHint("PR Review could not start the embedded browser:\n" + error.Message);
+            }
+        }
+
+        private async Task<string> FindRepositoryRootAsync()
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            var configured = Environment.GetEnvironmentVariable("PR_REVIEW_REPO");
+            var start = !string.IsNullOrWhiteSpace(configured)
+                ? configured
+                : PrReviewPackage.Current?.SolutionDirectory() ?? Environment.CurrentDirectory;
+            var directory = new DirectoryInfo(start);
             while (directory != null)
             {
                 if (Directory.Exists(Path.Combine(directory.FullName, ".git"))) return directory.FullName;
                 directory = directory.Parent;
             }
 
-            return Environment.CurrentDirectory;
+            return start;
         }
 
-        /// <summary>Node on PATH, or a well-known installation.</summary>
         private static string NodePath()
         {
             var configured = Environment.GetEnvironmentVariable("PR_REVIEW_NODE");
@@ -100,7 +189,6 @@ namespace PrReview.VisualStudio
             return "node";
         }
 
-        /// <summary>The bundled server, or the checkout named by the environment.</summary>
         private static string CliPath()
         {
             var configured = Environment.GetEnvironmentVariable("PR_REVIEW_CLI");

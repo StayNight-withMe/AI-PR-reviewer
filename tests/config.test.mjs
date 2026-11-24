@@ -1,8 +1,4 @@
-/**
- * Guards against the class of bug where a module references a constant that was
- * renamed or dropped from the config: every `SYMBOL_INDEX.X`, `GIT.X`, `P.X`
- * etc. used anywhere in src/ must actually exist.
- */
+
 import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -64,7 +60,7 @@ test("every PR helper is invoked through its namespace", async () => {
     for (const match of text.matchAll(/PR\.([A-Za-z_]\w*)\s*=\s*function/g)) exported.add(match[1]);
 
     for (const fn of exported) {
-      // A bare call (not part of an object property and not prefixed by PR.)
+
       const bareCall = new RegExp(`(^|[^.\\w])${fn}\\s*\\(`, "m");
       if (bareCall.test(text)) offenders.push(`PR.${fn} called bare in ${name}`);
     }
@@ -77,7 +73,7 @@ test("every client constant referenced by UI code exists", async () => {
   const files = await collectFiles(join(SRC, "assets"));
   const constantsText = await readFile(join(SRC, "assets", "constants.js"), "utf8");
 
-  // Parse `window.PR.NAME = { KEY: ..., KEY2: ... }` blocks into a namespace -> keys map.
+
   const namespaces = {};
   const blockRe = /window\.PR\.([A-Za-z_]\w*)\s*=\s*\{([\s\S]*?)\n  \};/g;
   for (const block of constantsText.matchAll(blockRe)) {

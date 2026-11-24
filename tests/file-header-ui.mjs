@@ -1,15 +1,4 @@
-/**
- * Browser checks for two file-header affordances:
- *
- *   1. The full path tooltip — the row truncates a long path, so hovering must
- *      show the whole path in a readable box.
- *   2. The "more actions" menu — "Expand all" lives in a three-dots menu and is
- *      offered ONLY when the file still hides something.
- *
- * Runs against the PR fixture, so it needs no repository, gh or network.
- *
- * Run: node tests/file-header-ui.mjs
- */
+
 import assert from "node:assert/strict";
 import { Builder, By, until } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox.js";
@@ -63,7 +52,7 @@ try {
       return p.getAttribute('data-full-path');
     })();`);
 
-    // A real hover so the mouseover handler fires.
+
     const element = await driver.findElement(By.css(".diff-file-header .path"));
     await driver.actions().move({ origin: element }).perform();
     await PAUSE(700);
@@ -106,9 +95,9 @@ try {
   });
 
   await check("a file with hidden regions offers Expand all inside the menu", async () => {
-    // Force folding: a low threshold makes every gap a candidate. Large-file
-    // deferring is turned off so the pick below cannot land on a placeholder
-    // that has no hunks at all.
+
+
+
     await driver.executeScript(
       `(PR.state.settings.contextCollapseLines = 1, PR.state.settings.largeFileLines = 0, PR.renderFileList(), true)`,
     );
@@ -177,7 +166,7 @@ try {
       if (!flat) return { skipped: true };
       return { skipped: false, hasExpand: !!flat.querySelector('.file-menu-pop .js-expand-all') };
     })();`);
-    if (result.skipped) return; // no fully-visible file on this page
+    if (result.skipped) return;  
     assert.equal(result.hasExpand, false, "a file with nothing to expand still offers Expand all");
   });
 
@@ -210,7 +199,7 @@ try {
       };
     })();`);
 
-    if (result.skipped) return; // no tall file on this page
+    if (result.skipped) return;  
     assert.equal(result.sticky, "sticky", "the file header is not position: sticky");
     assert.ok(result.visible, `the header scrolled out of view (top=${result.headerTop})`);
     assert.ok(result.headerTop >= result.toolbarBottom - 2, `the header hides under the toolbar (${result.headerTop} < ${result.toolbarBottom})`);
@@ -244,9 +233,9 @@ try {
   });
 
   await check("an open menu paints above the next file's header", async () => {
-    // Regression: the popup lives inside a sticky header, which has its own
-    // z-index and therefore its own stacking context. The next file's header has
-    // the same z-index, so it painted over the open menu.
+
+
+
     const result = await driver.executeScript(`return (function(){
       var sections = Array.prototype.slice.call(document.querySelectorAll('.diff-file'));
       if (sections.length < 2) return { skipped: true };

@@ -1,4 +1,4 @@
-/** Settings panel + theme. */
+
 (function () {
   "use strict";
 
@@ -40,9 +40,10 @@
     PR.applySidebar();
     PR.applyTreeIndent();
     PR.syncViewedToggle();
+    if (PR.syncDiffModeButtons) PR.syncDiffModeButtons();
   };
 
-  /** Indent size for the tree, in pixels per nesting level. */
+
   PR.applyTreeIndent = function () {
     var size = clampIndent(PR.state.settings.treeIndent);
     PR.state.settings.treeIndent = size;
@@ -60,7 +61,7 @@
     return Math.max(PR.TREE_SIZE.MIN_INDENT, Math.min(PR.TREE_SIZE.MAX_INDENT, size));
   }
 
-  /** The toolbar button reflects the current filter instead of a fixed label. */
+
   PR.syncViewedToggle = function () {
     var button = document.getElementById("toggle-viewed");
     if (!button) return;
@@ -101,6 +102,7 @@
     bindField(FIELDS.diffMode, function (value) {
       PR.state.diffMode = value;
       PR.renderFileList();
+      PR.syncDiffModeButtons();
     });
 
     bindField(FIELDS.hideViewed, function (value) {
@@ -126,7 +128,7 @@
       PR.state.settings.treeIndent = Number(value);
       PR.applyTreeIndent();
     });
-    // A number input only fires `change` on blur/Enter; apply while typing too.
+
     var indentField = document.getElementById(FIELDS.treeIndent);
     if (indentField) {
       indentField.addEventListener("input", function () {
@@ -155,7 +157,7 @@
 
       PR.renderFileList();
     });
-    // A number input only fires `change` on blur/Enter; apply while typing too.
+
     var contextField = document.getElementById(FIELDS.contextCollapseLines);
     if (contextField) {
       contextField.addEventListener("input", function () {
@@ -182,7 +184,28 @@
     });
   };
 
-  /** Sidebar visibility is a persisted layout choice, not a per-session tweak. */
+
+  PR.syncDiffModeButtons = function () {
+    var mode = PR.state.diffMode;
+    document.querySelectorAll(".js-mode-opt").forEach(function (button) {
+      var on = button.dataset.mode === mode;
+      button.classList.add("is-toggle");
+      button.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  };
+
+
+  PR.setDiffMode = function (mode) {
+    if (!mode || mode === PR.state.diffMode) return;
+    PR.state.diffMode = mode;
+    PR.store();
+    var field = document.getElementById(FIELDS.diffMode);
+    if (field) field.value = mode;
+    PR.renderFileList();
+    PR.syncDiffModeButtons();
+  };
+
+
   PR.applySidebar = function () {    var on = PR.state.settings.showSidebar;
     document.body.classList.toggle("no-sidebar", !on);
     var button = document.getElementById(PR.IDS.BTN_SIDEBAR);

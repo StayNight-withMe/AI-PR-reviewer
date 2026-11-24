@@ -1,10 +1,17 @@
-/** Secondary UI checks: settings, split mode, light theme, viewer round-trip, API. */
+
 import { Builder, By, until } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox.js";
-const BANK = process.argv[2] ?? "http://127.0.0.1:5454/";
+import { createE2eReview } from "./e2e-fixture.mjs";
+const EXTERNAL_URL = process.argv[2];
+let BANK = EXTERNAL_URL ?? "http://127.0.0.1:5454/";
+let fixture;
 const results = [];
 const check = (n, ok, d = "") => { results.push({ n, ok }); console.log(`${ok ? "PASS" : "FAIL"}  ${n}${d ? ` — ${d}` : ""}`); };
 async function main() {
+  if (!EXTERNAL_URL) {
+    fixture = await createE2eReview();
+    BANK = fixture.url;
+  }
   const options = new firefox.Options().addArguments("-headless").windowSize({ width: 1700, height: 1100 });
   const driver = await new Builder().forBrowser("firefox").setFirefoxOptions(options).build();
 
@@ -12,7 +19,7 @@ async function main() {
     await driver.get(BANK);
     await driver.wait(until.elementLocated(By.css(".diff-file")), 20000);
 
-    /* settings panel */
+
     await driver.findElement(By.id("btn-settings")).click();
     await new Promise((r) => setTimeout(r, 150));
     check("settings panel opens", await driver.executeScript("return document.getElementById('settings-pop').classList.contains('show')"));
@@ -23,21 +30,28 @@ async function main() {
     `);
     check("all settings fields present", hasFields);
 
-    /* tree open preference persists */
+
     await driver.executeScript(`
       const el = document.getElementById('set-tree-open');
       el.value = 'new';
       el.dispatchEvent(new Event('change', {bubbles:true}));
     `);
-    const stored = await driver.executeScript("return JSON.parse(localStorage.getItem('pr-review:v3:' + PR.DATA.id)).settings.treeOpen");
-    check("setting persists", stored === "new", String(stored));
+
+
+    await new Promise((r) => setTimeout(r, 300));
+    const stored = await driver.executeScript(`return (async () => {
+      const local = JSON.parse(localStorage.getItem(PR.SETTINGS_KEY) || '{}').treeOpen;
+      const response = await fetch(PR.API.SETTINGS).then(r => r.json());
+      return { local, server: response && response.settings ? response.settings.treeOpen : null };
+    })()`);
+    check("setting persists", stored.local === "new" && stored.server === "new", JSON.stringify(stored));
     await driver.executeScript(`
       const el = document.getElementById('set-tree-open');
       el.value = 'current';
       el.dispatchEvent(new Event('change', {bubbles:true}));
     `);
 
-    /* split mode */
+
     await driver.executeScript(`
       const el = document.getElementById('set-diff-mode');
       el.value = 'split';
@@ -53,7 +67,7 @@ async function main() {
     await new Promise((r) => setTimeout(r, 200));
     check("unified restores", (await driver.findElements(By.css(".diff-table:not(.split)"))).length > 0);
 
-    /* light theme */
+
     await driver.findElement(By.id("btn-theme")).click();
     await new Promise((r) => setTimeout(r, 120));
     check("light theme applies", (await driver.executeScript("return document.documentElement.getAttribute('data-theme')")) === "light");
@@ -63,7 +77,7 @@ async function main() {
     check("light background is light", Boolean(isLight), bg);
     await driver.findElement(By.id("btn-theme")).click();
 
-    /* hide viewed */
+
     await driver.executeScript(`
       const first = document.querySelector('.viewed-wrap');
       first.click();
@@ -76,7 +90,7 @@ async function main() {
     check("hide viewed removes a file", afterHide < beforeHide, `${beforeHide} -> ${afterHide}`);
     await driver.findElement(By.id("toggle-viewed")).click();
 
-    /* syntax colours actually differ from plain text */
+
     const colourStats = await driver.executeScript(`
       const cells = [...document.querySelectorAll('td.diff-code')].slice(0, 120);
       const colours = new Set();
@@ -89,12 +103,12 @@ async function main() {
     `);
     check("multiple syntax colours", colourStats.distinct >= 3, `${colourStats.distinct} colours`);
 
-    /* viewer loads and can comment, then notifies the opener */
+
     await driver.get(BANK.replace(/\/$/, "") + "/file?path=src/services/AtlasService/Atlas.Domain/Entities/KnowledgeArticle.cs");
     await driver.wait(until.elementLocated(By.css(".viewer-table")), 15000);
 
-    // The viewer shows the file exactly as it is in the project: plain text,
-    // no syntax highlighting and no colour spans.
+
+
     const viewerShape = await driver.executeScript(`
       const rows = [...document.querySelectorAll('.v-code')];
       const colours = new Set();
@@ -102,12 +116,13 @@ async function main() {
       return {
         spans: document.querySelectorAll('.v-code span').length,
         colours: colours.size,
+        tinted: document.querySelectorAll('.v-row.row-add, .v-row.row-del, .v-changed').length,
         rows: rows.length,
         sample: rows.length ? rows[0].textContent : '',
       };
     `);
-    check("viewer shows the raw file (no highlight spans)", viewerShape.spans === 0, `${viewerShape.spans} spans`);
-    check("viewer has one tone (no syntax colours)", viewerShape.colours <= 1, `${viewerShape.colours} colours`);
+    check("viewer highlights the file's syntax", viewerShape.spans > 0, `${viewerShape.spans} spans`);
+    check("viewer shows no diff tint on any line", viewerShape.tinted === 0, `${viewerShape.tinted} tinted rows`);
     check("viewer renders every line", viewerShape.rows > 3, `${viewerShape.rows} rows`);
 
     await driver.executeScript(`
@@ -119,7 +134,7 @@ async function main() {
     await new Promise((r) => setTimeout(r, 200));
     check("viewer comment form", (await driver.findElements(By.css(".js-editor textarea"))).length === 1);
 
-    /* API endpoints */
+
     const api = await driver.executeScript(`
       return (async () => {
         const out = {};
@@ -139,7 +154,7 @@ async function main() {
     check("api paths", api.paths);
     check("api batch files", api.batch > 0, String(api.batch));
 
-    /* submit writes review.json — must run on the review page (viewer has no PR global) */
+
     await driver.get(BANK);
     await driver.wait(until.elementLocated(By.css(".diff-file")), 20000);
     const submit = await driver.executeScript(`
@@ -171,9 +186,7 @@ async function main() {
       }
     }
 
-    /* The sidebar must stay beside the diff, not wrap under it, on a narrow
-       window. At <=1440px the grid had three tracks for four panes, so
-       the sidebar landed in a phantom second row and added a scrollbar. */
+
     await driver.manage().window().setRect({ width: 1280, height: 800 });
     await new Promise((r) => setTimeout(r, 400));
 
@@ -210,6 +223,7 @@ async function main() {
     await driver.manage().window().setRect({ width: 1700, height: 1100 });
   } finally {
     await driver.quit();
+    await fixture?.cleanup?.();
   }
 
   const failed = results.filter((r) => !r.ok);

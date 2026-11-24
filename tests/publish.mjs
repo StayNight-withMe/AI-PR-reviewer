@@ -1,12 +1,4 @@
-/**
- * Publishing a locally written review back to GitHub as a real PR review.
- *
- * Everything runs against the mock `gh` and a local fixture, so no network and
- * no GitHub account are involved. The mock records what it was asked to post,
- * and the test reads it back.
- *
- * Run: node tests/publish.mjs
- */
+
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -44,7 +36,7 @@ process.env.MOCK_GH_DB = dbPath;
 const pr = { number: PR_NUMBER, url: `https://github.com/o/r/pull/${PR_NUMBER}`, repo: "o/r" };
 const readDb = async () => JSON.parse(await readFile(dbPath, "utf8"));
 
-/* ------------------------------- pure mapping ------------------------------ */
+
 
 await check("a line comment becomes a GitHub inline comment", () => {
   const mapped = toGitHubComment({ path: "a.cs", side: "right", lineStart: 10, lineEnd: 10, body: "rename this" });
@@ -79,12 +71,32 @@ await check("an unknown verdict falls back to COMMENT", () => {
   assert.equal(toGitHubReview({ reviewState: "LGTM" }).state, "COMMENT");
 });
 
-/* ----------------------------- publishing ---------------------------------- */
+await check("an outdated comment is not posted inline, and its text is kept", () => {
+  const payload = toGitHubReview({
+    reviewState: "COMMENT",
+    comments: [{ path: "a.cs", side: "right", lineStart: 4, lineEnd: 4, body: "moved away", outdated: true }],
+  });
+  assert.equal(payload.comments.length, 0, "GitHub would reject the whole review for this line");
+  assert.match(payload.body, /moved away/, "the text must not disappear");});
+
+await check("comments over GitHub's limit move into the body instead of vanishing", () => {
+  const comments = Array.from({ length: GH.MAX_INLINE_COMMENTS + 2 }, (_, index) => ({
+    path: "a.cs", side: "right", lineStart: index + 1, lineEnd: index + 1, body: `note ${index + 1}`,
+  }));
+  const payload = toGitHubReview({ reviewState: "COMMENT", comments });
+  assert.equal(payload.comments.length, GH.MAX_INLINE_COMMENTS);
+  assert.equal(payload.overflowComments, 2);
+  assert.equal(payload.bodyComments, 2, "both comments over the limit must still be sent");
+  assert.match(payload.body, /note 101/);
+  assert.match(payload.body, /note 102/);
+});
+
+
 
 await check("a review with inline comments goes through the API", async () => {
   await resetDb();
   const result = await publishReview(fixture.repo, {
-    pr,
+    pr: { ...pr, headOid: fixture.commits.f2 },
     review: {
       reviewState: "REQUEST_CHANGES",
       reviewBody: "Fix these two.",
@@ -99,11 +111,11 @@ await check("a review with inline comments goes through the API", async () => {
   assert.equal(result.state, "REQUEST_CHANGES");
   assert.equal(result.inlineComments, 2);
   assert.match(result.url, /pull\/\d+#pullrequestreview-/);
-
   const db = await readDb();
   const posted = db.publishedReviews.at(-1);
   assert.equal(posted.number, String(PR_NUMBER));
   assert.equal(posted.event, "REQUEST_CHANGES");
+  assert.equal(posted.commit_id, fixture.commits.f2);
   assert.equal(posted.body, "Fix these two.");
   assert.equal(posted.comments.length, 2);
   assert.deepEqual(posted.comments[0], { path: "src/app.cs", body: "one", side: "RIGHT", line: 5 });
@@ -156,7 +168,7 @@ await check("a logged-out gh is reported, not silently ignored", async () => {
 });
 
 await check("a review that GitHub rejects reports its message", async () => {
-  // A closed PR is what GitHub refuses, and gh passes the reason through.
+
   await resetDb({ pullRequests: {} });
   await assert.rejects(
     () => publishReview(fixture.repo, {

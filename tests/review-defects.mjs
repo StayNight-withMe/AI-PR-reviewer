@@ -1,17 +1,4 @@
-/**
- * Regressions for the review-page defects reported from a real review:
- *
- *  - code rendered as plain white text, because a symbol named `constructor`
- *    or `toString` resolved to an Object.prototype member and the linkifier
- *    threw, aborting the whole section's hydration;
- *  - the same abort left sections that never finished loading;
- *  - a closing brace shown twice, because a file staged as new and edited again
- *    was listed twice in the uncommitted diff;
- *  - "Expand all" leaving the blue expander button behind;
- *  - no way to approve with a note, and no branch choice in the Commits tab.
- *
- * Run: node tests/review-defects.mjs
- */
+
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -33,7 +20,7 @@ function check(name, fn) {
   );
 }
 
-/** A repository whose reviewed files carry the awkward names from the report. */
+
 async function createFixture() {
   const root = await mkdtemp(join(tmpdir(), "pr-review-defects-"));
   const git = (...args) => exec(GIT.BIN, args, { cwd: root });
@@ -46,7 +33,7 @@ async function createFixture() {
   await git("add", "-A");
   await git("commit", "-m", "init");
 
-  // A C# file full of names that collide with Object.prototype members.
+
   const csharp = [
     "namespace Demo;",
     "",
@@ -64,7 +51,7 @@ async function createFixture() {
   await mkdir(join(root, "src"), { recursive: true });
   await writeFile(join(root, "src", "Widget.cs"), csharp);
 
-  // A Go file: a language the shipped bundle had no grammar for.
+
   const go = [
     "package main",
     "",
@@ -81,9 +68,9 @@ async function createFixture() {
 }
 
 const fixture = await createFixture();
-// A test must never start a turn in the real chat that runs it. The session env
-// vars are inherited by every child process, so they are cleared here and the
-// review is opened with auto-send disabled.
+
+
+
 const INHERITED_SESSION_ENV = ["OPENCODE_SESSION_ID", "OPENCODE_SESSION"];
 for (const name of INHERITED_SESSION_ENV) delete process.env[name];
 
@@ -195,6 +182,8 @@ try {
         hasNote: !!document.getElementById('review-body'),
         hasSend: !!document.getElementById('dispatch-send'),
         sendChecked: (document.getElementById('dispatch-send') || {}).checked,
+        // A local review has no pull request, so it must not offer GitHub.
+        hasPublish: !!document.getElementById('btn-publish-github'),
       };
       modal.querySelector('.js-close-modal').click();
       return result;
@@ -204,6 +193,7 @@ try {
     assert.equal(dialog.defaultVerdict, "REQUEST_CHANGES");
     assert.ok(dialog.hasNote, "the note field is missing");
     assert.ok(dialog.hasSend, "the send switch is missing");
+    assert.equal(dialog.hasPublish, false, "local reviews must not offer GitHub publication");
   });
 
   await check("an approval is refused when auto-send is off, and no turn starts", async () => {
@@ -236,7 +226,7 @@ try {
     })()`);
     assert.ok(result.saved, "the approval was not saved");
     assert.ok(result.dispatched, "the dispatch request failed");
-    // Auto-send is off for this review: the files are written, no turn starts.
+
     assert.equal(result.started, false, "a turn was started despite auto-send being off");
     assert.match(result.reason || "", /Auto-send is turned off/);
   });
@@ -272,7 +262,7 @@ try {
       { jsonPath: "j", markdownPath: "m" },
     );
     assert.match(prompt, /Rename that variable later/);
-    // The note exists, so the prompt must not claim the approval came without one.
+
     assert.doesNotMatch(prompt, /without notes/);
     assert.match(prompt, /the note above is the only remark/);
   });
@@ -285,6 +275,62 @@ try {
       { jsonPath: "j", markdownPath: "m" },
     );
     assert.match(prompt, /no note/);
+  });
+
+  await check("the note field accepts a pasted screenshot", async () => {
+    const result = await js(`(async () => {
+      document.getElementById('btn-submit').click();
+      const modal = document.getElementById('dispatch-modal');
+      const textarea = document.getElementById('review-body');
+      const wrap = document.getElementById('review-note-wrap');
+      const chips = document.getElementById('review-note-chips');
+      if (!textarea || !wrap || !chips) return { missing: true };
+
+      async function makeFile(name) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 6; canvas.height = 6;
+        const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+        return new File([blob], name, { type: 'image/png' });
+      }
+
+      const wired = typeof PR.bindImageInput === 'function';
+
+      // A real drag-and-drop of an image file onto the note.
+      const dropped = await makeFile('dropped.png');
+      const dropTransfer = new DataTransfer();
+      dropTransfer.items.add(dropped);
+      textarea.dispatchEvent(new DragEvent('drop', { dataTransfer: dropTransfer, bubbles: true, cancelable: true }));
+      await new Promise(r => setTimeout(r, 400));
+      const afterDrop = chips.querySelectorAll('.attach-chip').length;
+
+      // A paste: browsers hand the handler a ClipboardData with the image on it.
+      // A synthesised ClipboardEvent drops clipboardData in Firefox, so the
+      // handler is given the same interface the real event carries.
+      const pasted = await makeFile('pasted.png');
+      const pasteTransfer = new DataTransfer();
+      pasteTransfer.items.add(pasted);
+      const pasteEvent = new Event('paste', { bubbles: true, cancelable: true });
+      Object.defineProperty(pasteEvent, 'clipboardData', { value: pasteTransfer });
+      textarea.dispatchEvent(pasteEvent);
+      await new Promise(r => setTimeout(r, 400));
+      const afterPaste = chips.querySelectorAll('.attach-chip').length;
+
+      // Removing a chip must drop exactly that attachment.
+      const removeButtons = chips.querySelectorAll('.attach-remove');
+      if (removeButtons.length) removeButtons[0].click();
+      await new Promise(r => setTimeout(r, 200));
+      const afterRemove = chips.querySelectorAll('.attach-chip').length;
+
+      const srcs = [...chips.querySelectorAll('.attach-chip img')].map(img => img.src.slice(0, 22));
+      modal.querySelector('.js-close-modal').click();
+      return { wired, afterDrop, afterPaste, afterRemove, srcs };
+    })()`);
+    assert.ok(!result.missing, "the note field has no attachment area");
+    assert.ok(result.wired, "the image binder is not exposed to the dialog");
+    assert.equal(result.afterDrop, 1, `a dropped screenshot did not attach: ${JSON.stringify(result)}`);
+    assert.equal(result.afterPaste, 2, `a pasted screenshot did not attach: ${JSON.stringify(result)}`);
+    assert.equal(result.afterRemove, 1, "removing a chip did not drop the attachment");
+    assert.ok(result.srcs.every((src) => src.indexOf("data:image/") === 0), "an attachment is not the image itself");
   });
 
   await check("the Commits tab offers a branch selector", async () => {

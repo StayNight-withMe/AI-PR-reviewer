@@ -7,13 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 namespace PrReview.VisualStudio
 {
-    /// <summary>
-    /// Starts and stops the review server.
-    ///
-    /// The scope, the diff and the page all live in the bundled Node program,
-    /// so this class only runs it, reads the one ready line from stdout and
-    /// keeps the process alive while the tool window shows the page.
-    /// </summary>
+
     internal sealed class ServerRunner : IDisposable
     {
         private const string ReadyPrefix = "PR_REVIEW_READY ";
@@ -22,16 +16,13 @@ namespace PrReview.VisualStudio
 
         private Process? _process;
 
-        /// <summary>Matches the camelCase keys the server writes.</summary>
         private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
         };
 
-        /// <summary>The open review, or null when nothing is running.</summary>
         public ReviewInfo? Info { get; private set; }
 
-        /// <summary>Raised when the server exits on its own.</summary>
         public event EventHandler? Stopped;
 
         public async Task<ReviewInfo> StartAsync(string nodePath, string cliPath, string cwd, string mode, string? baseRef)
@@ -73,7 +64,7 @@ namespace PrReview.VisualStudio
             }
             catch
             {
-                // The process already ended; nothing to stop.
+
             }
 
             process.Dispose();
@@ -90,16 +81,12 @@ namespace PrReview.VisualStudio
             return builder.ToString();
         }
 
-        /// <summary>Reads stdout until the ready line arrives, or fails.</summary>
         private static async Task<ReviewInfo> ReadReadyAsync(Process process)
         {
             var stderr = new StringBuilder();
             process.ErrorDataReceived += (_, e) => { if (e.Data != null) stderr.AppendLine(e.Data); };
             process.BeginErrorReadLine();
 
-            // The read is raced against a deadline: ReadLineAsync blocks until a
-            // line arrives, so a server that never prints the ready line (a hung
-            // git call, a missing binary) would otherwise hang the UI forever.
             var readTask = ReadLineAsync(process);
             var completed = await Task.WhenAny(readTask, Task.Delay(StartTimeoutMs)).ConfigureAwait(false);
             if (completed != readTask)
@@ -126,11 +113,6 @@ namespace PrReview.VisualStudio
                 : "The review server did not start in time.");
         }
 
-        /// <summary>
-        /// The first line that is a ready or error line, or null at end of
-        /// stream. Other stdout lines are skipped: the contract only fixes the
-        /// ready/error lines, not what may precede them.
-        /// </summary>
         private static Task<string?> ReadLineAsync(Process process)
         {
             return Task.Run(async () =>
@@ -151,7 +133,6 @@ namespace PrReview.VisualStudio
         public void Dispose() => Stop();
     }
 
-    /// <summary>The ready payload of the server.</summary>
     internal sealed class ReviewInfo
     {
         public string Url { get; set; } = string.Empty;

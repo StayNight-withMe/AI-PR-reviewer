@@ -9,17 +9,14 @@ using Microsoft.VisualStudio.Shell.Interop;
 using Task = System.Threading.Tasks.Task;
 namespace PrReview.VisualStudio
 {
-    /// <summary>
-    /// The VS 2022 integration entry point.
-    ///
-    /// A menu button opens a tool window that hosts the review page in WebView2.
-    /// Everything the user reviews comes from the bundled Node server, so this
-    /// package is only a thin host: it starts the server and shows its URL.
-    /// </summary>
+
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
-    [InstalledProductRegistration("PR Review", "Reviews the current branch in a tab.", "0.1.0")]
+    [InstalledProductRegistration("PR Review", "Reviews the current branch in a tab.", "0.1.12")]
     [ProvideMenuResource("Menus.ctmenu", 1)]
-    [ProvideToolWindow(typeof(ReviewToolWindow), Style = VsDockStyle.Tabbed, Window = ToolWindowGuids80.SolutionExplorer)]
+
+    [ProvideAutoLoad(UIContextGuids80.SolutionExists, PackageAutoLoadFlags.BackgroundLoad)]
+
+    [ProvideToolWindow(typeof(ReviewToolWindow), Style = VsDockStyle.MDI, MultiInstances = false)]
     [Guid(PackageGuidString)]
     public sealed class PrReviewPackage : AsyncPackage
     {
@@ -27,8 +24,8 @@ namespace PrReview.VisualStudio
 
         private ServerRunner? _runner;
 
-        /// <summary>The one running server, shared with the tool window.</summary>
         internal static ServerRunner? Runner { get; private set; }
+        internal static PrReviewPackage? Current { get; private set; }
 
         protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
         {
@@ -36,15 +33,24 @@ namespace PrReview.VisualStudio
 
             _runner = new ServerRunner();
             Runner = _runner;
+            Current = this;
 
-            if (await GetServiceAsync(typeof(IMenuCommandService)) is OleMenuCommandService commandService)
+            var commandService = await GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
+
+            for (var attempt = 0; commandService == null && attempt < 40; attempt++)
+            {
+                await Task.Delay(250, cancellationToken);
+                await JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+                commandService = await GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
+            }
+
+            if (commandService != null)
             {
                 var commandId = new CommandID(new Guid(CommandGuids.CommandSetGuidString), CommandIds.OpenReview);
                 commandService.AddCommand(new MenuCommand(OpenReview, commandId));
             }
         }
 
-        /// <summary>Opens the tool window, starting the server on first use.</summary>
         private void OpenReview(object sender, EventArgs e)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
@@ -56,6 +62,53 @@ namespace PrReview.VisualStudio
 
             var result = frame.Show();
             Marshal.ThrowExceptionForHR(result);
+            if (window is ReviewToolWindow review)
+            {
+                _ = review.ShowReviewAsync();
+            }
+        }
+
+        internal string? SolutionDirectory()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            var solution = GetService(typeof(SVsSolution)) as IVsSolution;
+            if (solution == null) return null;
+
+            var hr = solution.GetSolutionInfo(out string directory, out string file, out _);
+            if (hr != 0) return null;
+            if (!string.IsNullOrWhiteSpace(directory)) return directory;
+            if (!string.IsNullOrWhiteSpace(file)) return Path.GetDirectoryName(file);
+
+            var empty = Guid.Empty;
+            if (solution.GetProjectEnum((uint)__VSENUMPROJFLAGS.EPF_LOADEDINSOLUTION, ref empty, out IEnumHierarchies projects) == 0 &&
+                projects != null)
+            {
+                var hierarchies = new IVsHierarchy[1];
+                if (projects.Next(1, hierarchies, out uint fetched) == 0 && fetched == 1)
+                {
+                    hierarchies[0].GetCanonicalName(unchecked((uint)-4000), out string projectPath);
+                    if (!string.IsNullOrWhiteSpace(projectPath))
+                    {
+                        return Path.GetDirectoryName(projectPath);
+                    }
+                }
+            }
+
+            if (GetService(typeof(IVsMonitorSelection)) is IVsMonitorSelection selection)
+            {
+                selection.GetCurrentSelection(out IntPtr hierarchyPointer, out uint itemId, out _, out _);
+                if (hierarchyPointer != IntPtr.Zero)
+                {
+                    var hierarchy = (IVsHierarchy)Marshal.GetObjectForIUnknown(hierarchyPointer);
+                    hierarchy.GetCanonicalName(itemId, out string selectedPath);
+                    if (!string.IsNullOrWhiteSpace(selectedPath))
+                    {
+                        return Path.GetDirectoryName(selectedPath);
+                    }
+                }
+            }
+
+            return null;
         }
 
         protected override void Dispose(bool disposing)
@@ -64,13 +117,13 @@ namespace PrReview.VisualStudio
             {
                 _runner?.Dispose();
                 Runner = null;
+                Current = null;
             }
 
             base.Dispose(disposing);
         }
     }
 
-    /// <summary>Identifiers shared by the command table and the package.</summary>
     internal static class CommandGuids
     {
         public const string CommandSetGuidString = "1c2e9f34-7a5b-4d68-9e01-2b3c4d5e6f70";

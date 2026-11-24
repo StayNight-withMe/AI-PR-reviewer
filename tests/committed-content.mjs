@@ -1,13 +1,4 @@
-/**
- * A committed scope must read file content from the reviewed commit, not the disk.
- *
- * The bug: a range/branch review showed the file as it exists in the working
- * tree. When the checkout had unrelated edits, the diff rows of the reviewed
- * version were missing (a 48-line file displayed 8 lines), lines looked
- * unhighlighted, and the tail of the file simply vanished.
- *
- * Run: node tests/committed-content.mjs
- */
+
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -29,9 +20,9 @@ function check(name, fn) {
 const root = await mkdtemp(join(tmpdir(), "pr-review-committed-"));
 const git = (...args) => exec(GIT.BIN, args, { cwd: root });
 
-/** 40 lines, so a truncated read is obvious. */
+
 const COMMITTED = Array.from({ length: 40 }, (_, index) => `public const string Key${index} = "value${index}";`).join("\n") + "\n";
-/** What the working tree holds instead: a much shorter, unrelated edit. */
+
 const WORKTREE = "public static partial class Keys\n{\n}\n";
 
 let started = null;
@@ -45,14 +36,14 @@ try {
   await git("commit", "-m", "init");
   await git("rev-parse", "HEAD").then(({ stdout }) => { started = stdout.trim(); });
 
-  // The reviewed commit adds a 40-line file.
+
   await writeFile(join(root, "Keys.cs"), COMMITTED);
   await git("add", "-A");
   await git("commit", "-m", "add keys");
   const head = (await git("rev-parse", "HEAD")).stdout.trim();
   const base = started;
 
-  // ...and the working tree then replaces it with 3 lines, as an unrelated edit.
+
   await writeFile(join(root, "Keys.cs"), WORKTREE);
 
   const review = await startReview({

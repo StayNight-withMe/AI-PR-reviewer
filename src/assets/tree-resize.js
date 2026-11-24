@@ -1,4 +1,4 @@
-﻿/** Resizable file tree: drag the splitter, collapse below a threshold, restore. */
+
 (function () {
   "use strict";
 
@@ -10,12 +10,12 @@
   function resizer() { return document.getElementById(PR.IDS.TREE_RESIZER); }
   function reveal() { return document.getElementById(PR.IDS.TREE_REVEAL); }
 
-  /** Applies the persisted width (or the default) to the CSS variable. */
+
   PR.applyTreeWidth = function () {
     var width = PR.state.settings.treeWidth;
     var hidden = PR.state.settings.treeHidden;
     var box = layout();
-    // Set the variable on the layout, not on :root: a root-level custom property invalidates the…
+
     if (box) {
       box.style.setProperty("--tree-width", width + "px");
       box.classList.toggle("tree-hidden", hidden);
@@ -33,7 +33,7 @@
     PR.applyTreeWidth();
   };
 
-  /** Collapsing keeps the remembered width so the chevron restores it. */
+
   PR.hideTree = function () {
     PR.state.settings.treeHidden = true;
     PR.store();
@@ -51,7 +51,7 @@
     var button = reveal();
     if (!handle) return;
 
-    handle.addEventListener("mousedown", function (event) {
+    handle.addEventListener(PR.EVENT.MOUSEDOWN, function (event) {
       if (event.button !== 0) return;
 
       event.preventDefault();
@@ -64,7 +64,7 @@
       if (!drag) return;
 
       var next = drag.startWidth + (event.clientX - drag.startX);
-      // Throttle to one update per frame; a mousemove burst otherwise forces a layout of the whole…
+
       drag.pending = next;
       if (drag.frame) return;
 
@@ -86,18 +86,18 @@
       });
     });
 
-    document.addEventListener("mouseup", function () {
+    document.addEventListener(PR.EVENT.MOUSEUP, function () {
       if (!drag) return;
       var changed = PR.state.settings.treeWidth !== drag.startWidth;
       endDrag();
       if (changed) PR.store();
     });
-    // Double-click on the handle resets the width, as a quick escape hatch.
+
     handle.addEventListener("dblclick", function () {
       PR.setTreeWidth(PR.TREE_SIZE.DEFAULT_WIDTH);
     });
-    // Keyboard support so the handle is usable without a mouse.
-    handle.addEventListener("keydown", function (event) {
+
+    handle.addEventListener(PR.EVENT.KEYDOWN, function (event) {
       if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
       event.preventDefault();
       var delta = event.key === "ArrowLeft" ? -PR.TREE_SIZE.KEYBOARD_STEP : PR.TREE_SIZE.KEYBOARD_STEP;

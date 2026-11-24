@@ -1,10 +1,10 @@
-/** Inline comments: rendering, editing, image attachments and drag selection. */
+
 (function () {
   "use strict";
 
   var PR = window.PR;
 
-  /** ------------------------------- rendering ------------------------------ */
+
   function attachmentChip(image, index, removable) {
     var src = image.dataUrl || image.file || "";
     return '<span class="attach-chip">' +
@@ -23,12 +23,16 @@
       return attachmentChip(image, index, false);
     }).join("");
     var resolved = comment.resolved === true;
+    var outdated = comment.outdated === true;
 
-    return '<div class="comment-box' + (resolved ? " is-resolved" : "") + '" data-id="' + comment.id + '">' +
+    return '<div class="comment-box' + (resolved ? " is-resolved" : "") + (outdated ? " is-outdated" : "") +
+        '" data-id="' + comment.id + '">' +
       '<div class="comment-head">' +
         '<span class="avatar">' + PR.escapeHtml((comment.author || "You").charAt(0).toUpperCase()) + "</span>" +
         "<strong>" + PR.escapeHtml(comment.author || "You") + "</strong>" +
         '<span class="muted small">' + (comment.lineStart ? "line " + range : "file comment") + "</span>" +
+        (outdated ? '<span class="outdated-pill" title="' + PR.escapeHtml(comment.outdatedReason || "") +
+          '">Outdated</span>' : "") +
         (resolved ? '<span class="resolved-pill" title="This comment is resolved">✓ Resolved</span>' : "") +
         '<span class="spacer"></span>' +
         '<button class="gh-btn gh-btn-sm ghost js-resolve" data-id="' + comment.id + '">' +
@@ -37,11 +41,16 @@
         '<button class="gh-btn gh-btn-sm ghost danger js-delete" data-id="' + comment.id + '">Delete</button>' +
       "</div>" +
       '<div class="comment-body">' + PR.escapeHtml(comment.body) + "</div>" +
+      (outdated && comment.outdatedReason
+        ? '<div class="comment-outdated-note">' + PR.escapeHtml(comment.outdatedReason) +
+          (comment.snippet ? '<pre class="comment-snippet">' + PR.escapeHtml(comment.snippet) + "</pre>" : "") +
+          "</div>"
+        : "") +
       (images ? '<div class="comment-attachments">' + images + "</div>" : "") +
     "</div>";
   }
 
-  /** Flips a comment between resolved and open. */
+
   PR.toggleResolved = function (id) {
     var comment = PR.state.comments.find(function (item) { return item.id === id; });
     if (!comment) return;
@@ -53,7 +62,7 @@
     PR.toast(comment.resolved ? "Comment resolved" : "Comment reopened");
   };
 
-  /** True when every comment on a file is resolved (used by the tree badge). */
+
   PR.fileFullyResolved = function (path) {
     var own = PR.state.comments.filter(function (comment) { return comment.path === path; });
     return own.length > 0 && own.every(function (comment) { return comment.resolved === true; });
@@ -61,14 +70,16 @@
 
   PR.renderComments = function () {
     var state = PR.state;
-    document.querySelectorAll(".comment-row, .file-comment-banner").forEach(function (node) {
-      // would wipe a form the user is typing in.
+    document.querySelectorAll(".comment-row, .file-comment-banner, .orphan-comments").forEach(function (node) {
+
       if (node.classList.contains("js-editor") || node.querySelector(".js-editor")) return;
       node.remove();
     });
 
     state.comments.forEach(function (comment) {
       var section = PR.findSection(comment.path);
+
+
       if (!section) return;
 
       if (!comment.lineStart) {
@@ -82,20 +93,45 @@
 
       var end = comment.lineEnd || comment.lineStart;
       var rows = rowsInRange(section, comment.side, comment.lineStart, end);
-      if (!rows.length) return;
-
       var row = document.createElement("tr");
       row.className = "comment-row";
-      row.innerHTML = '<td colspan="' + columnCount(rows[rows.length - 1]) + '">' + commentBoxHtml(comment) + "</td>";
-      rows[rows.length - 1].parentNode.insertBefore(row, rows[rows.length - 1].nextSibling);
+      row.innerHTML = '<td colspan="' + sectionColumnCount(section) + '">' + commentBoxHtml(comment) + "</td>";
+
+      if (rows.length) {
+        rows[rows.length - 1].parentNode.insertBefore(row, rows[rows.length - 1].nextSibling);
+        return;
+      }
+
+
+      mountOrphanComment(section, row);
     });
 
     renderSidebar();
   };
 
-  /** Number of columns in the diff table that holds `row`. */
+
+  function mountOrphanComment(section, row) {
+    var host = section.querySelector(".orphan-comments");
+    if (!host) {
+      host = document.createElement("div");
+      host.className = "orphan-comments";
+      var header = section.querySelector(".diff-file-header");
+      header.parentNode.insertBefore(host, header.nextSibling);
+    }
+
+
+
+    var table = document.createElement("table");
+    table.className = "orphan-table";
+    var body = document.createElement("tbody");
+    body.appendChild(row);
+    table.appendChild(body);
+    host.appendChild(table);
+  }
+
+
   function columnCount(row) {
-    var table = row.closest("table");
+    var table = row.closest ? row.closest("table") : null;
     if (!table) return 1;
 
     var cols = table.querySelectorAll("colgroup > col").length;
@@ -112,7 +148,13 @@
     return widest || 1;
   }
 
-  /** Rows whose number cell on `side` falls inside the line range. */
+
+  function sectionColumnCount(section) {
+    var table = section.querySelector(".diff-table");
+    return table ? columnCount(table) : 1;
+  }
+
+
   function rowsInRange(section, side, from, to) {
     var rows = [];
     var cells = section.querySelectorAll('td.diff-num[data-side="' + side + '"][data-line]');
@@ -130,6 +172,8 @@
     var state = PR.state;
     var open = state.comments.filter(function (comment) { return comment.resolved !== true; });
     PR.setText(PR.els.commentCount, open.length);
+    var word = document.getElementById("comment-count-word");
+    if (word) word.textContent = open.length === 1 ? "comment" : "comments";
 
     var labels = { APPROVE: "Approved", REQUEST_CHANGES: "Changes requested" };
     PR.setText(PR.els.reviewStateText, labels[PR.DATA.reviewState] || "Commented");
@@ -150,15 +194,18 @@
           : comment.lineStart)
         : "file";
       var resolved = comment.resolved === true;
+      var outdated = comment.outdated === true;
       return '<button class="comment-summary-item js-goto-comment' + (resolved ? " is-resolved" : "") +
+          (outdated ? " is-outdated" : "") +
           '" data-path="' + PR.escapeHtml(comment.path) + '">' +
         '<span class="comment-summary-path">' + PR.escapeHtml(comment.path) + ":" + range +
+          (outdated ? ' <span class="outdated-pill">outdated</span>' : "") +
           (resolved ? ' <span class="resolved-pill">✓</span>' : "") + "</span>" +
         '<span class="comment-summary-text">' + PR.escapeHtml(comment.body || "(image)") + "</span></button>";
     }).join(""));
   }
 
-  /** --------------------------------- form --------------------------------- */
+
   PR.openCommentForm = function (path, side, lineStart, lineEnd, existing) {
     PR.closeCommentForms();
 
@@ -192,7 +239,7 @@
       renderChips();
     });
 
-    bindImageInput(editor.textarea, editor.box, function (image) {
+    PR.bindImageInput(editor.textarea, editor.box, function (image) {
       images.push(image);
       renderChips();
     });
@@ -258,7 +305,8 @@
     anchor.parentNode.insertBefore(banner, anchor.nextSibling);
   }
 
-  function bindImageInput(textarea, box, onImage) {
+
+  PR.bindImageInput = function (textarea, box, onImage) {
     function addFiles(files) {
       Array.from(files || []).forEach(function (file) {
         if (!file || file.type.indexOf("image/") !== 0) return;
@@ -285,7 +333,7 @@
       box.classList.remove("drop-active");
       addFiles(event.dataTransfer ? event.dataTransfer.files : []);
     });
-  }
+  };
 
   function saveComment(options) {
     var body = options.textarea.value.trim();
@@ -320,7 +368,7 @@
   }
 
   PR.closeCommentForms = function () {
-    // A form can live in the diff list or in the inline host (an unchanged file opened from the…
+
     var hosts = [PR.els.diffFiles, document.getElementById(PR.IDS.INLINE_HOST)];
     hosts.forEach(function (host) {
       if (!host) return;
@@ -328,7 +376,7 @@
     });
   };
 
-  /** ------------------------------- selection ------------------------------ */
+
   PR.clearSelection = function () {
     document.querySelectorAll(".row-selected").forEach(function (row) { row.classList.remove("row-selected"); });
     PR.state.selection = null;
@@ -347,10 +395,10 @@
     rowsInRange(section, side, start, end).forEach(function (row) { row.classList.add("row-selected"); });
   };
 
-  /** Selects every visual row between two rows (GitHub-style drag), then derives a line range on… */
+
   PR.selectRowRange = function (section, startRow, endRow, side) {
     PR.clearSelection();
-    // Use every diff row; split rows have line numbers on the number cells rather than on the <tr>,…
+
     var rows = Array.from(section.querySelectorAll("tr")).filter(function (row) {
       return row.querySelector("td.diff-num");
     });

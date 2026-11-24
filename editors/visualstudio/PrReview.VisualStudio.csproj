@@ -8,14 +8,14 @@
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
-    <!-- A VSIX package is produced by the VSSDK build tools on a machine with
-         the "Visual Studio extension development" workload installed. -->
+
     <GeneratePkgDefFile>true</GeneratePkgDefFile>
     <IncludeAssemblyInVSIXContainer>true</IncludeAssemblyInVSIXContainer>
     <IncludeDebugSymbolsInVSIXContainer>false</IncludeDebugSymbolsInVSIXContainer>
     <CreateVsixContainer>true</CreateVsixContainer>
     <DeployExtension>false</DeployExtension>
   </PropertyGroup>
+  <Import Project="$(NuGetPackageRoot)microsoft.vssdk.buildtools\17.9.3168\tools\vssdk\Microsoft.VsSDK.targets" Condition="Exists('$(NuGetPackageRoot)microsoft.vssdk.buildtools\17.9.3168\tools\vssdk\Microsoft.VsSDK.targets')" />
   <ItemGroup>
     <PackageReference Include="Microsoft.VisualStudio.Shell.15.0" Version="17.9.37000" />
     <PackageReference Include="Microsoft.VisualStudio.Shell.Framework" Version="17.9.37000" />
@@ -31,5 +31,16 @@
     <VSCTCompile Include="PrReviewPackage.vsct">
       <ResourceName>Menus.ctmenu</ResourceName>
     </VSCTCompile>
+
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="server\**\*">
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+  </ItemGroup>
+
+  <PropertyGroup>
+    <VsixSourceManifestPath>source.extension.vsixmanifest</VsixSourceManifestPath>
+  </PropertyGroup>
 </Project>

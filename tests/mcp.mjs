@@ -1,9 +1,4 @@
-/**
- * The MCP server over its own transport.
- *
- * The test starts the server as a program, asks it for a review and checks
- * that the page it opens is a real page of a real repository.
- */
+
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
@@ -30,7 +25,7 @@ function check(name, fn) {
       },
     );
 }
-/** A minimal MCP client over the stdio transport. */
+
 function createClient() {
   const child = spawn(process.execPath, [SERVER], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
   const pending = new Map();
@@ -120,8 +115,8 @@ try {
   });
 
   await check("the review is findable from another process", async () => {
-    // OpenCode runs one MCP process per session; a review opened in one must be
-    // readable from another. The on-disk index is what makes that work.
+
+
     const indexed = await findIndexedPage(reviewId);
     assert.ok(indexed, "the review is not in the cross-process index");
     assert.equal(indexed.reviewId, reviewId);

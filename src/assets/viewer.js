@@ -1,13 +1,13 @@
-/** File viewer: syntax-highlighted source with its own inline review comments. */
+
 (function () {
   "use strict";
 
   var DATA = JSON.parse(document.getElementById("file-data").textContent);
   var STORAGE_PREFIX = "pr-review:v3:";
   var STORAGE_KEY = STORAGE_PREFIX + DATA.reviewId;
-  /** The device-wide settings key, shared with the review page. */
+
   var SETTINGS_KEY = "pr-review:settings:v1";
-  /** The same route the review page uses (mirror of PR.API.SETTINGS). */
+
   var SETTINGS_ROUTE = "/api/settings";
   var TOAST_MS = 2600;
   var COMMENT_EVENT = "pr-review:comments-changed";
@@ -23,7 +23,7 @@
   var changed = new Set(DATA.changed || []);
   var state = { selection: null, comments: [] };
 
-  /** ------------------------------- primitives ----------------------------- */
+
   function escapeHtml(value) {
     return String(value)
       .replace(/&/g, "&amp;")
@@ -40,7 +40,7 @@
     toast._t = setTimeout(function () { el.className = "toast"; }, TOAST_MS);
   }
 
-  /** ------------------------------- persistence ---------------------------- */
+
   function readStore() {
     try {
       return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
@@ -61,7 +61,7 @@
       data.comments = others.concat(state.comments);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch (e) {
-      /** storage may be disabled; comments still live in memory */
+
     }
   }
 
@@ -70,25 +70,25 @@
     try {
       window.opener.postMessage({ type: COMMENT_EVENT, path: DATA.path, reviewId: DATA.reviewId }, "*");
     } catch (e) {
-      /** opener may be closed */
+
     }
   }
 
-  /** ------------------------------ highlighting ---------------------------- */
-  /** Highlighted HTML for one line of the file. */
+
+
   function highlightLine(text) {
     if (window.hljs && DATA.language && DATA.language !== "plaintext") {
       try {
         var language = window.hljs.getLanguage(DATA.language) ? DATA.language : null;
         return window.hljs.highlight(text || " ", language ? { language: language, ignoreIllegals: true } : {}).value || " ";
       } catch (e) {
-        /** fall through to escaped text */
+
       }
     }
     return escapeHtml(text) || " ";
   }
 
-  /** -------------------------------- rendering ----------------------------- */
+
   function render() {
     if (DATA.tooLarge) {
       document.getElementById("file-viewer").innerHTML =
@@ -111,7 +111,7 @@
   }
 
   function renderRow(line) {
-    // Syntax colours, but no changed-line tint: this is a file reader, not a diff.
+
     return '<tr class="v-row" id="L' + line.number + '" data-line="' + line.number + '">' +
       '<td class="v-gutter"><button class="line-plus js-v-comment" data-line="' + line.number +
         '" title="Add a comment on this line">+</button></td>' +
@@ -119,7 +119,7 @@
       '<td class="v-code">' + highlightLine(line.text) + "</td></tr>";
   }
 
-  /** Scrolls to and flashes the line named by a `#L123` URL hash. */
+
   function focusHashLine() {
     var match = new RegExp("^" + LINE_HASH_PREFIX + "(\\d+)$").exec(window.location.hash);
     if (!match) return;
@@ -172,7 +172,7 @@
     return box;
   }
 
-  /** --------------------------------- editor -------------------------------- */
+
   function openEditor(lineStart, lineEnd, existing) {
     closeEditor();
 
@@ -286,7 +286,7 @@
     });
   }
 
-  /** -------------------------------- selection ------------------------------ */
+
   var dragStart = null;
   var suppressClickUntil = 0;
 
@@ -308,12 +308,12 @@
     return parseInt(cell.textContent, 10);
   }
 
-  /** ---------------------------------- events ------------------------------- */
+
   var viewer = document.getElementById("file-viewer");
 
   viewer.addEventListener("mousedown", function (event) {
     if (event.button !== 0) return;
-    // Drag selection starts on the "+" gutter (or the number as a fallback).
+
     var cell = event.target.closest("td.v-gutter, td.v-num");
     if (!cell) return;
     dragStart = lineOf(cell);
@@ -394,8 +394,23 @@
 
   window.addEventListener("hashchange", focusHashLine);
 
-  /** ---------------------------- device settings ---------------------------- */
-  /** Reads the device settings from the server. */
+
+  (function bindStickyOffset() {
+    var header = document.querySelector(".gh-header");
+    if (!header) return;
+    var root = document.documentElement;
+
+    function update() {
+      root.style.setProperty("--header-h", Math.round(header.getBoundingClientRect().height) + "px");
+    }
+
+    update();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(update).catch(function () {});
+    window.addEventListener("resize", update);
+  })();
+
+
+
   function readSettings() {
     try {
       return JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
@@ -404,13 +419,13 @@
     }
   }
 
-  /** Saves the theme into the shared settings, keeping the other options. */
+
   function saveTheme(theme) {
     var settings = readSettings();
     settings.theme = theme;
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-    } catch (e) { /** storage may be disabled */ }
+    } catch (e) {   }
 
     try {
       fetch(SETTINGS_ROUTE, {
@@ -418,10 +433,10 @@
         headers: { "content-type": "application/json" },
         body: JSON.stringify(settings),
       }).catch(function () {});
-    } catch (e) { /** offline: the theme still applies to this page */ }
+    } catch (e) {   }
   }
 
-  /** ----------------------------------- boot -------------------------------- */
+
   var cachedTheme = readSettings().theme;
   if (cachedTheme) document.documentElement.setAttribute("data-theme", cachedTheme);
 

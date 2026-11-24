@@ -1,4 +1,4 @@
-﻿/** Client-side constants: API routes, review states, DOM ids and selectors. */
+
 (function () {
   "use strict";
 
@@ -15,6 +15,7 @@
     BRANCH_COMMITS: "/api/branch-commits",
     RANGE: "/api/range",
     REVIEW: "/api/review",
+    PUBLISH: "/api/publish",
     DISPATCH: "/api/dispatch",
     PATHS: "/api/paths",
     SYMBOLS: "/api/symbols",
@@ -22,6 +23,7 @@
     RESULT: "/api/result",
     VERSION: "/api/version",
     SETTINGS: "/api/settings",
+    THREADS: "/api/threads",
   };
 
   window.PR.REVIEW_STATE = {
@@ -50,13 +52,13 @@
     ALL: "all",
   };
 
-  /** The two top-level tabs of the review page. */
+
   window.PR.TAB = {
     FILES: "files",
     COMMITS: "commits",
   };
 
-  /** What the main pane shows: the branch review, or a drilled-in diff. */
+
   window.PR.VIEW_KIND = {
     REVIEW: "review",
     COMMIT: "commit",
@@ -83,27 +85,27 @@
     DOWN: "down",
   };
 
-  /** Side of a hunk a hidden region of unchanged lines belongs to. */
+
   window.PR.GAP = {
     UP: "up",
     DOWN: "down",
   };
 
-  /** Where the "View file" button opens the file. */
+
   window.PR.VIEW_FILE_MODE = {
-    /** A separate browser tab (the default). */
+
     TAB: "tab",
-    /** The same page: the review scrolls to the file. */
+
     SAME: "same",
-    /** An embedded panel inside the review, like a tab of its own. */
+
     PANEL: "panel",
   };
 
-  /** Folding policy for the unchanged lines around a diff hunk. */
+
   window.PR.CONTEXT = {
-    /** Hide a region only when it holds MORE non-empty lines than this. */
+
     DEFAULT_COLLAPSE_LINES: 10,
-    /** This value disables folding: every region is shown expanded. */
+
     NEVER_COLLAPSE: 0,
   };
 
@@ -124,7 +126,7 @@
     POPUP_BLOCKED: "The browser blocked the new tab — allow pop-ups for this page",
   };
 
-  /** Toolbar toggle states. */
+
   window.PR.TOGGLE = {
     HIDE_VIEWED: "Hide viewed",
     SHOW_ALL: "Show all",
@@ -132,13 +134,13 @@
     SIDEBAR_HIDE: "Hide sidebar",
   };
 
-  /** Keys stored per review in localStorage. */
+
   window.PR.STORAGE_FIELD = {
     COMMIT_LABELS: "commitLabels",
     COMMIT_SELECTION: "commitSelection",
   };
 
-  /** Commit picker column widths and helpers. */
+
   window.PR.PICKER = {
     CHECK: "check",
     LABELS: "labels",
@@ -152,28 +154,28 @@
     RELATIVE_DAYS: " days ago",
   };
 
-  /** Debounced project search. */
+
   window.PR.SEARCH = {
     MIN_LENGTH: 2,
     DEBOUNCE_MS: 220,
   };
 
-  /** Scroll position at which a diff section counts as the active file. */
+
   window.PR.UI_SCROLL_SPY_OFFSET = 220;
 
-  /** How long an explicit click keeps the tree highlight, in ms. */
+
   window.PR.UI_PIN_MS = 900;
 
-  /** Tree sizing, in pixels. */
+
   window.PR.TREE_SIZE = {
     DEFAULT_WIDTH: 320,
     MIN_WIDTH: 160,
     MAX_WIDTH: 640,
     SNAP_WIDTH: 110,
     KEYBOARD_STEP: 16,
-    /** Pixels of indentation per nesting level, the default choice. */
-    DEFAULT_INDENT: 16,
-    /** Smallest indent that still shows the guide line clearly. */
+
+    DEFAULT_INDENT: 4,
+
     MIN_INDENT: 4,
     MAX_INDENT: 48,
   };
@@ -183,17 +185,17 @@
     PATH: "path",
   };
 
-  /** The radio name that carries the review verdict in the submit dialog. */
+
   window.PR.VERDICT_FIELD = "review-verdict";
 
   window.PR.HTTP = {
     POST: "POST",
   };
 
-  /** Query parameter names mirrored from src/config.js. */
+
   window.PR.QUERY_BRANCH = "branch";
 
-  /** Single-letter status of a changed file, as GitHub's file list shows it. */
+
   window.PR.STATUS_LETTER = {
     added: "A",
     deleted: "D",
@@ -201,7 +203,7 @@
     modified: "M",
   };
 
-  /** Empty-string sentinel mirrored from src/config.js. */
+
   window.PR.P_EMPTY = "";
 
   window.PR.SYMBOL_LINKS = {
@@ -209,14 +211,14 @@
     OFF: "off",
   };
 
-  /** Colour classes used for syntax-highlighted identifiers. */
+
   window.PR.SYM_CLASS = {
     TYPE: "sym-type",
     VALUE: "sym-value",
     CALL: "sym-call",
   };
 
-  /** Symbol kind -> colour class used by syntax-highlighted identifiers. */
+
   window.PR.SYMBOL_CLASS = {
     class: "sym-type",
     interface: "sym-type",
@@ -228,15 +230,15 @@
     method: "sym-call",
   };
 
-  /** Colour class for symbols whose kind is unknown. */
+
   window.PR.SYMBOL_CLASS_DEFAULT = "sym-call";
 
-  /** Languages that get identifier colouring on top of hljs tokens. */
+
   window.PR.COLORIZED_LANGUAGE = {
     CSHARP: "csharp",
   };
 
-  /** Numeric UI constants mirrored from src/config.js. */
+
   window.PR.UI = {
     CONTEXT_STEP: 20,
     DIFF_BLOCK_CELLS: 5,
@@ -249,12 +251,12 @@
     MAX_POPOVER_USAGES: 12,
     SIDEBAR_PREVIEW_LINES: 2,
     STORAGE_PREFIX: "pr-review:v3:",
-    /** Device-wide key: settings must survive a new review or a changed diff. */
+
     SETTINGS_KEY: "pr-review:settings:v1",
     OBSERVER_MARGIN: "300px",
     HYDRATION_CHUNK: 4,
     HYDRATION_DELAY_MS: 0,
-    /** Viewed collapse fade, mirrors `viewedFade` in styles.css. */
+
     VIEWED_ANIM_MS: 160,
     SUPPRESS_CLICK_MS: 300,
     HASH_LINE_PREFIX: "L",
@@ -264,11 +266,11 @@
     TARGET_BLANK: "_blank",
     NOOPENER: "noopener",
     DEBOUNCE_MS: 80,
-    /** Delay before re-focusing a freshly opened tab. */
+
     FOCUS_RETRY_MS: 60,
-    /** Delay before a scroll is checked and corrected. */
+
     SCROLL_SETTLE_MS: 450,
-    /** How far a file may drift from the top before the scroll is repeated. */
+
     SCROLL_SETTLE_TOLERANCE: 40,
   };
   window.PR.THEME = {
@@ -276,11 +278,13 @@
     LIGHT: "light",
   };
 
-  /** Every DOM id used by more than one module. */
+
   window.PR.IDS = {
     FILTER_INPUT: "filter-input",
     TREE_FILTER_INPUT: "tree-filter-input",
     REVIEW_BODY: "review-body",
+    REVIEW_NOTE_WRAP: "review-note-wrap",
+    REVIEW_NOTE_CHIPS: "review-note-chips",
     DISPATCH_SEND: "dispatch-send",
     VIEW_BAR: "diff-view-bar",
     SYM_POP: "sym-pop",
@@ -318,7 +322,7 @@
     COMMIT_PICKER_COUNT: "commit-picker-count",
   };
 
-  /** Selector fragments shared by the UI modules. */
+
   window.PR.SELECTORS = {
     DIFF_FILE: ".diff-file",
     DIFF_BODY: ".diff-body",
@@ -340,5 +344,20 @@
     FLASH: "flash",
     COLLAPSED: "collapsed",
     HIDDEN: "hidden",
+  };
+
+  window.PR.HTTP = {
+    POST: "POST",
+    JSON: "application/json",
+  };
+
+  window.PR.KEY = {
+    ESCAPE: "Escape",
+  };
+
+  window.PR.EVENT = {
+    KEYDOWN: "keydown",
+    MOUSEDOWN: "mousedown",
+    MOUSEUP: "mouseup",
   };
 })();

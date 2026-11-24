@@ -1,10 +1,10 @@
-/** Viewed toggling + commits tab + commit / range diff views. */
+
 (function () {
   "use strict";
 
   var PR = window.PR;
 
-  /** -------------------------------- viewed -------------------------------- */
+
   PR.toggleViewed = function (path) {
     PR.perf("Viewed", function () {
       var state = PR.state;
@@ -15,7 +15,7 @@
         state.lastViewedFile = path;
       } else {
         state.viewed.delete(path);
-        // Never point "Last file" at a file that is no longer marked Viewed.
+
         if (state.lastViewedFile === path) state.lastViewedFile = null;
       }
 
@@ -26,13 +26,13 @@
         if (wrap) wrap.classList.toggle("checked", on);
 
         if (on && state.settings.collapseViewed) {
-          // timer: a re-render during those 160 ms (a storage event from the viewer tab, a filter…
+
           state.collapsed.add(path);
           collapseWithAnimation(section);
         } else if (!on) {
-          // Un-reviewing a file must bring it back, not leave it collapsed.
+
           state.collapsed.delete(path);
-          section.classList.remove("collapsed");
+          section.classList.remove(PR.SELECTORS.COLLAPSED);
         }
       } else if (on) {
         state.collapsed.add(path);
@@ -45,14 +45,14 @@
     });
   };
 
-  /** ------------------------------ commit titles --------------------------- */
-  /** Custom title for a commit, or its real subject when untouched. */
+
+
   PR.commitLabel = function (commit) {
     var custom = PR.state.commitLabels[commit.sha];
     return custom || commit.subject;
   };
 
-  /** A pushed commit can only be rewritten after the user ticks the unlock box. */
+
   PR.isCommitLocked = function (commit) {
     if (!commit.pushed) return false;
     return !PR.state.commitUnlocked[commit.sha];
@@ -81,13 +81,13 @@
     }
 
     if (!commit.isHead) {
-      // git can only rewrite the tip, so do not pretend otherwise.
+
       PR.toast(PR.MESSAGES.COMMIT_NOT_HEAD, true);
       return Promise.resolve(false);
     }
 
     if (trimmed === commit.subject) {
-      // Back to the real message: nothing to write to git.
+
       delete PR.state.commitLabels[sha];
       PR.store();
       PR.renderCommits();
@@ -96,13 +96,13 @@
 
     return fetch(PR.API.COMMIT_RENAME, {
       method: PR.HTTP.POST,
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": PR.HTTP.JSON },
       body: JSON.stringify({ sha: sha, message: trimmed, allowPushed: commit.pushed === true }),
     })
       .then(function (response) { return response.json(); })
       .then(function (result) {
         if (!result || !result.ok) throw new Error((result && result.error) || "Unknown error");
-        // Rewriting an older commit replays everything above it, so every sha can change: re-read the…
+
         return refreshCommits().then(function () {
           PR.toast(PR.MESSAGES.COMMIT_LABEL_SAVED);
           return true;
@@ -114,7 +114,7 @@
       });
   };
 
-  /** Re-reads the commit list after git history was rewritten. */
+
   function refreshCommits() {
     return fetch(PR.API.COMMITS)
       .then(function (response) { return response.json(); })
@@ -137,37 +137,37 @@
     return null;
   }
 
-  /** Collapses a viewed file by animating its body height to zero. */
+
   function collapseWithAnimation(section) {
     var body = section.querySelector(PR.SELECTORS.DIFF_BODY);
     if (!body || !section.isConnected) {
-      section.classList.add("collapsed");
+      section.classList.add(PR.SELECTORS.COLLAPSED);
       return;
     }
 
     var height = body.getBoundingClientRect().height;
     body.style.height = height + "px";
-    body.style.overflow = "hidden";
+    body.style.overflow = PR.SELECTORS.HIDDEN;
     body.style.transition = "height " + PR.UI.VIEWED_ANIM_MS + "ms cubic-bezier(0.4, 0, 0.2, 1), opacity " +
       PR.UI.VIEWED_ANIM_MS + "ms ease";
-    // Force a reflow so the browser animates from the measured height.
+
     void body.offsetHeight;
     body.style.height = "0px";
     body.style.opacity = "0";
 
     setTimeout(function () {
-      // A re-render during the animation detached this node; the fresh section is already collapsed…
+
       if (!section.isConnected) return;
 
       body.style.transition = "";
       body.style.height = "";
       body.style.overflow = "";
       body.style.opacity = "";
-      section.classList.add("collapsed");
+      section.classList.add(PR.SELECTORS.COLLAPSED);
     }, PR.UI.VIEWED_ANIM_MS);
   }
 
-  /** ------------------------------- commits -------------------------------- */
+
   PR.renderCommits = function () {
     var state = PR.state;
     if (!PR.els.commitList) return;
@@ -204,7 +204,7 @@
     "</div>";
   }
 
-  /** Local commits rename directly; pushed ones need the explicit unlock box. */
+
   function renameControls(commit, sha, locked) {
     if (!commit.pushed) {
       return '<button class="commit-rename js-rename-commit" title="Rename this commit in git" data-sha="' +
@@ -219,7 +219,7 @@
         '"' + (locked ? " disabled" : "") + ">Rename</button>";
   }
 
-  /** Turns a commit row title into an inline text input. */
+
   PR.startRenameCommit = function (sha) {
     var row = PR.els.commitList.querySelector('.commit-item[data-sha="' + PR.cssEscape(sha) + '"]');
     if (!row) return;
@@ -246,14 +246,14 @@
       if (save) PR.renameCommit(sha, value);
     };
 
-    input.addEventListener("keydown", function (event) {
+    input.addEventListener(PR.EVENT.KEYDOWN, function (event) {
       if (event.key === "Enter") { event.preventDefault(); finish(true); }
-      else if (event.key === "Escape") { event.preventDefault(); finish(false); }
+      else if (event.key === PR.KEY.ESCAPE) { event.preventDefault(); finish(false); }
     });
     input.addEventListener("blur", function () { finish(true); });
   };
 
-  /** --------------------------- commit picker ------------------------------ */
+
   PR.openCommitPicker = function () {
     PR.pickerDraft = PR.state.commitSelection.slice();
     PR.renderCommitPicker();
@@ -291,7 +291,7 @@
     PR.syncPickerCount();
   };
 
-  /** Toggles one commit and keeps the selection a contiguous range. */
+
   PR.togglePickedCommit = function (sha, on) {
     var commits = PR.state.commits;
     var order = commits.map(function (c) { return c.sha; });
@@ -311,7 +311,7 @@
       PR.syncPickerSelection();
       return;
     }
-    // Everything between the new commit and the nearest already-picked one is selected too, exactly…
+
     var indexes = draft.map(function (item) { return order.indexOf(item); }).filter(function (i) { return i >= 0; });
     var nearest = indexes.reduce(function (best, current) {
       return Math.abs(current - index) < Math.abs(best - index) ? current : best;
@@ -323,7 +323,7 @@
     PR.syncPickerSelection();
   };
 
-  /** Applies the draft selection to existing rows without rebuilding the list. */
+
   PR.syncPickerSelection = function () {
     var draft = PR.pickerDraft || [];
     var rows = document.querySelectorAll(".commit-pick");
@@ -353,8 +353,8 @@
       : "Select a start and an end commit";
   };
 
-  /** ------------------------------- scope bar ------------------------------ */
-  /** Fills the branch selector and keeps it in sync with the reviewed scope. */
+
+
   PR.loadBranches = function () {
     var select = document.getElementById(PR.IDS.BRANCH_SELECT);
     if (!select) return Promise.resolve();
@@ -377,7 +377,7 @@
       });
   };
 
-  /** Shows which branch the commit list belongs to. */
+
   PR.syncBranchHint = function () {
     var hint = document.getElementById(PR.IDS.BRANCH_HINT);
     var select = document.getElementById(PR.IDS.BRANCH_SELECT);
@@ -388,7 +388,7 @@
     hint.textContent = isCurrent ? "the branch under review" : "not under review — browsing only";
   };
 
-  /** Loads the commits of the chosen branch into the list. */
+
   PR.changeBranch = function (branch) {
     if (!branch) return Promise.resolve();
     PR.syncBranchHint();
@@ -401,8 +401,8 @@
         PR.state.commits = result.commits || [];
         PR.state.commitSelection = [];
         PR.renderCommits();
-        // A branch with no commits of its own shows its recent history instead;
-        // say so, otherwise an empty-looking list reads as a bug.
+
+
         if (result.commits && result.commits.length && result.ownCommits === false) {
           PR.toast("No commits of its own — showing the latest history of " + branch);
         }
@@ -459,7 +459,7 @@
     PR.toast("Uncommitted changes are already open");
   };
 
-  /** Commits are listed newest-first, so the last picked index is the oldest. */
+
   function oldestOf(picked) {
     var order = PR.state.commits.map(function (c) { return c.sha; });
     return picked.reduce(function (best, sha) {
@@ -503,7 +503,7 @@
       .catch(function (err) { PR.toast("Commit load failed: " + err.message, true); });
   };
 
-  /** Swaps the main pane to an arbitrary diff (commit or range). */
+
   PR.showDiffView = function (kind, files, stats, label) {
     var state = PR.state;
     state.view = { kind: kind, label: label };

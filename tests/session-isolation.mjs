@@ -1,10 +1,4 @@
-/**
- * Regression: a page started outside MCP must not inherit a chat session.
- *
- * The bug: `serve-5454.js` passed `OPENCODE_SESSION_ID` from the environment
- * into the review, so a review opened by hand (or by a test) was delivered into
- * whatever conversation happened to start that process.
- */
+
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -26,7 +20,7 @@ function check(name, fn) {
   );
 }
 
-/** Runs the standalone server with the given environment and returns its output. */
+
 function runServer(env) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [SERVE, env.__repo, "0", "uncommitted"], {
@@ -43,8 +37,8 @@ function runServer(env) {
 
     child.stdout.on("data", (chunk) => {
       out += chunk;
-      // The page prints its URL as soon as it is up; the owner file is written
-      // before that, so the output is enough to assert on.
+
+
       if (out.includes("ARTIFACT_DIR=")) {
         clearTimeout(timer);
         child.kill();

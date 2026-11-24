@@ -1,4 +1,4 @@
-/** Unit tests for the pure modules: diff parsing, languages, config, symbols. */
+
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -9,10 +9,11 @@ import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { promisify } from "node:util";
 import { parseDiff, diffStats, languageFor, isBinaryPath } from "../src/diff.js";
-import { resolveGitBinary, resetGitBinary, listFiles, listBranches, listBranchHeads, searchProject, diffUncommitted } from "../src/git.js";
+import { resolveGitBinary, resetGitBinary, listFiles, listBranches, listBranchHeads, searchProject, diffUncommitted, currentBranch } from "../src/git.js";
 import { buildDispatchMessage, buildDispatchPrompt, currentSessionId, dispatchToSession } from "../src/dispatch.js";
 import { readFilesForHighlight, splitLines } from "../src/fileview.js";
-import { loadScopeCommits } from "../src/models/commits.js";
+import { defaultBase, loadScopeCommits } from "../src/models/commits.js";
+import { resolveScope } from "../src/models/scope.js";
 import { computeGaps } from "../src/models/gaps.js";
 import { toFileModel } from "../src/models/diffset.js";
 import { buildProjectTree } from "../src/models/tree.js";
@@ -125,7 +126,7 @@ test("config has no duplicate route strings", () => {
 test("dispatch deduplicates an identical submit and replaces a changed one", async () => {
   const { dispatchToSession } = await import("../src/dispatch.js");
 
-  // No session id: the guard must answer without spawning anything.
+
   const noSession = await dispatchToSession(null, "msg");
   assert.equal(noSession.started, false);
   assert.ok(noSession.reason.length > 0);
@@ -139,7 +140,7 @@ test("sortLikeTree puts folders before files at each level", () => {
   ];
   const sorted = sortLikeTree(input);
 
-  // Depth-first: the nested folders come before the .csproj sitting at their level.
+
   assert.deepEqual(sorted, [
     "src/Domain/Constants/AtlasConstants.cs",
     "src/Domain/Entities/Employee.cs",
@@ -206,6 +207,60 @@ test("computeGaps reports no region when the hunk covers the file", () => {
   const { gaps } = computeGaps(file, lines);
   assert.equal(gaps.length, 0);
 });
+test("a repository without a remote still reviews its branch", async () => {
+  const root = await mkdtemp(join(tmpdir(), "pr-review-noremote-"));
+  const git = (...args) => exec(GIT.BIN, args, { cwd: root });
+
+  try {
+    await git("init", "--initial-branch", "main");
+    await git("config", "user.email", "test@example.com");
+    await git("config", "user.name", "Test");
+    await writeFile(join(root, "a.ts"), "export const a = 1;\n");
+    await git("add", "-A");
+    await git("commit", "-m", "base");
+    await git("checkout", "-b", "feature/work");
+    await writeFile(join(root, "a.ts"), "export const a = 2;\n");
+    await git("add", "-A");
+    await git("commit", "-m", "change");
+
+
+
+    const base = await defaultBase(root);
+    assert.equal(base, "main", `a local trunk is the base, got ${base}`);
+
+    const scope = await resolveScope(root, { mode: MODE.BRANCH });
+    assert.equal(scope.base, "main");
+    assert.match(scope.diffText, /-export const a = 1;/);
+    assert.match(scope.diffText, /\+export const a = 2;/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+test("a head branch is never used as its own base", async () => {
+  const root = await mkdtemp(join(tmpdir(), "pr-review-selfbase-"));
+  const git = (...args) => exec(GIT.BIN, args, { cwd: root });
+
+  try {
+
+
+    await git("init", "--initial-branch", "master");
+    await git("config", "user.email", "test@example.com");
+    await git("config", "user.name", "Test");
+    await writeFile(join(root, "a.ts"), "export const a = 1;\n");
+    await git("add", "-A");
+    await git("commit", "-m", "base");
+    await git("checkout", "-b", "feature/work");
+    await writeFile(join(root, "a.ts"), "export const a = 3;\n");
+    await git("add", "-A");
+    await git("commit", "-m", "change");
+
+    const base = await defaultBase(root);
+    assert.equal(base, "master");
+    assert.notEqual(base, await currentBranch(root), "the base is the branch itself");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
 test("git writes a path with non-ASCII letters as it is", async () => {
   const root = await mkdtemp(join(tmpdir(), "pr-review-unicode-"));
 
@@ -227,14 +282,14 @@ test("git writes a path with non-ASCII letters as it is", async () => {
     const files = await listFiles(root);
     assert.ok(files.includes("docs/новый.md"), `the path is escaped: ${files.join(", ")}`);
 
-    // A file is found by its name, even when the name has non-ASCII letters.
+
     const byName = await searchProject(root, "новый");
     assert.ok(
       byName.some((hit) => hit.path === "docs/новый.md"),
       `the file was not found by its name: ${JSON.stringify(byName)}`,
     );
 
-    // The content is found without regard to the case.
+
     const byContent = await searchProject(root, "novy");
     assert.ok(
       byContent.some((hit) => hit.path === "docs/plain.md"),
@@ -261,7 +316,7 @@ test("a remote branch keeps the name that resolves", async () => {
     assert.ok(branches.includes("origin/dev"), `the remote branch was renamed: ${JSON.stringify(branches)}`);
     assert.ok(!branches.includes("origin/HEAD"), "the remote head alias is not a branch");
 
-    // Every listed branch has to resolve: the review scope hands these back to git.
+
     const heads = await listBranchHeads(root, branches);
     for (const head of heads) {
       assert.ok(head.sha, `the branch ${head.name} does not resolve`);
@@ -301,7 +356,7 @@ test("scope commits exclude commits of other branches that reached the base late
     const rootCommit = await commit("a.txt", "a", "root");
     await git("branch", "feature");
 
-    // Another branch lands in the base after the feature branched off.
+
     await commit("foreign.txt", "foreign", "foreign work");
     const baseSha = (await git("rev-parse", "HEAD")).stdout.trim();
     await git("update-ref", "refs/remotes/origin/dev", baseSha);
@@ -320,8 +375,8 @@ test("scope commits exclude commits of other branches that reached the base late
   }
 });
 test("an uncommitted review lists only the branch's own commits", async () => {
-  // Regression: with no base, the commits tab fell back to "everything
-  // not on a remote" and showed 200 unrelated commits.
+
+
   const root = await mkdtemp(join(tmpdir(), "pr-review-own-"));
   const git = (...args) => exec(GIT.BIN, args, { cwd: root });
   const commit = async (file, message) => {
@@ -336,14 +391,14 @@ test("an uncommitted review lists only the branch's own commits", async () => {
     await git("config", "user.email", "test@example.com");
     await git("config", "user.name", "Test");
 
-    // Ten commits on the base branch.
+
     for (let index = 0; index < 10; index += 1) {
       await commit(`base${index}.txt`, `base work ${index}`);
     }
     const baseTip = (await git("rev-parse", "HEAD")).stdout.trim();
     await git("update-ref", "refs/remotes/origin/dev", baseTip);
 
-    // Two commits of the branch's own work.
+
     await git("checkout", "-b", "feature");
     await commit("mine1.txt", "my first change");
     await commit("mine2.txt", "my second change");
@@ -377,8 +432,8 @@ test("a branch at its base lists no commits instead of the whole history", async
   }
 });
 test("without any base branch the commits tab stays empty, never the whole history", async () => {
-  // The exact shape of the reported bug: a repository with NO base branch at
-  // all: without a base the tab must stay empty.
+
+
   const root = await mkdtemp(join(tmpdir(), "pr-review-nobase-"));
   const git = (...args) => exec(GIT.BIN, args, { cwd: root });
 
@@ -387,7 +442,7 @@ test("without any base branch the commits tab stays empty, never the whole histo
     await git("config", "user.email", "test@example.com");
     await git("config", "user.name", "Test");
 
-    // No remote at all, and 30 commits: without the fix all 30 would show.
+
     for (let index = 0; index < 30; index += 1) {
       await writeFile(join(root, `f${index}.txt`), String(index));
       await git("add", "-A");
@@ -476,10 +531,10 @@ test("highlight reads working-tree content, not HEAD", async () => {
   }
 });
 test("an uncommitted diff joins staged+unstaged+untracked without a blank line", async () => {
-  // Regression: each `git diff` already ends in a newline, and the parts
-  // were joined with another one. The blank line between parts became a phantom
-  // empty "meta" row at the end of the preceding file, so an added file showed
-  // an extra trailing line in the review.
+
+
+
+
   const root = await mkdtemp(join(tmpdir(), "pr-review-join-"));
   const git = (...args) => exec(GIT.BIN, args, { cwd: root });
 
@@ -491,7 +546,7 @@ test("an uncommitted diff joins staged+unstaged+untracked without a blank line",
     await git("add", "-A");
     await git("commit", "-m", "init");
 
-    // Staged change, an unstaged change and an untracked file: three parts.
+
     await writeFile(join(root, "tracked.txt"), "one\ntwo\n");
     await git("add", "tracked.txt");
     await writeFile(join(root, "second.txt"), "alpha\n");
@@ -512,7 +567,7 @@ test("an uncommitted diff joins staged+unstaged+untracked without a blank line",
     );
     assert.deepEqual(added.hunks[0].rows.map((row) => row.content), ["a", "b", "c"]);
 
-    // No file may carry an empty meta row.
+
     for (const file of files) {
       for (const hunk of file.hunks) {
         const phantom = hunk.rows.filter((row) => row.kind === "meta" && row.content === "");
@@ -524,8 +579,8 @@ test("an uncommitted diff joins staged+unstaged+untracked without a blank line",
   }
 });
 test("the tree colours untracked files as added, not unchanged", async () => {
-  // Regression: the tree was built from `git diff HEAD` only, so an
-  // untracked file was invisible and the sidebar showed nothing but yellow.
+
+
   const root = await mkdtemp(join(tmpdir(), "pr-review-tree-"));
   const git = (...args) => exec(GIT.BIN, args, { cwd: root });
 
@@ -537,7 +592,7 @@ test("the tree colours untracked files as added, not unchanged", async () => {
     await git("add", "-A");
     await git("commit", "-m", "init");
 
-    // One modified tracked file and one untracked file.
+
     await writeFile(join(root, "tracked.txt"), "one\ntwo\n");
     await writeFile(join(root, "brand-new.txt"), "new\n");
 
@@ -563,9 +618,9 @@ test("a staged new file is added and a staged deletion is deleted", async () => 
     await git("add", "-A");
     await git("commit", "-m", "init");
 
-    await git("rm", "gone.txt");                       // staged deletion
+    await git("rm", "gone.txt");                        
     await writeFile(join(root, "staged-new.txt"), "n\n");
-    await git("add", "staged-new.txt");                // staged addition
+    await git("add", "staged-new.txt");                 
 
     const tree = await buildProjectTree(root, { mode: MODE.UNCOMMITTED, base: null, head: null });
     const byPath = new Map(tree.map((entry) => [entry.path, entry.status]));
@@ -576,7 +631,7 @@ test("a staged new file is added and a staged deletion is deleted", async () => 
     await rm(root, { recursive: true, force: true });
   }
 });
-/* --------------------- diff header / path parsing regressions -------------------- */
+
 test("parseDiff keeps a path that contains spaces", () => {
   const text = `diff --git a/sub dir/my file.txt b/sub dir/my file.txt
 index 111..222 100644
@@ -644,7 +699,7 @@ test("splitLines drops the phantom last line of a trailing newline", () => {
   assert.deepEqual(splitLines("a\nb"), ["a", "b"]);
   assert.deepEqual(splitLines(""), []);
   assert.deepEqual(splitLines("only"), ["only"]);
-  // A file that really ends with a blank line keeps it (two newlines).
+
   assert.deepEqual(splitLines("a\n\n"), ["a", ""]);
 });
 test("a real git diff keeps a file whose path contains a space", async () => {
@@ -686,7 +741,7 @@ test("the tail gap never reaches past the last real line", async () => {
     await git("add", "-A");
     await git("commit", "-m", "init");
 
-    // Delete lines 5-6: the file ends with a newline, so it has 8 real lines.
+
     const after = "1\n2\n3\n4\n7\n8\n9\n10\n";
     await writeFile(join(root, "f.txt"), after);
 
@@ -706,11 +761,11 @@ test("the tail gap never reaches past the last real line", async () => {
 });
 
 test("a file staged as new and edited again appears once in the uncommitted diff", async () => {
-  // Regression: the patch was built from `diff --cached HEAD` plus a separate
-  // `diff`, so a file that was staged as new and then edited again was listed
-  // twice — once as "added", once as "modified". Both sections carried the same
-  // path, so the review rendered its lines twice and the last line of the file
-  // (a closing brace, in the report) looked duplicated.
+
+
+
+
+
   const root = await mkdtemp(join(tmpdir(), "pr-review-staged-"));
   const git = (...args) => exec(GIT.BIN, args, { cwd: root });
 
@@ -723,7 +778,7 @@ test("a file staged as new and edited again appears once in the uncommitted diff
     await git("add", "-A");
     await git("commit", "-m", "init");
 
-    // Staged as a new file, then edited again in the working tree.
+
     const content = ["class ApiRoutes", "{", "}"].join("\n");
     await writeFile(join(root, "ApiRoutes.cs"), `${content}\n`);
     await git("add", "ApiRoutes.cs");
@@ -734,7 +789,7 @@ test("a file staged as new and edited again appears once in the uncommitted diff
 
     assert.equal(files.length, 1, `the file must appear once, got ${files.length}`);
     assert.equal(files[0].status, "added");
-    // A single hunk that already contains the later edit.
+
     assert.equal(files[0].hunks.length, 1);
     const rows = files[0].hunks[0].rows.map((row) => row.content);
     assert.equal(rows.filter((row) => row === "}").length, 1, "the closing brace must not be duplicated");
@@ -745,9 +800,9 @@ test("a file staged as new and edited again appears once in the uncommitted diff
 });
 
 test("every mapped language is registered in the client bundle", async () => {
-  // Regression: the bundle shipped 14 languages, but the extension map named 25.
-  // A Go, Java, Rust or Vue file then fell back to unhighlighted plain text,
-  // which read as "the highlighting is broken and the code is white".
+
+
+
   const { DIFF } = await import("../src/config.js");
   const bundlePath = join(dirname(fileURLToPath(import.meta.url)), "..", "src", "assets", "hljs-bundle.js");
   const bundle = await readFile(bundlePath, "utf8");

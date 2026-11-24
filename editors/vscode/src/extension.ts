@@ -25,20 +25,35 @@ export function activate(context: vscode.ExtensionContext): void {
   statusItem.tooltip = "Close the PR Review tab";
 
   context.subscriptions.push(
+    // The command returns what it opened, so a caller (and the test inside the
+    // real editor) can reach the page it started instead of guessing its port.
     vscode.commands.registerCommand(COMMAND_OPEN, () => openReview(context)),
     vscode.commands.registerCommand(COMMAND_CLOSE, () => closeReview()),
     { dispose: () => void closeReview() },
   );
+
+  // Opt-in: a review opens as soon as the folder does, for people who want the
+  // review waiting for them instead of a click. Off by default, because it starts
+  // a server and a tab on every window that opens.
+  const wantsAutoOpen = vscode.workspace.getConfiguration("prReview").get<boolean>("autoOpen", false);
+  const folder = vscode.workspace.workspaceFolders?.[0];
+  if (process.env.PR_REVIEW_DEBUG_ACTIVATION) {
+    void import("node:fs/promises").then(({ writeFile }) => writeFile(
+      process.env.PR_REVIEW_DEBUG_ACTIVATION!,
+      JSON.stringify({ wantsAutoOpen, folder: folder?.uri.fsPath ?? null, workspaceFolders: vscode.workspace.workspaceFolders?.length ?? 0 }, null, 2),
+    )).catch(() => undefined);
+  }
+  if (wantsAutoOpen && folder) void openReview(context);
 }
 export async function deactivate(): Promise<void> {
   await closeReview();
 }
 /** Opens the review of the current branch in the configured place. */
-async function openReview(context: vscode.ExtensionContext): Promise<void> {
+async function openReview(context: vscode.ExtensionContext): Promise<ReviewInfo | undefined> {
   const folder = vscode.workspace.workspaceFolders?.[0];
   if (!folder) {
     vscode.window.showWarningMessage("PR Review: open a folder or repository first.");
-    return;
+    return undefined;
   }
 
   const config = vscode.workspace.getConfiguration("prReview");
@@ -50,10 +65,10 @@ async function openReview(context: vscode.ExtensionContext): Promise<void> {
 
   if (!existsSync(cliPath)) {
     vscode.window.showErrorMessage(`PR Review: the server was not found at ${cliPath}.`);
-    return;
+    return undefined;
   }
 
-  await vscode.window.withProgress(
+  return vscode.window.withProgress(
     { location: vscode.ProgressLocation.Notification, title: "PR Review: building the review…" },
     async () => {
       try {
@@ -64,8 +79,10 @@ async function openReview(context: vscode.ExtensionContext): Promise<void> {
         if (showIn === "external") {
           vscode.window.showInformationMessage(`PR Review: opened ${info.url} in the browser.`);
         }
+        return info;
       } catch (error) {
         vscode.window.showErrorMessage(`PR Review: ${(error as Error).message}`);
+        return undefined;
       }
     },
   );

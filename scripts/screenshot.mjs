@@ -1,4 +1,4 @@
-/** Refreshes docs/screenshot-review.png from a live review page. */
+
 import { Builder } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox.js";
 import { writeFile } from "node:fs/promises";
@@ -21,8 +21,8 @@ try {
       );
     } catch { return false; }
   }, 60000);
-  // Let the visible sections highlight and open one comment box so the shot
-  // shows the workflow; the whole 200-file diff does not need to finish.
+
+
   await driver.sleep(4500);
   await driver.executeScript(`
     const first = document.querySelector('.diff-file:not(.collapsed)');

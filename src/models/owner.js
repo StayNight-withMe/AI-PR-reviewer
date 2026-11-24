@@ -1,10 +1,10 @@
-/** The OpenCode session that owns a review. */
+
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { P, SERVER } from "../config.js";
-/** The registry file name inside a review's artifact directory. */
+
 export const OWNER_FILE = "session.json";
-/** Records the session that owns a review. */
+
 export async function writeReviewOwner(outputDir, sessionId) {
   if (!outputDir || !sessionId) return;
 
@@ -14,7 +14,7 @@ export async function writeReviewOwner(outputDir, sessionId) {
   } catch {
   }
 }
-/** The recorded owner of a review, or null when none was written. */
+
 export async function readReviewOwner(outputDir) {
   if (!outputDir) return null;
 
@@ -26,7 +26,7 @@ export async function readReviewOwner(outputDir) {
     return null;
   }
 }
-/** Removes a leading/trailing space so a copied id still matches. */
+
 export function normalizeSessionId(value) {
   return typeof value === "string" ? value.trim() || P.EMPTY : P.EMPTY;
 }

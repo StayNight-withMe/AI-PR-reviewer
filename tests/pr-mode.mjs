@@ -1,13 +1,4 @@
-/**
- * `mode=pr` against a mock `gh` and a real local git remote.
- *
- * No network, no GitHub account, no real repository: the fixture builds a real
- * git repo with a bare "origin" that carries `refs/pull/<n>/head`, and the mock
- * `gh` answers from a JSON database. That makes every PR path deterministic and
- * lets the test assert exact file sets instead of "some files".
- *
- * Run: node tests/pr-mode.mjs
- */
+
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -35,7 +26,7 @@ function check(name, fn) {
     );
 }
 const fixture = await createPrFixture();
-/** Points the engine at the mock gh and its database. */
+
 async function useMockGh(db) {
   const dir = await mkdtemp(join(tmpdir(), "pr-review-ghdb-"));
   const path = join(dir, "db.json");
@@ -55,7 +46,7 @@ const db = {
   },
 };
 const ghDb = await useMockGh(db);
-/** The ref values a review must never touch. */
+
 async function remoteRefValues() {
   const { stdout } = await exec(fixture.binary, ["for-each-ref", "--format=%(refname) %(objectname)", "refs/remotes"], { cwd: fixture.repo });
   return stdout.trim();
@@ -120,14 +111,14 @@ try {
   });
 
   await check("the review is pinned to the PR head, not the checked-out branch", async () => {
-    // The checkout is on main; the PR head commit is not checked out at all.
+
     const head = (await exec(fixture.binary, ["rev-parse", "HEAD"], { cwd: fixture.repo })).stdout.trim();
     assert.equal(head, fixture.commits.bigCommit, "the fixture must be checked out on the PR base");
 
     const review = await buildReview({ repoPath: fixture.repo, mode: MODE.PR, pr: PR_NUMBER });
     const app = review.files.find((f) => f.path === "src/app.ts");
     assert.ok(app, "src/app.ts is missing");
-    // The added line exists only in the PR head; the diff must show it.
+
     const added = app.hunks.flatMap((h) => h.rows).filter((r) => r.kind === "add").map((r) => r.content);
     assert.ok(added.some((line) => line.includes("ready = true")), `unexpected added lines: ${JSON.stringify(added)}`);
   });
@@ -161,6 +152,38 @@ try {
     assert.equal(two.files[0].path, "src/other.ts");
   });
 
+  await check("a PR is diffed from the merge base when its base branch moved on", async () => {
+
+
+
+    const moved = await exec(fixture.binary, ["commit-tree", `${fixture.commits.bigCommit}^{tree}`,
+      "-p", fixture.commits.bigCommit, "-m", "main moved on"], {
+      cwd: fixture.repo,
+      env: { ...process.env, GIT_AUTHOR_NAME: "Main", GIT_AUTHOR_EMAIL: "m@e.com", GIT_COMMITTER_NAME: "Main", GIT_COMMITTER_EMAIL: "m@e.com" },
+    });
+    const advanced = moved.stdout.trim();
+    await exec(fixture.binary, ["update-ref", "refs/heads/main", advanced], { cwd: fixture.repo });
+
+    const advancedDb = {
+      auth: true,
+      default: String(PR_NUMBER),
+      pullRequests: {
+        [String(PR_NUMBER)]: { ...pullRequestPayload(fixture, PR_NUMBER), baseRefOid: advanced },
+      },
+    };
+    await useMockGh(advancedDb);
+    try {
+      const review = await buildReview({ repoPath: fixture.repo, mode: MODE.PR, pr: PR_NUMBER });
+      assert.equal(review.meta.base, fixture.commits.bigCommit, "the review diffed against main's new tip");
+
+      const removed = review.files.filter((f) => f.status === "deleted").map((f) => f.path);
+      assert.deepEqual(removed, ["src/removed.ts"], `main's commits leaked into the diff: ${removed.join(", ")}`);
+    } finally {
+      await exec(fixture.binary, ["update-ref", "refs/heads/main", fixture.commits.bigCommit], { cwd: fixture.repo });
+      await useMockGh(db);
+    }
+  });
+
   await check("reviewing a PR never moves or creates a remote-tracking ref", async () => {
     const before = await remoteRefValues();
     await buildReview({ repoPath: fixture.repo, mode: MODE.PR, pr: PR_NUMBER });
@@ -171,8 +194,8 @@ try {
   });
 
   await check("a branch review of the same repo still sees its own diff", async () => {
-    // Regression: fetching a PR base moved origin/<base>, which
-    // emptied every branch review. The fixture's branch has commits.
+
+
     await exec(fixture.binary, ["checkout", "-b", "local-work"], { cwd: fixture.repo });
     await writeFile(join(fixture.repo, "local.txt"), "local\n");
     await exec(fixture.binary, ["add", "-A"], { cwd: fixture.repo });
@@ -184,11 +207,11 @@ try {
   });
 
   await check("PR refs stay in the private namespace", async () => {
-    // A fresh clone of the fixture never saw the PR heads: reviewing #10 must
-    // fetch, and the fetch must land in refs/pr-review/…, never refs/remotes/.
-    // `--no-local` is essential: a plain clone of a local path hardlinks the
-    // whole object store, so the PR head would already be present and the fetch
-    // path (the thing under test) would never run.
+
+
+
+
+
     const reviewer = join(fixture.root, "reviewer");
     await exec(fixture.binary, ["clone", "--no-local", fixture.origin, reviewer], { cwd: fixture.root });
     await exec(fixture.binary, ["config", "user.email", "r@e.com"], { cwd: reviewer });
@@ -209,9 +232,9 @@ try {
   });
 
   await check("a PR whose history shares no ancestor with the base still diffs", async () => {
-    // GitHub diffs base..head (two-dot). A three-dot diff (merge-base) is EMPTY
-    // when the head has no common ancestor with the base — an earlier version showed
-    // an empty review for such a PR.
+
+
+
     const review = await buildReview({ repoPath: fixture.repo, mode: MODE.PR, pr: REMOTE_PR_NUMBER });
     assert.ok(review.files.length > 0, "the diff is empty for a PR without a shared ancestor");
     assert.ok(review.files.some((f) => f.path === "remote-only.txt"), "the PR file is missing");
@@ -294,8 +317,8 @@ try {
   });
 
   await check("a submit without a summary still produces a review", async () => {
-    // A minimal API client (or an older page) may omit `summary`; the server
-    // The server must accept a submit that omits `summary`.
+
+
     const started = await startReview({ repoPath: fixture.repo, mode: MODE.PR, pr: PR_NUMBER, port: 0, dispatchEnabled: false, symbols: false });
     try {
       const submitted = await fetch(new URL(ROUTES.API_REVIEW, started.url), {

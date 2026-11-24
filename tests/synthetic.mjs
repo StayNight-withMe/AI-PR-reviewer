@@ -1,14 +1,4 @@
-/**
- * Deep checks against a synthetic two-month history.
- *
- * The fixture repository carries the shapes a real repository contains:
- * renames, deletions, binary files, unicode paths, CRLF endings, a file
- * without a trailing newline, a very long line, a mode change, a merge
- * commit, an empty commit, a few hundred generated files and a file big
- * enough to make the folding policy matter.
- *
- * Run: node tests/synthetic.mjs
- */
+
 import assert from "node:assert/strict";
 import { Builder, By, until } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox.js";
@@ -19,7 +9,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createSyntheticRepo, FEATURE, MAIN } from "./fixtures/synthetic-repo.mjs";
 const PAUSE = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-/** The review must stay usable; these are the limits of the timings. */
+
 const LIMIT_REVIEW_BUILD_MS = 15_000;
 const LIMIT_PAGE_LOAD_MS = 20_000;
 const failures = [];
@@ -39,9 +29,9 @@ console.log(`fixture: ${fixture.root}`);
 let started = null;
 let driver = null;
 try {
-  /* ------------------------------------------------------------------ */
-  /* The whole history: every edge case of the fixture is in this diff.  */
-  /* ------------------------------------------------------------------ */
+
+
+
   const rootCommit = (await import("node:child_process")).execFile;
   const { execFile: exec } = await import("node:child_process");
   const { promisify } = await import("node:util");
@@ -92,9 +82,9 @@ try {
   });
 
   await check("two commits touching one file show it once", async () => {
-    // The bug: mode=commits concatenated a patch per commit, so a file changed
-    // by two selected commits appeared twice. The UI keys viewed/collapse by
-    // path, so the second section cleared the flag of the first.
+
+
+
     const { stdout } = await execAsync(fixture.git, ["log", "--format=%H", "--", "src/generated/large.ts"], { cwd: fixture.root });
     const shas = stdout.split("\n").map((line) => line.trim()).filter(Boolean).slice(0, 2);
     assert.equal(shas.length, 2, "the fixture must change the generated file twice");
@@ -158,21 +148,21 @@ try {
     const generated = all.files.find((file) => file.path === "src/generated/large.ts");
     assert.ok(generated, "the generated file is missing");
 
-    // The length must be the real number of lines: a trailing newline is not a
-    // line.
+
+
     const text = await readFile(join(fixture.root, "src/generated/large.ts"), "utf8");
     const realLines = splitLines(text).length;
     assert.equal(generated.totalLines, realLines, "the file length counts a phantom line");
 
-    // The range adds the whole file as one hunk, so its tail is covered and no
-    // tail region exists; if one did, it must never reach past the last line.
+
+
     const tail = (generated.gaps ?? []).find((gap) => gap.dir === "down");
     if (tail) assert.equal(tail.newEnd, generated.totalLines, "the tail does not reach the end of the file");
   });
 
-  /* ------------------------------------------------------------------ */
-  /* The page.                                                            */
-  /* ------------------------------------------------------------------ */
+
+
+
   started = await startReview({
     repoPath: fixture.root,
     mode: MODE.RANGE,
@@ -265,8 +255,8 @@ try {
   });
 
   await check("the tail of a big file keeps its blue button", async () => {
-    // The generated file is only modified by one commit, so the diff is taken
-    // from that commit: a file that is added whole has no hidden region.
+
+
     const { stdout: growthSha } = await execAsync(fixture.git, ["log", "-n", "1", "--format=%H", "--", "src/generated/large.ts"], { cwd: fixture.root });
     const { stdout: parentSha } = await execAsync(fixture.git, ["rev-parse", `${growthSha.trim()}^`], { cwd: fixture.root });
 
@@ -290,7 +280,7 @@ try {
         await page.wait(until.elementLocated(By.css(".diff-file")), 20_000);
         await PAUSE(2_000);
 
-        // A very large file is loaded on demand, like on GitHub.
+
         const loaded = await page.executeScript(`return (() => {
           const section = [...document.querySelectorAll('.diff-file')].find((s) => s.dataset.path.includes('generated/large.ts'));
           if (!section) return { missing: true };
