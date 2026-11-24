@@ -1,12 +1,4 @@
-/**
- * Opens a PR review page on the mock fixture and checks it renders in a browser.
- *
- * This is the UI half of `test:pr`: the node half checks the diff and the API,
- * this one checks that the page actually shows the PR — badge, files, title,
- * a comment editor and the diff rows — with no JavaScript errors.
- *
- * Run: node tests/pr-page.mjs
- */
+
 import assert from "node:assert/strict";
 import { Builder, By, until } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox.js";
@@ -68,9 +60,9 @@ try {
   });
 
   await check("the diff shows the added line from the PR head", async () => {
-    // Read through a path filter rather than a CSS attribute selector: a path
-    // holds dots and slashes, and the JS filter is unambiguous. Hydration
-    // rewrites the cells, so poll instead of reading once.
+
+
+
     let ready = false;
     for (let attempt = 0; attempt < 60 && !ready; attempt += 1) {
       ready = await driver.executeScript(`return (function(){
@@ -118,7 +110,7 @@ try {
   });
 
   await check("publishing sends the inline comment to the pull request", async () => {
-    // Leave a comment the way a reviewer does, on the added line.
+
     await driver.executeScript(`return (function(){
       var s = [].slice.call(document.querySelectorAll('.diff-file'))
         .filter(function (n) { return n.dataset.path === 'src/app.ts'; })[0];
@@ -138,7 +130,7 @@ try {
 
     await driver.executeScript(`document.getElementById('btn-submit').click(); return true;`);
     await PAUSE(200);
-    // Two clicks in a row: the button locks itself on the first one.
+
     const locked = await driver.executeScript(`return (function(){
       var button = document.getElementById('btn-publish-github');
       button.click();
@@ -165,8 +157,13 @@ try {
     assert.match(posted.comments[0].body, /rename this to ready/);
     assert.ok(posted.comments[0].line > 0, "the inline comment carries no line");
 
-    // The page says what happened, and it stays open so the reviewer can look.
-    const shown = await driver.executeScript(`return (document.getElementById('publish-result') || {}).textContent || '';`);
+
+    let shown = "";
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      shown = await driver.executeScript(`return (document.getElementById('publish-result') || {}).textContent || '';`);
+      if (/Published to GitHub/i.test(shown)) break;
+      await PAUSE(250);
+    }
     assert.match(shown, /Published to GitHub/i, `unexpected result text: ${shown}`);
   });
 
@@ -186,7 +183,7 @@ try {
   });
 
   await check("a failed publish keeps the comments and says what happened", async () => {
-    // A logged-out gh is what a user hits after a token expires.
+
     const db = JSON.parse(await readFile(dbPath, "utf8"));
     await writeFile(dbPath, JSON.stringify({ ...db, auth: false }));
 
@@ -216,7 +213,7 @@ try {
     assert.match(text, /Could not publish/i, `the failure was not reported: ${text}`);
     assert.match(text, /auth|login/i, `the reason is not useful: ${text}`);
 
-    // The review is still on the page, and the button can be tried again.
+
     const kept = await driver.executeScript(`return (function(){
       return {
         modal: document.getElementById('dispatch-modal').classList.contains('show'),
@@ -231,7 +228,7 @@ try {
   });
 
   await check("a reopened review does not repost comments that already went to GitHub", async () => {
-    // The mark lives with the comment on the server, not only in this tab.
+
     await driver.get(started.url);
     await driver.wait(until.elementLocated(By.css(".diff-file")), 20_000);
     await driver.wait(async () => driver.executeScript(`return document.body.dataset.booted === '1';`), 15_000);
@@ -262,8 +259,8 @@ try {
   });
 
   await check("a deleted file starts collapsed, like GitHub", async () => {
-    // A deleted file is collapsed by default (the server asks for it); its diff
-    // must still exist and expand on demand.
+
+
     const state = await driver.executeScript(`return (function(){
       var s = Array.prototype.slice.call(document.querySelectorAll('.diff-file'))
         .filter(function(n){ return n.dataset.path === 'src/removed.ts'; })[0];
@@ -294,7 +291,7 @@ try {
 
     assert.ok(shape.spans > 0, "the viewer shows the file without any syntax colour");
     assert.equal(shape.tinted, 0, "the viewer tinted lines as if it were a diff");
-    // The exact source lines are visible, unmodified.
+
     assert.ok(shape.text.includes("export const ready = true;"), `unexpected viewer text: ${shape.text.slice(0, 200)}`);
   });
 } finally {

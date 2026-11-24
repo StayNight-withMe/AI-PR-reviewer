@@ -1,16 +1,4 @@
-/**
- * Runs inside a real VS Code, driven by @vscode/test-cli.
- *
- * This is the only honest way to test an extension: the editor loads it from its
- * own manifest, activates it, runs its commands and hosts its webview. The Mocha
- * hooks below are the editor's, not a mock. The workspace is the fixture
- * repository that `.vscode-test.cjs` prepared before the window started.
- *
- * The flow is the one a person and an agent share:
- *
- *   open the review → write a comment → the agent resolves it → close → reopen
- *   and see the resolved comment.
- */
+
 import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -23,7 +11,7 @@ const TAB_PREFIX = "Review: feature/vscode-test";
 
 suite("PR Review inside a real VS Code window", () => {
   let extension;
-  /** The review the extension currently has open, from its own command result. */
+
   let info;
 
   suiteSetup(async function () {
@@ -98,8 +86,8 @@ suite("PR Review inside a real VS Code window", () => {
     this.timeout(180_000);
     assert.ok(info, "no review is open");
 
-    // The agent's MCP tool writes through this module; nothing about it changes
-    // between the editor and the MCP server.
+
+
     const { setCommentsResolved } = await import("../../../src/models/resolve-store.js");
     const touched = await setCommentsResolved(
       { outputDir: info.outputDir, repoRoot: info.repo, meta: { repo: info.repo, branch: info.branch, pr: null } },
@@ -108,7 +96,7 @@ suite("PR Review inside a real VS Code window", () => {
     );
     assert.deepEqual(touched, ["editor-comment"]);
 
-    // Close and open again, which is what a reviewer does the next morning.
+
     await vscode.commands.executeCommand("prReview.close");
     await waitUntil(() => !reviewTab(), 10_000);
 
@@ -147,9 +135,9 @@ suite("PR Review inside a real VS Code window", () => {
     const cli = await readFile(join(root, "server", "src", "cli.js"), "utf8");
     assert.match(cli, /READY_PREFIX|PR_REVIEW_READY/, "the package lacks the launcher");
 
-    // `src/core.js` (the engine) and `src/assets/core.js` (the page client) share
-    // a name; a packer that matches by name silently drops one, and the engine
-    // then fails to start.
+
+
+
     const serverCore = await readFile(join(root, "server", "src", "core.js"), "utf8");
     assert.match(serverCore, /export async function startReview/, "the server's core.js was overwritten by the page's");
     const clientCore = await readFile(join(root, "server", "src", "assets", "core.js"), "utf8");
@@ -157,14 +145,14 @@ suite("PR Review inside a real VS Code window", () => {
   });
 });
 
-/** The review tab this suite opened, if any. */
+
 function reviewTab() {
   return vscode.window.tabGroups.all
     .flatMap((group) => group.tabs)
     .find((tab) => tab.label.startsWith(TAB_PREFIX));
 }
 
-/** Finds the thread file that mentions a comment id. */
+
 async function findStore(root, commentId) {
   const entries = await readdir(root, { withFileTypes: true }).catch(() => []);
   for (const entry of entries) {

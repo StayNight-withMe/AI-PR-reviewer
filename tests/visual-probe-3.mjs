@@ -1,10 +1,4 @@
-/**
- * Third visual probe: empty states, resolved and outdated comments, many
- * comments in the sidebar, split view on a narrow screen, and the deferred
- * file placeholder.
- *
- * Run: node tests/visual-probe-3.mjs
- */
+
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -124,7 +118,7 @@ try {
   await driver.get(review.url);
   await waitReady();
 
-  // Empty filter result: the message must be readable and centred.
+
   await driver.executeScript(`(function () {
     var input = document.getElementById('filter-input');
     input.value = 'nothing-matches-this';
@@ -142,7 +136,7 @@ try {
   })()`);
   await new Promise((r) => setTimeout(r, 600));
 
-  // Search with no results.
+
   await driver.executeScript(`document.getElementById('btn-search').click(); return true;`);
   await new Promise((r) => setTimeout(r, 300));
   await driver.executeScript(`(function () {
@@ -156,7 +150,7 @@ try {
   await shot("empty-search");
   await driver.executeScript(`document.getElementById('btn-search').click(); return true;`);
 
-  // Many comments, one resolved and one outdated.
+
   await driver.executeScript(`(async function () {
     var section = [...document.querySelectorAll('.diff-file')].find(function (s) { return s.querySelector('.line-plus'); });
     var plus = section.querySelectorAll('.line-plus[data-side="right"]');
@@ -182,7 +176,7 @@ try {
   await record("desktop-1440", "many-comments");
   await shot("many-comments");
 
-  // A comment whose line is later removed becomes outdated and orphaned.
+
   const outdated = await driver.executeScript(`(async function () {
     var section = [...document.querySelectorAll('.diff-file')].find(s => s.dataset.path.endsWith('small.ts'));
     var box = section.querySelector('.comment-box');
@@ -201,7 +195,7 @@ try {
   results.push({ size: "desktop-1440", state: "outdated", outdated });
   await shot("outdated");
 
-  // Split view on a narrow screen: the code column becomes very thin.
+
   for (const size of [{ name: "tablet-768", width: 768, height: 1024 }, { name: "phone-390", width: 390, height: 844 }]) {
     await driver.manage().window().setRect({ width: size.width, height: size.height });
     await driver.get(review.url);
@@ -217,8 +211,8 @@ try {
     await shot(`${size.name}-split`);
   }
 
-  // The deferred large file placeholder, and the sidebar with many comments
-  // at a phone width.
+
+
   await driver.manage().window().setRect({ width: 390, height: 844 });
   await driver.get(review.url);
   await waitReady();

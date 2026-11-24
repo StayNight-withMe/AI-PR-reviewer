@@ -1,15 +1,9 @@
-/** Writes the two files a submitted review leaves behind. */
+
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ARTIFACTS, SERVER } from "./config.js";
 
-/**
- * Writes `review.json` and `review.md` in one step.
- *
- * Kept apart from the HTTP server because the comment state also has to be
- * written back from the MCP side, and importing the server there would create a
- * cycle through the review page.
- */
+
 export async function writeReviewFiles(outputDir, meta, review, markdown) {
   await mkdir(outputDir, { recursive: true });
 

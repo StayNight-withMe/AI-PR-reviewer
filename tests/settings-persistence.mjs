@@ -1,11 +1,4 @@
-/**
- * Settings must survive across reviews and page restarts.
- *
- * Settings are stored on the server under a device key, so they survive a new
- * review, a changed diff and a page restart.
- *
- * Run: node tests/settings-persistence.mjs
- */
+
 import assert from "node:assert/strict";
 import { Builder, By, until } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox.js";
@@ -31,8 +24,8 @@ const dbPath = join(dbDir, "db.json");
 await writeFile(dbPath, JSON.stringify({ auth: true, default: String(PR_NUMBER), pullRequests: { [PR_NUMBER]: pullRequestPayload(fixture, PR_NUMBER) } }));
 process.env[GH.ENV_BIN] = join(ROOT, "fixtures", "mock-gh.mjs");
 process.env.MOCK_GH_DB = dbPath;
-// Start from a clean settings file so the run does not depend on the machine.
-// The sandbox also keeps the test from ever touching the real per-user file.
+
+
 const { settingsPath } = await import("../src/settings-store.js");
 const { GIT } = await import("../src/config.js");
 process.env[GIT.ARTIFACTS_DIR_ENV] = await mkdtemp(join(tmpdir(), "settings-e2e-"));
@@ -42,12 +35,12 @@ const driver = await new Builder()
   .forBrowser("firefox")
   .setFirefoxOptions(new firefox.Options().addArguments("-headless").windowSize({ width: 1200, height: 900 }))
   .build();
-/** Opens a page and waits until it is fully wired (settings loaded, handlers bound). */
+
 async function openPage(url) {
   await driver.get(url);
   await driver.wait(until.elementLocated(By.css(".diff-file")), 20_000);
-  // `body.dataset.booted` is set once settings are loaded and the controls are
-  // bound, so a change made now is actually handled and saved.
+
+
   await driver.wait(async () => driver.executeScript(`return document.body.dataset.booted === '1';`), 15_000);
   await PAUSE(300);
 }
@@ -57,7 +50,7 @@ try {
 
     assert.deepEqual(await driver.executeScript(`return [document.getElementById('set-tree-indent').value, getComputedStyle(PR.els.tree).getPropertyValue('--tree-indent').trim()]`), ['4', '4px']);
 
-    // Change a few settings through the real controls.
+
     await driver.executeScript(`return (function(){
       var mode = document.getElementById('set-diff-mode');
       mode.value = 'split';
@@ -74,7 +67,7 @@ try {
     })();`);
     await PAUSE(600);
 
-    // The server is the source of truth: a new port must still see them.
+
     const response = await fetch(new URL("/api/settings", first.url));
     const payload = await response.json();
     assert.equal(payload.ok, true);
@@ -97,8 +90,8 @@ try {
   });
 
   await check("a different review on the same device keeps the settings", async () => {
-    // A second review gets its own port, so localStorage cannot carry anything:
-    // the server file must do it.
+
+
     const otherFile = join(fixture.repo, "src/another.ts");
     await writeFile(otherFile, "export const another = 1;\n");
 
@@ -135,8 +128,8 @@ try {
 
   await check("the toolbar layout button is remembered device-wide", async () => {
     await openPage(first.url);
-    // The toolbar switch, not the settings dropdown: this is the control a
-    // reviewer actually clicks, and its choice used to live only in the tab.
+
+
     await driver.executeScript(`document.querySelector('.js-mode-opt[data-mode="unified"]').click(); return true;`);
     await PAUSE(800);
 

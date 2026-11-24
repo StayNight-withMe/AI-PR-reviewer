@@ -8,7 +8,7 @@ import { GIT, MODE } from "../src/config.js";
 
 const exec = promisify(execFile);
 
-/** Creates an isolated repository and a live review server for Selenium tests. */
+
 export async function createE2eReview() {
   const root = await mkdtemp(join(tmpdir(), "pr-review-e2e-"));
   const git = (...args) => exec(GIT.BIN, args, { cwd: root });

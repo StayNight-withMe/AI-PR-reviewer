@@ -1,10 +1,4 @@
-/**
- * The state of a comment has to be the same in the two places that read it:
- * `review.json`, which the agent and the markdown read, and the thread store,
- * which the page reads. Resolving through the agent must reach both.
- *
- * Run: node tests/logic-resolve.mjs
- */
+
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { readFile, mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -112,8 +106,8 @@ try {
   });
 
   await check("a submitted review keeps review.json and the store in step", async () => {
-    // Submit through the page, the way a reviewer does, then resolve through the
-    // agent: both files must agree afterwards.
+
+
     const response = await fetch(new URL("/api/review", page.url), {
       method: "POST",
       headers: { "content-type": "application/json" },

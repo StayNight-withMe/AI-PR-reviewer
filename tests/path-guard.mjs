@@ -1,13 +1,4 @@
-/**
- * The review only reads files inside the repository.
- *
- * The page asks for a file by path (`?path=` and the batch reader), and a plain
- * `join(root, path)` follows `..` out of the checkout. A crafted path therefore
- * read any file the user could read: `../secret.txt`, `..\\secret.txt`, or a
- * nested `src/../../secret.txt`.
- *
- * Run: node tests/path-guard.mjs
- */
+
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -52,7 +43,7 @@ try {
   await check("a path inside the repository is accepted", () => {
     assert.equal(repoPathOf(repo, "src/a.ts"), "src/a.ts");
     assert.equal(repoPathOf(repo, "src/deep/b.ts"), "src/deep/b.ts");
-    // A Windows-style separator means the same thing.
+
     assert.equal(repoPathOf(repo, "src\\deep\\b.ts"), "src/deep/b.ts");
   });
 

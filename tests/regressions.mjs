@@ -1,8 +1,4 @@
-/**
- * Regression suite for the reported review-UI bugs:
- * viewed/collapse, gutter drag selection, expand-all, eager highlighting,
- * symbol links, Last file, viewer hash navigation and viewer comments.
- */
+
 import assert from "node:assert/strict";
 import { Builder } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox.js";
@@ -18,7 +14,7 @@ const exec = promisify(execFile);
 const EXTERNAL_BASE = process.argv[2];
 const SCRIPT_TIMEOUT = 30_000;
 const PAUSE = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-/** Target name a new browser tab is opened with. */
+
 const TARGET_BLANK = "_blank";
 
 let driver;
@@ -47,23 +43,12 @@ async function waitFor(code, timeout = SCRIPT_TIMEOUT) {
   }, timeout);
 }
 
-/**
- * Builds a self-contained fixture that exercises every regression check:
- *  - src/large.cs: >400 lines with rare changes (triggers is-deferred)
- *  - src/models.cs: added C# file with enums/interfaces/classes, including
- *    the `EnumNames` string the search check greps for
- *  - src/symbols.cs: modified C# file with many visible added lines (keywords,
- *    symbol links, usage menu entries)
- *  - src/hunks.cpp: multi-hunk file with distant changes (expander bars)
- *  - src/tail.cs: modified C# file whose unchanged tail hides an expander
- *  - src/unchanged.cs: C# file not in the diff (viewer + tree checks)
- *  - bare remote + push: the base commit becomes is-pushed in a range review
- */
+
 async function createFixture() {
   fixtureRoot = await mkdtemp(join(tmpdir(), "pr-review-regressions-"));
   const git = (...args) => exec(GIT.BIN, args, { cwd: fixtureRoot });
 
-  // Bare remote so the base commit can be pushed (is-pushed detection).
+
   const remoteRoot = await mkdtemp(join(tmpdir(), "pr-review-remote-"));
   fixtureRemote = remoteRoot;
   await exec(GIT.BIN, ["init", "--bare"], { cwd: remoteRoot });
@@ -73,7 +58,7 @@ async function createFixture() {
   await git("config", "core.autocrlf", "false");
   await git("remote", "add", "origin", remoteRoot);
 
-  // 420+ line C# file; changes only at lines 90 and 200 (rare, stays deferred).
+
   const csLargeLines = Array.from({ length: 420 }, (_, i) =>
     i === 89 ? `    public int Changed90() { return 900; }` :
     i === 199 ? `    public int Changed200() { return 1200; }` :
@@ -81,10 +66,10 @@ async function createFixture() {
   );
   const csLarge = `namespace Regression\n{\n${csLargeLines.join("\n")}\n}\n`;
 
-  // Modified C#: implements IHasCode (declared in the added models.cs), so the
-  // first symbol link in the diff has a definition AND an implementation entry
-  // in its usage menu. Every change replaces two lines with four (additions >
-  // deletions, many visible added lines in one hunk).
+
+
+
+
   const symbolsChanges = Array.from({ length: 15 }, (_, i) =>
     `    public int Compute${i}(int x)\n    {\n        return x * ${i};\n    }\n`
   );
@@ -94,12 +79,12 @@ async function createFixture() {
   );
   const csSymbolsHead = `namespace Regression\n{\n    using Regression.Models;\n\n    public class SymbolHost : IHasCode\n    {\n        public string Code { get; set; } = "host";\n\n${symbolsChangeLines.join("")}\n    }\n}\n`;
 
-  // Added C# file: enums, interfaces, classes. `EnumNames` is the search
-  // target. IHasCode is implemented by SymbolHost in another diffed file, which
-  // is what the usage-menu check needs (a definition plus usage entries).
+
+
+
   const csModelsHead = `namespace Regression.Models\n{\n    using System;\n    using System.Collections.Generic;\n\n    public interface IViewerTag\n    {\n        string ViewerTag { get; }\n    }\n\n    public enum StatusKind\n    {\n        Active,\n        Retired,\n        Pending,\n        Blocked,\n    }\n\n    public interface IHasUpdatedAt\n    {\n        DateTime UpdatedAt { get; }\n    }\n\n    public interface IHasCode\n    {\n        string Code { get; }\n    }\n\n    public class StatusRecord : IHasUpdatedAt, IHasCode\n    {\n        private static readonly string[] EnumNames = { "Active", "Retired", "Pending", "Blocked" };\n\n        public StatusKind Kind { get; set; }\n        public DateTime UpdatedAt { get; set; }\n        public string Code { get; set; }\n\n        public string Name => EnumNames[(int)Kind];\n\n        public override string ToString() => $"{Code} ({Name})";\n    }\n\n    public class RecordStore\n    {\n        private readonly List<StatusRecord> items = new();\n\n        public void Add(StatusRecord record) => items.Add(record);\n\n        public IReadOnlyList<StatusRecord> Items => items;\n\n        public StatusRecord Find(string code)\n        {\n            foreach (var item in items)\n            {\n                if (item.Code == code) return item;\n            }\n            return null;\n        }\n    }\n}\n`;
 
-  // Multi-hunk C++: changes at lines 5 and 60 create a large gap (expanders).
+
   const cppHunks = Array.from({ length: 80 }, (_, i) =>
     i === 4 ? `int changed_a(int x) { return x + 100; }` :
     i === 59 ? `int changed_b(int y) { return y * 200; }` :
@@ -107,19 +92,19 @@ async function createFixture() {
   );
   const cppContent = cppHunks.join("\n") + "\n";
 
-  // Modified C# file with a long unchanged tail (triggers the tail expander).
+
   const csTailBody = Array.from({ length: 30 }, (_, i) =>
     `    public int Tail${i}() { return ${i}; }`
   ).join("\n");
   const csTailBase = `namespace Regression\n{\n    public class TailHost\n    {\n        public int Head() { return 1; }\n\n${csTailBody}\n    }\n}\n`;
   const csTailHead = csTailBase.replace("public int Head() { return 1; }", "public int Head() { return 42; }");
 
-  // Unchanged C# file (viewer opens it, tree check uses it).
+
   const csUnchanged = `namespace Viewer\n{\n    using System;\n    using Regression.Models;\n\n    public class UnchangedFile : IHasCode, IViewerTag\n    {\n        public string Code { get; set; } = "unchanged";\n        public string ViewerTag { get; set; } = "viewer";\n\n        public int First() { return 1; }\n        public int Second() { return 2; }\n        public int Third() { return 3; }\n        public int Fourth() { return 4; }\n        public int Fifth() { return 5; }\n        public int Sixth() { return 6; }\n        public int Seventh() { return 7; }\n        public int Eighth() { return 8; }\n    }\n}\n`;
 
   const txtFile = Array.from({ length: 12 }, (_, i) => `unchanged line ${i + 1}`).join("\n") + "\n";
 
-  // Base commit: everything except the files the review adds.
+
   const baseFiles = {
     "src/large.cs": csLarge,
     "src/symbols.cs": csSymbolsBase,
@@ -136,7 +121,7 @@ async function createFixture() {
   await git("add", "-A");
   await git("commit", "-m", "base fixture");
 
-  // Review commit: modifications plus one brand-new (all-additions) file.
+
   await writeFile(join(fixtureRoot, "src/symbols.cs"), csSymbolsHead);
   await writeFile(join(fixtureRoot, "src/large.cs"),
     csLarge.replace("return 900;", "return 9900;").replace("return 1200;", "return 12000;"));
@@ -147,15 +132,15 @@ async function createFixture() {
   await git("add", "-A");
   await git("commit", "-m", "review changes");
 
-  // Push everything: every commit in the reviewed range is then "pushed",
-  // which the commits-tab check needs (a locked, unlockable item).
+
+
   await git("push", "-u", "origin", "main");
   await git("fetch", "origin");
 
-  // The range base, recorded before the remote is cleaned up.
+
   const baseSha = (await git("rev-parse", "HEAD~1")).stdout.trim();
 
-  // Clean up the bare remote directory; it is no longer needed.
+
   await rm(remoteRoot, { recursive: true, force: true });
   return baseSha;
 }
@@ -165,10 +150,10 @@ try {
     reviewBase = EXTERNAL_BASE;
   } else {
     fixtureBase = await createFixture();
-    // Device-wide UI settings are stored on disk (ui-settings.json). Point the
-    // store at this run's temp dir so a stale setting from an earlier,
-    // interrupted run (e.g. openLinksInline=false) cannot be inherited and
-    // turn an in-page click into a browser navigation.
+
+
+
+
     process.env[GIT.ARTIFACTS_DIR_ENV] = join(fixtureRoot, "artifacts");
     reviewPage = await startReview({
       repoPath: fixtureRoot,
@@ -191,14 +176,14 @@ try {
   console.log("BOOT page loaded");
   await waitFor(`document.querySelectorAll('.diff-file').length > 0 && [...document.querySelectorAll('.diff-file')].some(s => s.dataset.hydrated === '1')`);
   console.log("BOOT first section hydrated");
-  // Wait for every section, not a fixed number: the fixture's diff can hold any
-  // number of files, and a hard-coded 64 made the first check flaky.
+
+
   await waitFor(`[...document.querySelectorAll('.diff-file')].every(s => s.dataset.hydrated === '1')`, 180_000);
   console.log("BOOT all sections hydrated");
 
-  // Later checks switch the layout to split view; a previous run of this suite
-  // leaves that stored, so a second run would start in a layout it does not
-  // expect. Start from the default every time.
+
+
+
   await js(`(function () {
     PR.state.diffMode = PR.DIFF_MODE.UNIFIED;
     PR.state.settings.contextCollapseLines = PR.CONTEXT.DEFAULT_COLLAPSE_LINES;
@@ -246,8 +231,8 @@ try {
       };
     })()`);
     assert.ok(stats, "expected added and deleted rows");
-    // A background on the <tr> would stack a second translucent layer on top of
-    // the cells, which is what made the whole diff look tinted.
+
+
     assert.equal(stats.row, "rgba(0, 0, 0, 0)", `<tr> must stay transparent, got ${stats.row}`);
     assert.notEqual(stats.code, "rgba(0, 0, 0, 0)", "added cells need a tint");
     assert.notEqual(stats.delCode, "rgba(0, 0, 0, 0)", "deleted cells need a tint");
@@ -363,7 +348,7 @@ try {
     assert.ok(stats.bars > 0, "expected gap expanders");
     assert.ok(stats.hasButton && stats.hasSvg, "expander needs its arrow button");
     assert.ok(stats.noHeader, "the @@ hunk header line must be gone");
-    // Covers the gutter plus both number columns, never the code.
+
     assert.ok(stats.cellWidth >= 80, `expander must span the number columns, got ${stats.cellWidth}px`);
     assert.ok(stats.cellWidth < stats.codeWidth, "expander must not cover the code column");
     assert.ok(stats.fullWidth, "the button must fill its whole cell");
@@ -402,10 +387,10 @@ try {
   });
 
   await check("the tail of a file keeps its expander", async () => {
-    // Strict folding: every hidden region gets a button, so the tail of a
-    // file can be checked on its own. The earlier checks already expanded the
-    // gaps they exercised (that state is kept by design, like a user's), so
-    // reset it: this check verifies the folding policy on a fresh session.
+
+
+
+
     await js(`(PR.state.expandedGaps.clear(), PR.state.settings.contextCollapseLines = 1, PR.renderFileList(), true)`);
     await PAUSE(1500);
 
@@ -463,15 +448,15 @@ try {
     assert.equal(out.bars, 0, "nothing may be hidden when folding is off");
     assert.ok(out.rows > 100, `the unchanged lines must be shown, got ${out.rows}`);
 
-    // Back to the default for the remaining checks.
+
     await js(`(PR.state.settings.contextCollapseLines = PR.CONTEXT.DEFAULT_COLLAPSE_LINES, PR.renderFileList(), true)`);
     await PAUSE(1500);
   });
 
   await check("Expand all reveals every line exactly once", async () => {
     await js(`(PR.state.settings.contextCollapseLines = 1, PR.renderFileList(), true)`);
-    // Every section is rebuilt, and each one only grows its "Expand all" entry
-    // once it has hydrated; clicking earlier silently misses the rest.
+
+
     await waitFor(`[...document.querySelectorAll('.diff-file')].every(s => s.dataset.hydrated === '1')`, 120_000);
     await PAUSE(500);
 
@@ -594,8 +579,8 @@ try {
     await js(`(PR.closeCommentForms(), PR.clearSelection(), true)`);
   });
 
-  // A click on a symbol now always opens the usage menu first; the navigation
-  // happens from a chosen entry inside it.
+
+
   await check("Ctrl+click and middle-click open a file in a new tab", async () => {
     const out = await js(`(() => {
       const opened = [];
@@ -645,7 +630,7 @@ try {
     assert.equal(out.afterMiddle, 1, "middle-click must open a new tab");
     assert.equal(out.afterSymbol, 1, "Ctrl+click on a symbol link must open a new tab");
     assert.equal(out.onPage, "/", "the review page must not navigate");
-    // "noopener" made window.open return null, so the tab could never be focused.
+
     assert.equal(out.ctrlFeatures, null, "noopener must not be passed as a feature");
     assert.ok(out.ctrlFocusCount >= 1, "the new tab must be focused");
     assert.ok(out.ctrlOpenerCleared, "the opener must be detached after focusing");
@@ -776,11 +761,11 @@ try {
   });
 
   await check("A re-render during the Viewed animation keeps the file collapsed", async () => {
-    // The collapse state was written inside the 160 ms animation timer,
-    // so any re-render in that window (a storage event from the viewer tab, a
-    // filter keystroke, a settings change) rebuilt the list from the state and
-    // drew the file open again — it looked like marking another file Viewed
-    // reopened this one.
+
+
+
+
+
     const result = await js(`(async () => {
       const section = [...document.querySelectorAll('.diff-file')].find(s => !s.classList.contains('collapsed'));
       const path = section.dataset.path;
@@ -918,8 +903,8 @@ try {
     assert.equal(stats.delSign, "\u2212", "deleted lines must show a minus");
     assert.equal(stats.addSign, "+", "added lines must show a plus");
     assert.equal(stats.ctxSign, "", "context lines must show no sign");
-    // The sign must contrast with its own gutter tint, not match it: a red `-`
-    // on the red background was invisible.
+
+
     assert.notEqual(stats.delColor, stats.delSignBg, "the minus must not blend into the deleted tint");
     assert.notEqual(stats.addColor, stats.addSignBg, "the plus must not blend into the added tint");
   });
@@ -1098,16 +1083,16 @@ try {
     assert.ok(info.limit > 0, "expected a default large-file threshold");
     assert.ok(info.count > 0, "expected at least one deferred large file");
     assert.ok(info.hasNote && info.hasButton, "deferred file needs its note and Load button");
-    // The point of deferring is that the file contributes no rows at all.
+
     assert.equal(info.deferredCells, 0, `deferred files rendered ${info.deferredCells} cells`);
   });
 
   await check("the large-file setting measures the whole file, not just the hunk", async () => {
-    // Regression: only `changeCount` was compared, so a generated snapshot with
-    // thousands of lines stayed open when fewer than the limit lines had changed.
-    // The fixture decides which files exist, so the threshold is derived from a
-    // real file instead of hard-coding 400: a file whose length exceeds its own
-    // change count is the exact case the old comparison missed.
+
+
+
+
+
     const out = await js(`(async () => {
       const previous = PR.state.settings.largeFileLines;
 
@@ -1175,8 +1160,8 @@ try {
     assert.ok(out.cells > 0, "loading must render the diff");
     assert.equal(out.highlighted, out.cells, "every row must be highlighted after loading");
     assert.ok(!out.stillDeferred, "the placeholder must be replaced");
-    // A loaded file only offers Expand all when it still hides something; a file
-    // with no collapsed gaps correctly has no such item.
+
+
     if (out.collapsedGaps > 0) {
       assert.ok(out.hasExpandAll, "a file with hidden regions must offer Expand all after loading");
     }
@@ -1228,15 +1213,15 @@ try {
     })()`);
 
     assert.equal(out.error, undefined, out.error);
-    // A wrong colspan adds a column to the table and squeezes the code into
-    // half the width, leaving a black gap on the right.
+
+
     assert.equal(out.colspan, out.columns, "the editor row must span every column");
     assert.ok(
       out.codeWidth > out.tableWidth * 0.8,
       `the code column must keep the table width, got ${out.codeWidth} of ${out.tableWidth}`,
     );
 
-    // The split view has twice the columns, so it needs its own check.
+
     const split = await js(`(() => {
       const mode = document.getElementById('set-diff-mode');
       mode.value = 'split';
@@ -1301,7 +1286,7 @@ try {
     await driver.get(`${reviewBase.replace(/\/$/, "")}/file?path=${encodeURIComponent(path)}`);
     await waitFor(`!!document.querySelector('.viewer-table')`);
 
-    // Comment through the viewer's own UI, the way a user does it.
+
     await js(`(() => {
       const button = document.querySelector('.js-v-comment');
       button.click();
@@ -1450,7 +1435,7 @@ try {
     assert.ok(result.top > -400 && result.top < 300, `first file is not in view (top ${result.top}, scrollY ${result.y})`);
   });
 
-  // ---- viewer: hash navigation + commenting on an unmodified file ----------
+
   const viewerInfo = await js(`(() => {
     const changed = PR.state.changedPaths;
     const path = PR.state.allFiles.map(f => f.path).find(p => p.endsWith('.cs') && !changed.has(p));
@@ -1473,10 +1458,10 @@ try {
   });
 
   await check("viewer wraps a long line instead of scrolling the page sideways", async () => {
-    // Regression: `.viewer-table` used the automatic table layout, so the table
-    // grew to the width of its longest line, the page scrolled horizontally and
-    // the line numbers left the screen. The diff table was already `fixed`,
-    // which is why the same line wrapped there and not in the viewer.
+
+
+
+
     const out = await js(`(() => {
       const cells = [...document.querySelectorAll('#file-viewer td.v-code')];
       if (!cells.length) return { skipped: true };

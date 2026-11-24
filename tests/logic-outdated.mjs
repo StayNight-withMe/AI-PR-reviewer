@@ -1,10 +1,4 @@
-/**
- * "Outdated" has to mean what it means on GitHub: the lines a comment points at
- * changed after the comment was written. These checks move the code in the ways
- * a real working tree moves, and read the verdict the page would show.
- *
- * Run: node tests/logic-outdated.mjs
- */
+
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -48,7 +42,7 @@ await writeFile(join(fixture, "a.ts"), SOURCE);
 await git("add", "-A");
 await git("commit", "-m", "base");
 
-// The change under review touches line 2.
+
 await writeFile(join(fixture, "a.ts"), SOURCE.replace("beta = 2", "beta = 22"));
 await git("add", "-A");
 await git("commit", "-m", "change beta");
@@ -58,7 +52,7 @@ process.env[GIT.ARTIFACTS_DIR_ENV] = join(fixture, "artifacts");
 
 const base = (await git("rev-parse", "HEAD~1")).stdout.trim();
 
-/** Opens a review of the committed change, with the working tree as it is now. */
+
 async function openReview() {
   return startReview({
     repoPath: fixture, mode: MODE.RANGE, base, head: "HEAD",
@@ -66,7 +60,7 @@ async function openReview() {
   });
 }
 
-/** The verdicts the page actually renders, read from its own payload. */
+
 async function verdicts(page) {
   const response = await fetch(page.url);
   const html = await response.text();
@@ -103,8 +97,8 @@ const COMMENT = {
 let page = await openReview();
 try {
   await writeComment(page, COMMENT);
-  // The page built its payload when it opened, before the comment existed, so
-  // reopen it the way a reviewer would: reload.
+
+
   const opened = await openReview();
   await page.page.close();
   page = opened;
@@ -122,7 +116,7 @@ try {
   await page.page.close();
   page = null;
 
-  // Someone edits the very line the comment is about, without committing.
+
   await writeFile(join(fixture, "a.ts"), SOURCE.replace("beta = 2", "beta = 999"));
   page = await openReview();
   await check("an uncommitted edit on the commented line makes it outdated", async () => {
@@ -133,7 +127,7 @@ try {
   await page.page.close();
   page = null;
 
-  // The commented line goes back to what it was: the comment is current again.
+
   await git("checkout", "--", "a.ts");
   page = await openReview();
   await check("restoring the line makes the comment current again", async () => {
@@ -144,7 +138,7 @@ try {
   await page.page.close();
   page = null;
 
-  // An edit far away from the commented line must not touch its verdict.
+
   await writeFile(join(fixture, "a.ts"),
     SOURCE.replace("beta = 2", "beta = 22").replace("delta = 4", "delta = 44"));
   page = await openReview();
@@ -157,7 +151,7 @@ try {
   page = null;
   await git("checkout", "--", "a.ts");
 
-  // A file that is gone takes its comment with it.
+
   page = await openReview();
   await writeComment(page, { ...COMMENT, id: "comment-gone", path: "gone.ts", lineStart: 1 });
   await page.page.close();
@@ -172,7 +166,7 @@ try {
   await page.page.close();
   page = null;
 
-  // A comment on the removed side is about code that is gone by design.
+
   page = await openReview();
   await writeComment(page, {
     id: "comment-left",
@@ -194,7 +188,7 @@ try {
   await page.page.close();
   page = null;
 
-  // A file comment is not about lines at all.
+
   page = await openReview();
   await writeComment(page, {
     id: "comment-file",

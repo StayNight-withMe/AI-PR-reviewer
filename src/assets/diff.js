@@ -1,4 +1,4 @@
-/** Diff rendering: renders file bodies, highlights all sections in chunks, expands context. */
+
 (function () {
   "use strict";
 
@@ -16,7 +16,7 @@
     });
   };
 
-  /** ------------------------------- file list ------------------------------ */
+
   PR.renderFileList = function () {
     if (PR.state.view.kind !== PR.VIEW_KIND.REVIEW && !PR.state.view.kind) return;
     var files = PR.visibleFiles();
@@ -32,13 +32,13 @@
     PR.scheduleHydration(files);
   };
 
-  /** Every rendered section must be highlighted and linkified, not just the ones near the viewport:… */
+
   PR.scheduleHydration = function (files) {
     var paths = files.map(function (file) { return file.path; });
     PR.prefetch(paths).then(function () { hydrateAll(paths); });
   };
 
-  /** Hydrates sections in small chunks so the first paint stays responsive. */
+
   function hydrateAll(paths) {
     var index = 0;
 
@@ -54,7 +54,7 @@
     step();
   }
 
-  /** The per-file "more actions" menu. */
+
   function fileMenu(file) {
     return '<a class="file-menu-item js-open-file" href="' + PR.fileUrl(file.path) + '" title="Open the file in a new tab">' +
         FILE_SVG + "<span>View file</span></a>" +
@@ -62,7 +62,7 @@
         COMMENT_SVG + "<span>Add file comment</span></button>";
   }
 
-  /** Rebuilds one section's menu from the file's current state. */
+
   PR.refreshFileMenu = function (section) {
     if (!section) return;
     var file = PR.findFile(section.dataset.path);
@@ -83,13 +83,13 @@
 
     var pop = menu.querySelector(".file-menu-pop");
     if (!pop) return;
-    // "Expand all" is offered only while something is really hidden.
+
     var expandItem = hasCollapsedRegions(file)
       ? '<button class="file-menu-item js-expand-all" title="Show the whole file, including unchanged lines">' +
           EXPAND_SVG + "<span>Expand all</span></button>"
       : "";
     pop.innerHTML = expandItem + fileMenu(file);
-    // as soon as the file's header exists, not only on hover.
+
     menu.hidden = false;
   };
 
@@ -134,7 +134,7 @@
             '<span class="viewed-box">' + CHECK_SVG + "</span><span>Viewed</span>" +
           "</label>" +
 
-          // gaps yet, so it starts without one.
+
           (deferred ? "" : '<span class="file-menu" hidden>' +
             '<button class="icon-btn js-file-menu" aria-haspopup="true" aria-expanded="false" title="More actions" aria-label="More actions">' + MORE_SVG + "</button>" +
             '<div class="file-menu-pop" hidden></div>' +
@@ -147,20 +147,20 @@
     );
   }
 
-  /** Large files start collapsed behind a Load button, like GitHub does. */
+
   function isDeferred(file) {
     var limit = PR.state.settings.largeFileLines;
     if (!limit || limit <= 0) return false;
-    // The setting is about FILE size, not the size of the hunk. Comparing only
-    // the changed lines left a generated snapshot with thousands of lines open:
-    // it had fewer than the limit changed, so nothing collapsed even though the
-    // setting read "collapse files over N lines".
+
+
+
+
     var changed = file.changeCount || 0;
     var total = file.totalLines || 0;
     return Math.max(changed, total) > limit;
   }
 
-  /** Why a file was put behind the Load button. */
+
   function deferReason(file) {
     var total = file.totalLines || 0;
     if (total) return total + " lines in the file";
@@ -180,15 +180,15 @@
   var CHECK_SVG = '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 0 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path></svg>';
   var COMMENT_SVG = '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path fill="currentColor" d="M1 2.75C1 1.784 1.784 1 2.75 1h10.5c.966 0 1.75.784 1.75 1.75v7.5A1.75 1.75 0 0 1 13.25 12H9.06l-2.573 2.573A1.458 1.458 0 0 1 4 13.543V12H2.75A1.75 1.75 0 0 1 1 10.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h4.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path></svg>';
   var COPY_SVG = '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path fill="currentColor" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Zm5-1.75C5 4.862 5.862 4 6.75 4h7.5C15.138 4 16 4.862 16 5.75v7.5c0 .888-.862 1.75-1.75 1.75h-7.5A1.75 1.75 0 0 1 5 13.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path></svg>';
-  /** GitHub's "kebab" (three horizontal dots) for the more-actions menu. */
+
   var MORE_SVG = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="currentColor">' +
     '<circle cx="3" cy="8" r="1.4"/><circle cx="8" cy="8" r="1.4"/><circle cx="13" cy="8" r="1.4"/>' +
   "</svg>";
-  /** The "open in a new tab" glyph used by the menu's View file entry. */
+
   var FILE_SVG = '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="currentColor">' +
     '<path d="M3.75 1.5A1.75 1.75 0 0 0 2 3.25v9.5c0 .966.784 1.75 1.75 1.75h9.5A1.75 1.75 0 0 0 15 12.75v-6.5A1.75 1.75 0 0 0 13.25 4.5H8.06L6.4 2.83a1.5 1.5 0 0 0-1.06-.44Z"/>' +
   "</svg>";
-  /** GitHub's "unfold" glyph: two arrows pointing away from the centre. */
+
   var EXPAND_SVG = '<svg class="hunk-expander-svg" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">' +
     '<path d="M8 0.9 11.6 4.9H9.5v2.2h-3V4.9H4.4Z"/>' +
     '<path d="M8 15.1 4.4 11.1h2.1V8.9h3v2.2h2.1Z"/>' +
@@ -210,32 +210,32 @@
     return out;
   }
 
-  /** --------------------------------- hunks -------------------------------- */
+
   function bodyHtml(file) {
     if (file.binary) return '<div class="diff-hunk-header">Binary file — not shown</div>';
 
     var gaps = gapsOf(file);
     var out = "";
     for (var index = 0; index < file.hunks.length; index += 1) {
-      // too small to be worth hiding.
+
       var above = findGap(gaps, index, PR.GAP.UP);
       if (above && isCollapsed(file, above)) out += expanderBlock(file.hunks[index], index, PR.GAP.UP);
       out += hunkBlock(file, file.hunks[index], index);
     }
-    // invisible without a button, because the end of the diff looked exactly like the end of the file.
+
     var lastIndex = file.hunks.length - 1;
     var below = findGap(gaps, lastIndex, PR.GAP.DOWN);
     if (below && isCollapsed(file, below)) out += expanderBlock(file.hunks[lastIndex], lastIndex, PR.GAP.DOWN);
     return out;
   }
 
-  /** The hidden regions of a file, as computed by the server. */
+
   function gapsOf(file) {
     if (file.gaps && file.gaps.length) return file.gaps;
     return fallbackGaps(file);
   }
 
-  /** One region of unchanged lines, addressed by hunk and side. */
+
   function findGap(gaps, hunkIndex, dir) {
     if (hunkIndex < 0) return null;
     for (var i = 0; i < gaps.length; i++) {
@@ -244,7 +244,7 @@
     return null;
   }
 
-  /** Regions derived from the hunks alone. */
+
   function fallbackGaps(file) {
     var hunks = file.hunks || [];
     var gaps = [];
@@ -272,7 +272,7 @@
     return gaps;
   }
 
-  /** True when the region stays hidden behind the blue button. */
+
   function isCollapsed(file, gap) {
     var limit = PR.state.settings.contextCollapseLines;
     if (!limit || limit <= PR.CONTEXT.NEVER_COLLAPSE) return false;
@@ -282,7 +282,7 @@
     return nonEmpty > limit;
   }
 
-  /** True when the user opened this region by hand. */
+
   function isExpanded(file, gap) {
     return PR.state.expandedGaps.has(gapKey(file.path, gap));
   }
@@ -291,7 +291,7 @@
     return path + "|" + gap.hunk + "|" + gap.dir;
   }
 
-  /** Marker of a region that is already open in the DOM of this section. */
+
   function gapDomKey(gap) {
     return "gap" + gap.hunk + gap.dir;
   }
@@ -300,18 +300,18 @@
     return section.dataset[gapDomKey(gap)] === "1";
   }
 
-  /** GitHub's gap control: a blue block in the gutter column with dotted rules and two arrows. */
-  /** True when the shown rows have no old side (whole file is new/rewritten). */
+
+
   function isAllAdditions(hunk) {
     return hunk.rows.length > 0 && hunk.rows.every(function (row) { return row.kind === "add"; });
   }
 
   function expanderBlock(hunk, hunkIndex, direction) {
     var columns = tableColumns(hunk);
-    // The blue target covers the gutter and the number columns, exactly like a
-    // hunk header; the code column stays clear, so the expander never covers a
-    // line the reviewer is reading. In split view the left side has only two
-    // such columns, so a fixed three would swallow the code column.
+
+
+
+
     var simple = hasNoOldSide(hunk);
     var target = simple || !isSplit() ? 3 : 2;
     var rest = columns.count - target;
@@ -339,7 +339,7 @@
     );
   }
 
-  /** True when no line in the hunk exists on the old side (new/rewritten file). */
+
   function hasNoOldSide(hunk) {
     for (var i = 0; i < hunk.rows.length; i += 1) {
       if (hunk.rows[i].kind === "del" || hunk.rows[i].kind === "ctx") return false;
@@ -347,21 +347,16 @@
     return hunk.rows.length > 0;
   }
 
-  /** Whether the current layout shows two sides of the hunk. */
+
   function isSplit() {
     return PR.state.diffMode === PR.DIFF_MODE.SPLIT;
   }
 
-  /**
-   * The columns of a hunk table and how many cells one row of it must have.
-   * Both come from one place, because a row with the wrong cell count silently
-   * shifts the whole table: numbers land under the wrong code and the right
-   * side of a split view slides off its column.
-   */
+
   function tableColumns(hunk) {
     var simple = hasNoOldSide(hunk);
     if (simple) {
-      // Nothing was removed, so there is no left side to show.
+
       return { html: '<col class="c-gutter"><col class="c-num"><col>', count: 3 };
     }
     if (isSplit()) {
@@ -395,14 +390,14 @@
       pairs.map(function (pair) { return splitRowHtml(pair, simple); }).join("") + "</tbody></table>";
   }
 
-  /** Pairs deletions with additions the way GitHub does. */
+
   function splitPairs(rows) {
     var pairs = [];
     var i = 0;
     while (i < rows.length) {
       var row = rows[i];
       if (row.kind === "ctx") { pairs.push([row, row]); i += 1; continue; }
-      // Anything that is neither an addition nor a deletion is shown alone, otherwise the pairing loop…
+
       if (row.kind !== "del" && row.kind !== "add") {
         pairs.push([row, null]);
         i += 1;
@@ -455,7 +450,7 @@
   function gutterCell(side, line, row) {
     var kindClass = row ? " gutter-" + row.kind : "";
     if (!line) return '<td class="diff-gutter' + kindClass + '"></td>';
-    // GitHub shows the sign here; the comment button only appears on hover.
+
     var kind = row ? row.kind : "ctx";
     var sign = kind === "add" ? "+" : kind === "del" ? "−" : "";
     var signClass = kind === "add" ? " gutter-sign-add" : kind === "del" ? " gutter-sign-del" : "";
@@ -477,8 +472,8 @@
       PR.escapeHtml(content) + "</td>";
   }
 
-  /** ------------------------- word-level diff marks ------------------------ */
-  /** GitHub-style intra-line diff: when a deleted line is replaced by an added one, only the tokens… */
+
+
   function wordMarks(rows) {
     var marks = {};
     var i = 0;
@@ -503,7 +498,7 @@
     return marks;
   }
 
-  /** Character ranges that differ between a deleted and an added line. */
+
   function pairMarks(left, right) {
     if (!left || !right) return { left: null, right: null };
     if (left.kind !== "del" || right.kind !== "add") return { left: null, right: null };
@@ -537,7 +532,7 @@
     return i;
   }
 
-  /** One unchanged line of the diff. */
+
   PR.contextRow = function (oldLine, newLine, content, simple) {
     return '<tr class="row-ctx" data-side="right" data-line="' + newLine + '" data-kind="ctx">' +
       gutterCell("right", newLine) +
@@ -548,10 +543,7 @@
         '" data-kind="ctx">' + PR.escapeHtml(content) + "</td></tr>";
   };
 
-  /**
-   * An unchanged line inside a split table. It repeats the same code on both
-   * sides, the way GitHub shows context in split view.
-   */
+
   function splitContextRow(oldLine, newLine, content, simple) {
     var code = PR.escapeHtml(content);
     var left = simple ? "" :
@@ -567,45 +559,45 @@
         '" data-kind="ctx">' + code + "</td></tr>";
   }
 
-  /** An unchanged line in whichever layout is on screen. */
+
   function contextRowHtml(oldLine, newLine, content, simple) {
     return isSplit()
       ? splitContextRow(oldLine, newLine, content, simple)
       : PR.contextRow(oldLine, newLine, content, simple);
   }
 
-  /** ------------------------------- hydration ------------------------------ */
-  /** Hydrates one file section (uses the cached highlight lines). */
+
+
   PR.hydrate = function (path, section) {
     var target = section || PR.els.diffFiles.querySelector('section[data-path="' + PR.cssEscape(path) + '"]');
     if (!target || target.dataset.hydrated === "1") return;
 
     return PR.getFileData(path).then(function (data) {
       if (!data) return;
-      // One malformed line must not cost the whole file its highlighting: the
-      // section then stayed plain white and never finished loading.
+
+
       try {
         PR.highlightIn(target, path, data.language);
       } catch (error) {
         target.dataset.highlightFailed = "1";
       }
-      // hidden can be shown right away.
+
       PR.applyContextPolicy(target).then(function () {
-        // something is actually still hidden.
+
         PR.refreshFileMenu(target);
       });
       target.dataset.hydrated = "1";
     });
   };
 
-  /** Prefetches highlight data for a batch of paths in ONE request. */
+
   PR.prefetch = function (paths) {
     var missing = paths.filter(function (path) { return !PR.state.cache[path]; });
     if (!missing.length) return Promise.resolve();
 
     return fetch(PR.API.FILES, {
       method: PR.HTTP.POST,
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": PR.HTTP.JSON },
       body: JSON.stringify({ paths: missing }),
     })
       .then(function (r) { return r.json(); })
@@ -621,12 +613,12 @@
       .catch(function () {});
   };
 
-  /** --------------------------------- expand ------------------------------- */
-  /** Opens one hidden region of unchanged lines. */
+
+
   PR.expandGap = function (section, gap, silent) {
     var file = PR.findFile(section.dataset.path);
     if (!file || !gap) return Promise.resolve();
-    // section: a region that is already open must not be opened twice.
+
     if (isOpenInSection(section, gap)) return Promise.resolve();
     section.dataset[gapDomKey(gap)] = "1";
 
@@ -655,7 +647,7 @@
     });
   };
 
-  /** Rows of one hidden region, in the numbering of both sides of the diff. */
+
   function gapRows(gap, lines, file) {
     var shift = gap.newStart - gap.oldStart;
     var hunk = file.hunks ? file.hunks[gap.hunk] : null;
@@ -671,7 +663,7 @@
     return html;
   }
 
-  /** Expands the hidden context on one side of a hunk. */
+
   PR.expandHunk = function (section, hunkIndex, direction, silent) {
     var file = PR.findFile(section.dataset.path);
     if (!file) return;
@@ -686,7 +678,7 @@
     PR.expandGap(section, gap, silent);
   };
 
-  /** Reveals every hidden region of the file. */
+
   PR.expandAll = function (section) {
     var file = PR.findFile(section.dataset.path);
     if (!file || !file.hunks) return;
@@ -697,11 +689,11 @@
       PR.state.expandedGaps.add(gapKey(file.path, gaps[index]));
       PR.expandGap(section, gaps[index], true);
     }
-    // Nothing is hidden any more: the "Expand all" entry has done its job.
+
     Promise.resolve().then(function () { PR.refreshFileMenu(section); });
   };
 
-  /** Applies the folding policy to a file once its content is available. */
+
   PR.applyContextPolicy = function (section) {
     var file = PR.findFile(section.dataset.path);
     if (!file) return Promise.resolve();
@@ -714,18 +706,18 @@
     return Promise.all(pending);
   };
 
-  /** Hides the gap bar once its whole side has been revealed. */
+
   function hideExpander(section, hunkIndex, direction) {
     var bar = section.querySelector('.hunk-expander[data-hunk="' + hunkIndex + '"][data-dir="' + direction + '"]');
     if (bar) bar.remove();
   }
 
-  /** ------------------------------ collapse -------------------------------- */
-  /** CSS-only collapse: the body stays in the DOM, so toggling is instant. */
+
+
   PR.toggleCollapse = function (section) {
     PR.perf("Collapse", function () {
       var path = section.dataset.path;
-      var isCollapsed = section.classList.toggle("collapsed");
+      var isCollapsed = section.classList.toggle(PR.SELECTORS.COLLAPSED);
 
       if (isCollapsed) PR.state.collapsed.add(path);
       else PR.state.collapsed.delete(path);

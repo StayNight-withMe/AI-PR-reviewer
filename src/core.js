@@ -19,29 +19,29 @@ import { markOutdated, readThreads, withSnippets, writeThreads } from "./models/
 import { buildDispatchMessage, buildDispatchPrompt, currentSessionId, dispatchToSession, resolveSessionId, writeDispatchPrompt } from "./dispatch.js";
 import { publishReview } from "./github.js";
 export { MODE_LABELS, repoLabel };
-/** Reason returned when a submit carries no comments and no summary. */
+
 const AGENT_REASON_EMPTY_REVIEW = "The review has no comments or summary, so there is nothing to fix.";
-/** Reason returned when the review was opened with auto-send turned off. */
+
 const AGENT_REASON_DISPATCH_DISABLED = "Auto-send is turned off for this review, so no agent turn was started.";
 export async function buildReview(params) {
   const root = await resolveRepo(resolve(params.repoPath ?? process.cwd()));
   const scope = await resolveScope(root, params);
   const pr = scope.pr ?? null;
-  // For a PR the checked-out branch is irrelevant: the review is about the PR's head branch, so…
+
   const branch = params.branch ?? (pr?.headRefName || (await currentBranch(root)));
   const repo = repoLabel(root, await remoteUrl(root));
-  // toFileModel already applies the tree ordering, so the diff list and the sidebar share one…
+
   const files = toFileModel(scope.diffText);
   await attachGapMetadata(root, files, gapOptions(params.mode, scope));
   const stats = diffStats(files);
   const allFiles = await buildProjectTree(root, { mode: params.mode, base: scope.base, head: scope.head });
-  // picker point at the wrong commits.
+
   const commits = await loadScopeCommits(root, scope);
   const [pushedList, headSha] = await Promise.all([loadPushedShas(root), resolveCommit(root, GIT.DEFAULT_REF)]);
   const pushedSet = new Set(pushedList);
 
   const meta = {
-    // A PR is identified by its number, not just its commit range: two PRs that point at the same…
+
     id: reviewId({
       repo,
       branch,
@@ -58,18 +58,18 @@ export async function buildReview(params) {
     mode: params.mode,
     modeLabel: MODE_LABELS[params.mode] ?? params.mode,
 
-    // must always go back to the conversation the user is actually in.
+
     sessionId: params.sessionId ?? currentSessionId(),
     commits: commits.map((commit) => toCommitSummary(commit, pushedSet, headSha)),
     title: params.title ?? scope.label ?? MODE_LABELS[params.mode] ?? params.mode,
     allFiles,
-    // Pull request shown in the header (null for a local scope).
+
     pr,
   };
 
   return { root, meta, files, stats, allFiles, scope };
 }
-/** Where the gap metadata has to be read from. */
+
 function gapOptions(mode, scope) {
   if (mode === MODE.UNCOMMITTED) {
     return {
@@ -79,13 +79,13 @@ function gapOptions(mode, scope) {
   }
   return { ref: scope.head };
 }
-/** A short fingerprint of the reviewed change set. */
+
 function diffFingerprint(files) {
   return files
     .map((file) => `${file.path}:${file.additions}+${file.deletions}-${file.hunks.length}h`)
     .join(P.PIPE);
 }
-/** Commits already on a remote can only be rewritten with explicit consent. */
+
 async function loadPushedShas(root) {
   const shas = await pushedShas(root).catch(() => new Set());
   return Array.from(shas);
@@ -103,13 +103,13 @@ function toCommitSummary(commit, pushedSet, headSha) {
 }
 export async function startReview(params) {
   const { root, meta, files, stats, allFiles, scope } = await buildReview(params);
-  // Artifacts are scratch data, not project data: by default they live outside
+
 
   const outputDir = params.outputDir || reviewDir(root, meta.id, params.env);
   await mkdir(outputDir, { recursive: true });
-  // A `.pr-review/` left by an older version is removed once, so the checkout does not keep a…
+
   await removeLegacyArtifacts(root);
-  // Record who owns the review so a submit goes back to the right session even when the inherited…
+
   await writeReviewOwner(outputDir, meta.sessionId);
 
   await loadAssets();
@@ -123,25 +123,25 @@ export async function startReview(params) {
 
   const collapsed = files.filter((f) => f.status === DIFF.STATUS.DELETED).map((f) => f.path);
 
-  // Deleted files may be absent from the working tree AND from HEAD (deleted inside a range), so…
+
   const fallbackRefs = [GIT.DEFAULT_REF, meta.base].filter(Boolean);
-  // A PR is reviewed at a commit that is usually not checked out: content, highlighting and…
-  // The same is true of every committed scope: a range, a branch, or an explicit
-  // commit set is reviewed as it was committed. The working tree may hold
-  // unrelated edits, and reading those made a file show the wrong line count —
-  // rows of the reviewed version were missing, and the highlighted lines did not
-  // match the diff. Only `uncommitted` really means "read the disk".
+
+
+
+
+
+
   const pinnedHead = params.mode === MODE.UNCOMMITTED ? null : scope.head ?? null;
   const reviewRange = pinnedHead ? { base: scope.base, head: pinnedHead } : null;
   const contentOptions = reviewRange
     ? { refs: fallbackRefs, range: reviewRange }
     : { refs: fallbackRefs };
 
-  // Comments belong to the code they were written on, not to one page load: an
-  // id changes with the diff, so keeping them only in the browser lost every
-  // comment as soon as the review was reopened after a fix.
+
+
+
   const reviewedLines = (filePath) => readFileForViewer(root, filePath, contentOptions);
-  // "Out of date" follows the working tree, so an uncommitted edit counts too.
+
   const currentLines = (filePath) => readFileForViewer(root, filePath, { refs: fallbackRefs });
   const stored = params.comments
     ? { comments: params.comments }
@@ -151,18 +151,18 @@ export async function startReview(params) {
     : P.EMPTY_ARRAY;
 
   const onReview = async (review, reviewMeta) => {
-    // Store what the comment was written on before the files are overwritten,
-    // so a later review can tell a moved comment from an edited line.
+
+
     const withAnchors = await withSnippets(review.comments ?? P.EMPTY_ARRAY, reviewedLines);
     const saved = { ...review, comments: withAnchors };
     await writeThreads(root, reviewMeta ?? meta, withAnchors);
     return writeReviewFiles(outputDir, reviewMeta, saved, buildMarkdown(reviewMeta, saved));
   };
 
-  /** A review with no comments and no summary has nothing for the agent to do. */
+
   function hasReviewContent(review) {
-    // An approval carries its own message: the agent needs to know the work is
-    // accepted, even when the reviewer wrote no notes at all.
+
+
     if (review?.reviewState === REVIEW_STATE.APPROVE) return true;
 
     const comments = Array.isArray(review?.comments) ? review.comments : P.EMPTY_ARRAY;
@@ -175,9 +175,9 @@ export async function startReview(params) {
     dispatched = payload;
     const review = payload.review ?? payload;
 
-    // The page hides the option, but a request can still arrive (a stale tab, a
-    // test, another client). A review with auto-send turned off must never start
-    // an agent turn, so the check lives here and not only in the browser.
+
+
+
     if (params.dispatchEnabled === false) {
       return {
         dispatched: false,
@@ -186,7 +186,7 @@ export async function startReview(params) {
       };
     }
 
-    // An empty review has nothing to fix.
+
     if (!hasReviewContent(review)) {
       return {
         dispatched: false,
@@ -194,7 +194,7 @@ export async function startReview(params) {
         jsonPath: payload.jsonPath,
       };
     }
-    // A submit with "send to the AI" must start the fix turn by itself: the review page and the…
+
     const prompt = buildDispatchPrompt(review, meta, payload);
     const promptPath = await writeDispatchPrompt(outputDir, prompt);
 
@@ -227,11 +227,7 @@ export async function startReview(params) {
     dispatchEnabled: params.dispatchEnabled !== false,
   });
 
-  /**
-   * Publishing is an explicit action of its own, not a side effect of the
-   * submit: the reviewer decides when the notes reach GitHub. Only a review
-   * of a pull request can be published, so the button only exists there.
-   */
+
   const onPublish = meta.pr
     ? (review) => publishReview(root, { review, pr: meta.pr, repo: meta.pr.repo })
     : null;
@@ -252,13 +248,13 @@ export async function startReview(params) {
     readFiles: (paths) => readFilesForHighlight(root, paths, reviewRange
       ? { refs: fallbackRefs, preferRef: reviewRange.head }
       : { refs: fallbackRefs }),
-    // The page saves the comments it shows; the server keeps them for the next
-    // review of the same target, whatever its diff id turns out to be.
-    //
-    // The snippet is the anchor a later review compares against, and it has to be
-    // recorded here: this is the only moment the reviewed version is still what
-    // the comment was written on. Saving without it left every page-written
-    // comment permanently "fresh", because there was nothing to compare.
+
+
+
+
+
+
+
     saveThreads: async (list) => {
       const anchored = await withSnippets(list, reviewedLines);
       return writeThreads(root, meta, anchored);
@@ -302,7 +298,7 @@ async function loadRangeDiff(root, from, to) {
   await attachGapMetadata(root, files, { ref: to });
   return { files, stats, from, to };
 }
-/** Live commit list, re-read after a rewrite so the UI sees the new shas. */
+
 async function loadLiveCommits(root, scope) {
   const [commits, pushedList, headSha] = await Promise.all([
     loadScopeCommits(root, scope),
@@ -313,7 +309,7 @@ async function loadLiveCommits(root, scope) {
   const pushedSet = new Set(pushedList);
   return commits.map((commit) => toCommitSummary(commit, pushedSet, headSha));
 }
-/** Commits of one branch against its base, for the branch selector in the Commits tab. */
+
 async function loadBranchCommits(root, branch, scope) {
   const resolved = await resolveCommit(root, branch);
   if (!resolved) throw new Error(`Branch not found: ${branch}`);
@@ -323,9 +319,9 @@ async function loadBranchCommits(root, branch, scope) {
     ? await commitsSinceMergeBase(root, base, branch, GIT.MAX_COMMITS).catch(() => P.EMPTY_ARRAY)
     : P.EMPTY_ARRAY;
 
-  // A branch that sits at its base (usually the base itself) has no commits of
-  // its own. Showing an empty tab looks broken, so fall back to its recent
-  // history and say plainly that this is what the list is.
+
+
+
   const commits = own.length
     ? own
     : await listCommits(root, { range: branch, limit: GIT.MAX_COMMITS }).catch(() => P.EMPTY_ARRAY);
@@ -340,13 +336,13 @@ async function loadBranchCommits(root, branch, scope) {
     branch,
     base: base ?? null,
     commits: commits.map((commit) => toCommitSummary(commit, pushedSet, headSha)),
-    // true when the list is the branch's own line of work, false when it is a
-    // fallback history of a branch with nothing of its own.
+
+
     ownCommits: own.length > P.ZERO,
     current: branch === (scope?.head ?? GIT.DEFAULT_REF),
   };
 }
-/** Renames the message of the newest local commit; refuses rewritten history by default. */
+
 async function renameCommitMessage(root, sha, message, { allowPushed = false } = {}) {
   const trimmed = String(message ?? P.EMPTY).trim();
   if (!trimmed) throw new Error("Commit message cannot be empty.");

@@ -1,17 +1,4 @@
-/**
- * Regressions for the review-page defects reported from a real review:
- *
- *  - code rendered as plain white text, because a symbol named `constructor`
- *    or `toString` resolved to an Object.prototype member and the linkifier
- *    threw, aborting the whole section's hydration;
- *  - the same abort left sections that never finished loading;
- *  - a closing brace shown twice, because a file staged as new and edited again
- *    was listed twice in the uncommitted diff;
- *  - "Expand all" leaving the blue expander button behind;
- *  - no way to approve with a note, and no branch choice in the Commits tab.
- *
- * Run: node tests/review-defects.mjs
- */
+
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -33,7 +20,7 @@ function check(name, fn) {
   );
 }
 
-/** A repository whose reviewed files carry the awkward names from the report. */
+
 async function createFixture() {
   const root = await mkdtemp(join(tmpdir(), "pr-review-defects-"));
   const git = (...args) => exec(GIT.BIN, args, { cwd: root });
@@ -46,7 +33,7 @@ async function createFixture() {
   await git("add", "-A");
   await git("commit", "-m", "init");
 
-  // A C# file full of names that collide with Object.prototype members.
+
   const csharp = [
     "namespace Demo;",
     "",
@@ -64,7 +51,7 @@ async function createFixture() {
   await mkdir(join(root, "src"), { recursive: true });
   await writeFile(join(root, "src", "Widget.cs"), csharp);
 
-  // A Go file: a language the shipped bundle had no grammar for.
+
   const go = [
     "package main",
     "",
@@ -81,9 +68,9 @@ async function createFixture() {
 }
 
 const fixture = await createFixture();
-// A test must never start a turn in the real chat that runs it. The session env
-// vars are inherited by every child process, so they are cleared here and the
-// review is opened with auto-send disabled.
+
+
+
 const INHERITED_SESSION_ENV = ["OPENCODE_SESSION_ID", "OPENCODE_SESSION"];
 for (const name of INHERITED_SESSION_ENV) delete process.env[name];
 
@@ -239,7 +226,7 @@ try {
     })()`);
     assert.ok(result.saved, "the approval was not saved");
     assert.ok(result.dispatched, "the dispatch request failed");
-    // Auto-send is off for this review: the files are written, no turn starts.
+
     assert.equal(result.started, false, "a turn was started despite auto-send being off");
     assert.match(result.reason || "", /Auto-send is turned off/);
   });
@@ -275,7 +262,7 @@ try {
       { jsonPath: "j", markdownPath: "m" },
     );
     assert.match(prompt, /Rename that variable later/);
-    // The note exists, so the prompt must not claim the approval came without one.
+
     assert.doesNotMatch(prompt, /without notes/);
     assert.match(prompt, /the note above is the only remark/);
   });

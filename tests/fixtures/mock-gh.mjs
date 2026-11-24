@@ -1,29 +1,10 @@
 #!/usr/bin/env node
-/**
- * A stand-in for the GitHub CLI, for tests.
- *
- * It speaks only the two commands the review engine uses — `gh pr view` and
- * `gh auth status` — and reads its data from a JSON "database" whose path is in
- * MOCK_GH_DB. That makes `mode=pr` testable with no network, no token and no
- * real GitHub account.
- *
- * The database shape:
- *   {
- *     "auth": true,                       // false => auth status fails
- *     "pullRequests": { "7": { ...fields in `gh pr view --json` shape } },
- *     "default": "7"                      // used when no number is given
- *   }
- *
- * A field missing from a PR entry is simply absent from the output, so the
- * engine's tolerance of a sparse payload is exercised too.
- *
- * Exit codes mirror gh: 0 on success, 1 on "no pull request", 2 on a bad call.
- */
+
 import { readFile } from "node:fs/promises";
 const argv = process.argv.slice(2);
-/** Flags that take a value; the token after them is not a positional argument. */
+
 const VALUED_FLAGS = new Set(["--method", "--input", "--repo", "--body", "--json", "--state", "--limit", "--body-file"]);
-/** The first argument that is neither a flag nor a flag's value. */
+
 function positionalArg(args, from) {
   for (let index = from; index < args.length; index += 1) {
     const token = args[index];
@@ -35,7 +16,7 @@ function positionalArg(args, from) {
   }
   return null;
 }
-/** `--approve` -> APPROVE, and so on. */
+
 const FLAG_TO_EVENT = {
   "--approve": "APPROVE",
   "--request-changes": "REQUEST_CHANGES",
@@ -69,7 +50,7 @@ if (argv[0] === "pr" && argv[1] === "list") {
   const wanted = all.filter((pr) => {
     if (state === "all") return true;
     const value = String(pr.state ?? "").toLowerCase();
-    // `gh` maps merged PRs to state MERGED.
+
     if (state === "merged") return value === "merged";
     if (state === "closed") return value === "closed" || value === "merged";
     return value === "open";
@@ -97,7 +78,7 @@ if (argv[0] === "pr" && argv[1] === "view") {
   const pr = db.pullRequests?.[String(requested)];
   if (!pr) fail(`no pull requests found for branch "${requested ?? ""}"`, 1);
 
-  // Only the requested fields come back, exactly like gh.
+
   const fields = String(argv[jsonIndex + 1] ?? "").split(",").map((f) => f.trim()).filter(Boolean);
   const payload = {};
   for (const field of fields) {
@@ -108,7 +89,7 @@ if (argv[0] === "pr" && argv[1] === "view") {
   process.exit(0);
 }
 if (argv[0] === "pr" && argv[1] === "review") {
-  // Publishing a review without inline comments: record what was sent.
+
   const db = await loadDb();
   if (db.auth === false) fail("You are not logged into any GitHub hosts. Run gh auth login.", 1);
 
@@ -116,7 +97,7 @@ if (argv[0] === "pr" && argv[1] === "review") {
   const flag = ["--approve", "--request-changes", "--comment"].find((name) => argv.includes(name));
   if (!flag) fail("mock gh review: no verdict flag", 2);
 
-  // GitHub refuses a review of a PR it does not have (or one that is closed).
+
   const known = db.pullRequests?.[String(number ?? db.default ?? "")];
   if (!known) fail(`no pull requests found for branch "${number ?? ""}"`, 1);
 
@@ -134,7 +115,7 @@ if (argv[0] === "pr" && argv[1] === "review") {
   process.exit(0);
 }
 if (argv[0] === "api") {
-  // Publishing a review WITH inline comments: the payload arrives on stdin.
+
   const db = await loadDb();
   if (db.auth === false) fail("You are not logged into any GitHub hosts. Run gh auth login.", 1);
 
@@ -143,7 +124,7 @@ if (argv[0] === "api") {
   if (!match) fail(`mock gh api: unsupported endpoint ${endpoint}`, 2);
   if (!argv.includes("--input")) fail("mock gh api: expected --input -", 2);
 
-  // Same check as the CLI path: an unknown PR cannot be reviewed.
+
   if (!db.pullRequests?.[match[2]] && !Object.keys(db.pullRequests ?? {}).length) {
     fail(`no pull requests found for #${match[2]}`, 1);
   }
@@ -158,7 +139,7 @@ if (argv[0] === "api") {
     comments: payload.comments ?? [],
   });
 
-  // The real API answers with the created review object.
+
   process.stdout.write(JSON.stringify({
     id: entry.id,
     html_url: `https://github.com/${match[1]}/pull/${match[2]}#pullrequestreview-${entry.id}`,
@@ -168,7 +149,7 @@ if (argv[0] === "api") {
   process.exit(0);
 }
 fail(`mock gh: unsupported command: ${argv.join(" ")}`, 2);
-/** Appends the given review to the database file, so tests can assert on it. */
+
 async function recordReview(db, review) {
   const published = Array.isArray(db.publishedReviews) ? db.publishedReviews : [];
   const entry = { id: published.length + 1, ...review, at: new Date().toISOString() };
@@ -180,7 +161,7 @@ async function recordReview(db, review) {
   await writeFile(process.env.MOCK_GH_DB, body, "utf8");
   return entry;
 }
-/** Everything written to stdin (the `gh api --input -` payload). */
+
 function readStdin() {
   return new Promise((resolve, reject) => {
     const chunks = [];

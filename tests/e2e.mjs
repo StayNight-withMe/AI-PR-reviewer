@@ -1,10 +1,4 @@
-/**
- * End-to-end UI checks against the live review server (Firefox via geckodriver).
- * Verifies every requirement: viewed timing, collapse timing, multiline drag,
- * context expanders, symbol links, tree navigation, comments with images.
- *
- * Run: node tests/e2e.mjs [url]
- */
+
 import { Builder, By, Key, until } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox.js";
 import { createE2eReview } from "./e2e-fixture.mjs";
@@ -34,7 +28,7 @@ async function main() {
     check("header summary", (await driver.findElement(By.id("header-summary")).then((e) => e.getText())).includes("files"));
     check("settings button", (await driver.findElements(By.id("btn-settings"))).length === 1);
 
-    /* 1. Viewed via a real click (user path) */
+
     const viewed = await driver.findElement(By.css(".viewed-wrap"));
     const t0 = Date.now();
     await viewed.click();
@@ -42,7 +36,7 @@ async function main() {
     const clickMs = Date.now() - t0;
     check("viewed applies on click", true, `${clickMs} ms (incl. WebDriver)`);
 
-    /* 2. Collapse timing (measured inside the page, no WebDriver overhead) */
+
     const collapseMs = await driver.executeScript(`
       const sections = document.querySelectorAll('.diff-file');
       const section = sections[1];
@@ -56,7 +50,7 @@ async function main() {
     check("collapse works", collapseMs.collapsed && collapseMs.expanded, JSON.stringify(collapseMs));
     check("collapse is fast (<50ms)", collapseMs.ms < 50, `${collapseMs.ms.toFixed(1)} ms`);
 
-    /* 2b. Viewed timing measured in-page */
+
     const viewedMs = await driver.executeScript(`
       const section = document.querySelectorAll('.diff-file')[1];
       const path = section.dataset.path;
@@ -68,7 +62,7 @@ async function main() {
     `);
     check("viewed is fast (<50ms)", viewedMs < 50, `${viewedMs.toFixed(1)} ms`);
 
-    /* 3. Syntax highlighting present (hydration is async by design) */
+
     await driver.wait(async () => {
       const n = (await driver.findElements(By.css(".diff-code .hljs-keyword, .diff-code .hljs-string, .diff-code .hljs-type, .diff-code .hljs-title"))).length;
       return n > 5;
@@ -76,12 +70,12 @@ async function main() {
     const spanCount = (await driver.findElements(By.css(".diff-code .hljs-keyword, .diff-code .hljs-string, .diff-code .hljs-type, .diff-code .hljs-title"))).length;
     check("syntax highlighting tokens", spanCount > 5, `${spanCount} tokens`);
 
-    /* 4. No bogus symbol links */
+
     const symNames = await Promise.all((await driver.findElements(By.css(".sym-link"))).map((e) => e.getText()));
     const bad = symNames.filter((n) => ["static", "using", "class", "public", "new"].includes(n));
     check("no keyword links", bad.length === 0, `bad=${bad.join(",")}`);
 
-    /* 5. Multiline drag over the "+" gutter (GitHub behaviour) */
+
     const nums = await driver.findElements(By.css(".diff-file .diff-num[data-line]"));
     check("line numbers have data-line", nums.length > 10);
 
@@ -102,7 +96,7 @@ async function main() {
     const editor = (await driver.findElements(By.css(".js-editor textarea"))).length;
     check("comment editor opens after drag", editor === 1);
 
-    /* 6. Comment with image chip */
+
     if (editor === 1) {
       await driver.executeScript(`
         const ta = document.querySelector('.js-editor textarea');
@@ -125,7 +119,7 @@ async function main() {
       check("comment appears in sidebar", sidebar.includes("E2E comment"));
     }
 
-    /* 7. Context expanders (pick a section that is actually open) */
+
     const expandedPath = await driver.executeScript(`
       const section = [...document.querySelectorAll('.diff-file')].find((s) =>
         !s.classList.contains('collapsed') && s.querySelector('.hunk-expander .js-expand[data-dir="up"]'));
@@ -148,20 +142,20 @@ async function main() {
       : 0;
     check("expand context up", expanded > 3, `${expanded} context rows`);
 
-    /* 8. Tree click on changed file reveals diff */
+
     const changedRow = await driver.findElement(By.css(".tree-row.status-modified[data-dir='false']"));
     await changedRow.click();
     const flashed = await driver.findElements(By.css(".diff-file.flash"));
     check("tree click reveals changed file", flashed.length > 0);
 
-    /* 9. Commits tab */
+
     const commitTab = await driver.findElement(By.css(".gh-tab[data-tab='commits']"));
     await commitTab.click();
     await new Promise((r) => setTimeout(r, 250));
     const commits = (await driver.findElements(By.css(".commit-item"))).length;
     check("commits tab lists commits", commits > 0, `${commits} commits`);
 
-    /* 9b. Commit picker: choose a range with two checkboxes */
+
     const scopeExists = await driver.executeScript(`
       return !!document.getElementById('scope-mode') && !!document.getElementById('commit-picker');
     `);
@@ -208,7 +202,7 @@ async function main() {
       check("range review opens", bar.includes("Range"), bar.split("\n")[1] ?? bar.slice(0, 50));
     }
 
-    /* 10. Commit diff opens */
+
     if (commits > 0) {
       await driver.executeScript(`
         document.querySelector(".gh-tab[data-tab='commits']").click();
@@ -224,7 +218,7 @@ async function main() {
       check("commit diff view opens", bar.includes("Commit"), bar.replace(/\n/g, " ").slice(0, 60));
     }
 
-    /* 11. Viewer page + comments */
+
     await driver.get(URL.replace(/\/$/, "") + "/file?path=src/services/AtlasService/Atlas.Domain/Constants/AtlasConstants.cs");
     await driver.wait(until.elementLocated(By.css(".viewer-table")), 15000);
     const vnums = await driver.findElements(By.css(".v-num"));
@@ -238,22 +232,21 @@ async function main() {
     await new Promise((r) => setTimeout(r, 200));
     check("viewer comment editor", (await driver.findElements(By.css(".js-editor textarea"))).length === 1);
 
-    /* 12. No JS errors so far, captured before the last navigation resets them. */
+
     const pageErrors = await driver.executeScript("return window.__errors || []");
 
-    /* 13. Occurrence highlight: selecting a word lights up the same word in the
-       same file, like an IDE. Double-click is simulated with a real Range. */
+
     await driver.get(URL);
     await driver.wait(until.elementLocated(By.css(".diff-file")), 20000);
-    // The commits tab may be restored from localStorage by earlier steps, and
-    // the files panel is then display:none — a Range inside it yields an empty
-    // selection. Make the files tab active before selecting.
+
+
+
     await driver.executeScript(`
       const tab = document.querySelector(".gh-tab[data-tab='files']");
       if (tab) tab.click();
     `);
-    // Wait for every section to finish hydrating: a later pass rewrites code
-    // cells, and a range set on a node that is about to be replaced is lost.
+
+
     await driver.wait(async () => {
       const counts = await driver.executeScript(`return [
         document.querySelectorAll(".diff-file[data-hydrated='1']").length,
@@ -327,7 +320,7 @@ async function main() {
       check("the highlight clears on the next gesture", left === 0, `left=${left}`);
     }
 
-    /* 14. No JS errors */
+
     check("no runtime errors", !pageErrors || pageErrors.length === 0, JSON.stringify(pageErrors || []));
   } finally {
     await driver.quit();

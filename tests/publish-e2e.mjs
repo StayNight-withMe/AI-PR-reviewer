@@ -1,7 +1,4 @@
-/**
- * End to end: open a PR review through the MCP layer, submit it, publish it.
- * Everything is offline: the mock `gh` records what was posted.
- */
+
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -53,8 +50,8 @@ try {
     const target = started.files > 0 ? started.meta.allFiles : null;
     void target;
 
-    // Pick a real changed file from the review so the comment points at a path
-    // GitHub knows about.
+
+
     const payload = JSON.parse(await readFile(join(started.outputDir, "review.json"), "utf8").catch(() => "{}"));
     void payload;
 

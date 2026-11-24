@@ -1,9 +1,4 @@
-/**
- * Fourth visual probe: the tab strip and the toast queue, plus a file path long
- * enough to break every row that shows it.
- *
- * Run: node tests/visual-probe-4.mjs
- */
+
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -17,8 +12,8 @@ import { GIT, MODE } from "../src/config.js";
 const exec = promisify(execFile);
 const OUT = "Z:\\system\\temp\\pr-review-visual-4";
 
-// A path that is longer than any column it has to sit in, but still short
-// enough for a Windows temporary directory (260 characters is the old limit).
+
+
 const DEEP = Array.from({ length: 6 }, (_, i) => `folder-${i + 1}-with-a-long-name`);
 const FILE_NAME = "AVeryLongClassNameThatKeepsGoingAndThenSomeMore.cs";
 
@@ -134,8 +129,8 @@ try {
     await driver.manage().window().setRect({ width: size.width, height: size.height });
     await driver.get(review.url);
     await waitReady();
-    // The chosen tab is remembered across reloads, so each pass starts on the
-    // files tab or it measures the previous pass's commit list.
+
+
     await driver.executeScript(`(function () {
       PR.state.tab = PR.TAB.FILES;
       PR.syncTabs();
@@ -146,13 +141,13 @@ try {
     results.push({ size: size.name, state: "long-path", ...(await driver.executeScript(MEASURE)) });
     await shot(`${size.name}-long-path`);
 
-    // The toast sits above the fixed action bar; a long message must wrap.
+
     await driver.executeScript(`PR.toast('A message that is long enough to need wrapping across the bottom of a narrow window, twice over', false); return true;`);
     await new Promise((r) => setTimeout(r, 400));
     results.push({ size: size.name, state: "toast", ...(await driver.executeScript(MEASURE)) });
     await shot(`${size.name}-toast`);
 
-    // The commits tab with a long subject.
+
     await driver.executeScript(`document.querySelector('.gh-tab[data-tab="commits"]').click(); return true;`);
     await new Promise((r) => setTimeout(r, 800));
     const commit = await driver.executeScript(`return (function () {

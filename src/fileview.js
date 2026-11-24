@@ -3,11 +3,7 @@ import { isAbsolute, join, relative, resolve as resolvePath } from "node:path";
 import { git, readBlobs } from "./git.js";
 import { languageFor } from "./diff.js";
 import { DIFF, FILEVIEW, GIT, P } from "./config.js";
-/**
- * The reviewed path as a path inside the repository, or null when it points
- * outside. The viewer accepts a `?path=` from the browser, and a plain
- * `join(root, "../secret")` happily reads a file above the checkout.
- */
+
 export function repoPathOf(repoRoot, filePath) {
   const value = String(filePath ?? P.EMPTY);
   if (!value || isAbsolute(value)) return null;
@@ -17,18 +13,18 @@ export function repoPathOf(repoRoot, filePath) {
   const target = resolvePath(root, normalized);
   const within = relative(root, target);
 
-  // `..` at the start, or a `..` that walks out after normalisation.
+
   if (!within || within === ".." || within.startsWith("../") || within.startsWith("..\\")) return null;
   return within.replace(/\\/g, P.SLASH);
 }
-/** Splits file content into lines the way every viewer and the diff count them. */
+
 export function splitLines(text) {
   const value = String(text ?? P.EMPTY);
   if (value === P.EMPTY) return P.EMPTY_ARRAY;
   const body = value.endsWith(P.NEWLINE) ? value.slice(P.ZERO, -P.ONE) : value;
   return body.split(P.NEWLINE);
 }
-/** Content of one file plus the set of lines changed vs its base. */
+
 export async function readFileForViewer(repoRoot, requestedPath, options = {}) {
   const safePath = repoPathOf(repoRoot, requestedPath);
   if (!safePath) throw new Error(`${FILEVIEW.ERROR_OUTSIDE_REPO}${requestedPath}`);
@@ -68,11 +64,11 @@ async function readReviewedFile(repoRoot, filePath, { refs = [GIT.DEFAULT_REF], 
     changed: content.deleted ? allLines(lines.length) : Array.from(changed).sort((a, b) => a - b),
   };
 }
-/** Lightweight content reader for syntax highlighting. */
+
 export async function readFilesForHighlight(repoRoot, paths, { refs = [GIT.DEFAULT_REF], preferRef = null } = {}) {
-  // The batch comes from the browser too, so every path is checked the same way
-  // as a single read. One rejected path must not spoil the valid ones: it is
-  // answered as "no content" and the rest are read as usual.
+
+
+
   const result = {};
   const accepted = [];
   for (const requested of paths.filter(Boolean)) {
@@ -83,8 +79,8 @@ export async function readFilesForHighlight(repoRoot, paths, { refs = [GIT.DEFAU
   if (!accepted.length) return result;
 
   const wanted = accepted.map((entry) => entry.safePath);
-  // A PR (or any committed range) is reviewed at a commit that may not be
-  // checked out, so the working tree is the wrong source. Read that commit.
+
+
   const diskReads = preferRef
     ? wanted.map(() => ({ ok: false, text: P.EMPTY }))
     : await Promise.all(wanted.map((filePath) => readFromDisk(repoRoot, filePath)));
@@ -119,13 +115,13 @@ export async function readFilesForHighlight(repoRoot, paths, { refs = [GIT.DEFAU
 
   return result;
 }
-/** New files come from the disk; modified files from disk or the index; a DELETED file exists… */
+
 async function readCurrentContent(repoRoot, filePath, fromHead, refs, preferRef) {
-  // A pinned ref (a PR head) wins over the disk: the checkout is irrelevant.
+
   if (preferRef) {
     const pinned = await git(repoRoot, [GIT.SHOW, `${preferRef}:${filePath}`]);
     if (pinned.ok) return { ok: true, text: pinned.stdout };
-    // Absent at the pinned head: it was deleted, so read it from the base.
+
     for (const ref of refs ?? P.EMPTY_ARRAY) {
       if (!ref) continue;
       const fromRef = await git(repoRoot, [GIT.SHOW, `${ref}:${filePath}`]);
@@ -141,7 +137,7 @@ async function readCurrentContent(repoRoot, filePath, fromHead, refs, preferRef)
   if (staged.ok) return { ok: true, text: staged.stdout };
 
   if (fromHead && fromHead.ok) return { ok: true, text: fromHead.stdout, deleted: true };
-  // A file deleted inside a range is gone from both disk and HEAD.
+
   for (const ref of refs ?? P.EMPTY_ARRAY) {
     const fromRef = await git(repoRoot, [GIT.SHOW, `${ref}:${filePath}`]);
     if (fromRef.ok) return { ok: true, text: fromRef.stdout, deleted: true };
@@ -163,7 +159,7 @@ function allLines(count) {
 }
 async function changedLines(repoRoot, filePath, range) {
   const changed = new Set();
-  // A pinned review (a PR) compares the file between its base and head commits;
+
 
   const args = range
     ? [...GIT.ARGS.DIFF, GIT.FLAG_UNIFIED_ZERO, range.base, range.head, GIT.FLAGS.HEAD, filePath]

@@ -1,18 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable">
   <Commands package="guidPrReviewPackage">
-    <!--
-      One command, one click away in three places:
-        * the PR Review button on the standard toolbar
-        * Tools > PR Review > Open review of the current branch
-        * View > Other Windows > PR Review (the tool window builds the review)
 
-      The button is declared ONCE. Two <Button> elements sharing the same guid/id
-      make the shell register a nameless command, so the toolbar copy is added
-      with CommandPlacement instead. A button must belong to a group, and that
-      group belongs directly to the Standard toolbar (guidSHLMainMenu here, not
-      guidVSStd97, and not a group on the navigation toolbar).
-    -->
     <Menus>
       <Menu guid="guidPrReviewCmdSet" id="PrReviewMenu" priority="0x700" type="Menu">
         <Parent guid="guidSHLMainMenu" id="IDG_VS_MM_TOOLSADDINS" />
@@ -25,7 +14,7 @@
       <Group guid="guidPrReviewCmdSet" id="PrReviewGroup" priority="0x0600">
         <Parent guid="guidPrReviewCmdSet" id="PrReviewMenu" />
       </Group>
-      <!-- Standard toolbar groups descend directly from the toolbar. -->
+
       <Group guid="guidPrReviewCmdSet" id="PrReviewToolbarGroup" priority="0x0600">
         <Parent guid="guidSHLMainMenu" id="IDM_VS_TOOL_STANDARD" />
       </Group>
@@ -54,7 +43,7 @@
       <IDSymbol name="IDG_VS_MM_TOOLSADDINS" value="0x0104" />
       <IDSymbol name="IDM_VS_TOOL_STANDARD" value="0x0001" />
     </GuidSymbol>
-    <!-- Visual Studio's built-in image catalog: no images travel in the VSIX. -->
+
     <GuidSymbol name="ImageCatalogGuid" value="{ae27a6b0-e345-4288-96df-5eaf394ee369}">
       <IDSymbol name="Git" value="1407" />
     </GuidSymbol>

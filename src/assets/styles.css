@@ -1,6 +1,6 @@
 ﻿:root {
   color-scheme: dark;
-  /** Primer 11.10.0 (github.com assets dark.css), values copied verbatim. */
+
   --bg: #0d1117;
   --bg-subtle: #151b23;
   --bg-inset: #010409;
@@ -18,7 +18,7 @@
   --danger: #f85149;
   --danger-emphasis: #da3633;
   --attention: #d29922;
-  /** diffBlob-*-bgColor from the same file: line tint, num/gutter tint, word tint. */
+
   --diff-add: #2ea04326;
   --diff-add-strong: #3fb9504d;
   --diff-del: #f851491a;
@@ -36,14 +36,13 @@
   --ease: cubic-bezier(0.2, 0.8, 0.3, 1);
   --num-col: 36px;
   --gutter-col: 20px;
-  /** Sticky chrome. The header wraps on narrow screens, so its height is
-      measured in `main.js`; these defaults hold until that runs. */
+
   --header-h: 58px;
   --chrome-body: 99px;
 }
 [data-theme="light"] {
   color-scheme: light;
-  /** Primer 11.10.0 light.css, values copied verbatim. */
+
   --bg: #ffffff;
   --bg-subtle: #f6f8fa;
   --bg-inset: #f6f8fa;
@@ -82,8 +81,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
   font-size: 13px;
   line-height: 1.5;
-  /** The action bar is fixed, so its measured height is kept clear at the end of
-      the page; a wrapped bar on a narrow screen is taller than the default. */
+
   padding-bottom: calc(var(--action-h, 56px) + 8px);
   -webkit-font-smoothing: antialiased;
 }
@@ -95,7 +93,7 @@ code, pre, .mono, .diff-table, .viewer-table { font-family: ui-monospace, SFMono
 .hidden { display: none !important; }
 .spacer { flex: 1; }
 body.selecting { user-select: none; cursor: text; }
-/** ------------------------------- header -------------------------------- */
+
 .gh-header {
   background: var(--bg-subtle);
   border-bottom: 1px solid var(--border);
@@ -107,8 +105,7 @@ body.selecting { user-select: none; cursor: text; }
   top: 0;
   z-index: 60;
   min-height: 58px;
-  /** On a narrow window the header needs a second line instead of pushing the
-      last buttons off the screen. Its height then feeds the sticky offsets. */
+
   flex-wrap: wrap;
   row-gap: 6px;
 }
@@ -118,13 +115,10 @@ body.selecting { user-select: none; cursor: text; }
 .gh-muted { color: var(--fg-muted); }
 .gh-header-meta { display: flex; align-items: center; gap: 8px; color: var(--fg-muted); font-size: 11px; flex-wrap: nowrap; overflow: hidden; min-width: 0; }
 .gh-header-meta > * { white-space: nowrap; }
-/** The branch is the one item that may be cut: the pill and the diff stats say
-    more and are small enough to always fit. */
+
 .gh-header-meta .meta-branch { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .gh-header-meta .mode-pill, .gh-header-meta .stat-pair, .gh-header-meta .pr-badge { flex: none; }
-/** In the header the title block takes the free space; the spacer only kept
-    half of it, which squeezed the branch into an ellipsis and pushed the stats
-    onto a second row. */
+
 .gh-header > .spacer { flex: 0 0 0; }
 .header-summary { display: flex; gap: 16px; font-size: 12px; color: var(--fg-muted); align-items: center; }
 .header-summary b { color: var(--fg); font-weight: 600; }
@@ -134,12 +128,11 @@ body.selecting { user-select: none; cursor: text; }
 a.pr-badge:hover { background: color-mix(in srgb, var(--accent, #58a6ff) 15%, transparent); }
 .stat-add { color: var(--success); }
 .stat-del { color: var(--danger); }
-/** Additions and deletions belong together: on a narrow tab `flex-wrap` used to
-    put `+2` at the end of one line and `-1` at the start of the next. */
+
 .stat-pair { display: inline-flex; align-items: baseline; gap: 8px; }
-/** The file count and the line stats are one figure on a narrow tab. */
+
 .meta-pair { display: inline-flex; align-items: baseline; gap: 8px; }
-/** ------------------------------- buttons ------------------------------- */
+
 .gh-btn {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 5px 12px;
@@ -162,7 +155,7 @@ a.pr-badge:hover { background: color-mix(in srgb, var(--accent, #58a6ff) 15%, tr
 .gh-btn.ghost { background: transparent; border-color: transparent; color: var(--fg-muted); padding: 2px 6px; }
 .gh-btn.ghost:hover { background: var(--bg-overlay); color: var(--fg); }
 .gh-btn.ghost.danger:hover { color: var(--danger); }
-/** A toggle button must show its current state, not just react on click. */
+
 .gh-btn.is-toggle[aria-pressed="true"] {
   background: color-mix(in srgb, var(--accent-emphasis) 22%, var(--bg-overlay));
   border-color: var(--accent-emphasis);
@@ -172,7 +165,7 @@ a.pr-badge:hover { background: color-mix(in srgb, var(--accent, #58a6ff) 15%, tr
   content: ""; width: 6px; height: 6px; border-radius: 50%;
   background: var(--accent-fg); flex: none;
 }
-/** ------------------------------- search -------------------------------- */
+
 .search-wrap { position: relative; }
 .search-panel {
   position: absolute; top: calc(100% + 6px); right: 0; z-index: 120;
@@ -181,8 +174,7 @@ a.pr-badge:hover { background: color-mix(in srgb, var(--accent, #58a6ff) 15%, tr
   border: 1px solid var(--border); border-radius: 8px;
   box-shadow: var(--shadow); overflow: hidden;
 }
-/** A panel anchored to a button that wrapped to the middle of the header cannot
-    stay inside the window, so on a narrow screen it spans the page instead. */
+
 @media (max-width: 1000px) {
   .search-panel {
     position: fixed;
@@ -230,7 +222,7 @@ a.pr-badge:hover { background: color-mix(in srgb, var(--accent, #58a6ff) 15%, tr
 }
 .gh-input:focus, .gh-textarea:focus { border-color: var(--accent-emphasis); box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.28); }
 .gh-textarea { width: 100%; resize: vertical; min-height: 76px; line-height: 1.55; padding: 8px 10px; }
-/** -------------------------------- tabs --------------------------------- */
+
 .gh-tabs {
   position: sticky;
   top: var(--header-h);
@@ -251,7 +243,7 @@ a.pr-badge:hover { background: color-mix(in srgb, var(--accent, #58a6ff) 15%, tr
 .gh-tab:hover { color: var(--fg); }
 .gh-tab.active { color: var(--fg); border-bottom-color: #f78166; font-weight: 600; }
 .tab-count { background: var(--bg-overlay); border: 1px solid var(--border); border-radius: 999px; padding: 0 6px; font-size: 11px; font-weight: 500; }
-/** -------------------------------- layout ------------------------------- */
+
 .gh-layout {
   display: grid;
   grid-template-columns: var(--tree-width, 320px) 6px minmax(0, 1fr) 300px;
@@ -261,26 +253,22 @@ a.pr-badge:hover { background: color-mix(in srgb, var(--accent, #58a6ff) 15%, tr
   align-items: stretch;
   min-height: calc(100vh - 100px);
 }
-/** Narrower screens keep all four tracks. */
+
 @media (max-width: 1440px) { .gh-layout { grid-template-columns: var(--tree-width, 320px) 6px minmax(0, 1fr) 260px; } }
 @media (max-width: 900px) {
-  /** One column means the page scrolls as a whole: a viewport-tall minimum
-      would leave a large empty band between the last file and the sidebar. */
+
   .gh-layout { grid-template-columns: 1fr; min-height: 0; }
   .gh-main { padding-bottom: 24px; }
-  /** There is no room for a column of files, so the tree goes. Its reveal
-      handle goes with it: a button that opens nothing is worse than no button. */
+
   body .gh-tree, body .tree-resizer, body .tree-reveal { display: none; }
-  /** The review status and the comments are what the sidebar is for, so on a
-      narrow screen they move under the diff rather than disappear. The extra
-      `body` gives these rules priority over the base block further down. */
+
   body .gh-sidebar {
     position: static; max-height: none; overflow: visible;
     padding: 12px 20px 20px; border-top: 1px solid var(--border);
   }
   body.no-sidebar .gh-sidebar { display: none; }
 }
-/** Drag handle between the tree and the diff pane. */
+
 .tree-resizer {
   position: sticky; top: var(--chrome-body); height: calc(100vh - var(--chrome-body));
   width: 6px; cursor: col-resize; background: transparent;
@@ -289,8 +277,8 @@ a.pr-badge:hover { background: color-mix(in srgb, var(--accent, #58a6ff) 15%, tr
 }
 .tree-resizer:hover, .tree-resizer.is-dragging { background: var(--accent-emphasis); }
 body.is-resizing-tree { cursor: col-resize; user-select: none; }
-/** Collapsed tree: a small chevron in the same column brings it back. */
-/** Collapsed tree: width goes to zero but the element stays in the grid, so the remaining columns… */
+
+
 .gh-layout.tree-hidden { grid-template-columns: 0 0 minmax(0, 1fr) 300px; }
 .gh-layout.tree-hidden > .gh-tree {
   visibility: hidden; overflow: hidden;
@@ -311,7 +299,7 @@ body.is-resizing-tree { cursor: col-resize; user-select: none; }
 }
 .tree-reveal:hover { background: var(--accent-emphasis); color: #fff; width: 18px; }
 .tree-reveal[hidden] { display: none; }
-/** The sidebar can be hidden on demand, not only by breakpoint. */
+
 body.no-sidebar .gh-layout { grid-template-columns: var(--tree-width, 320px) 6px minmax(0, 1fr); }
 body.no-sidebar .gh-sidebar { display: none; }
 body.no-sidebar .gh-layout.tree-hidden { grid-template-columns: 0 0 minmax(0, 1fr); }
@@ -325,12 +313,12 @@ body.no-sidebar .gh-layout.tree-hidden { grid-template-columns: 0 0 minmax(0, 1f
   width: 22px; height: 22px; border-radius: 4px; flex: none;
 }
 .inline-open .js-close-inline:hover { background: var(--bg-overlay); color: var(--fg); }
-/** "unchanged" is a long word for a fixed pill; let it size to its content. */
+
 .inline-open .status-pill {
   width: auto; flex: none; padding: 0 7px; height: 18px;
   background: var(--bg-overlay); color: var(--fg-muted); font-weight: 500;
 }
-/** --------------------------------- tree -------------------------------- */
+
 .icon-btn {
   border: none; background: transparent; color: var(--fg-subtle);
   width: 22px; height: 22px; flex: none; border-radius: 4px;
@@ -339,11 +327,11 @@ body.no-sidebar .gh-layout.tree-hidden { grid-template-columns: 0 0 minmax(0, 1f
   transition: opacity var(--speed) var(--ease), color var(--speed) var(--ease), background-color var(--speed) var(--ease);
 }
 .diff-file-header:hover .icon-btn { opacity: 1; }
-/** The more-actions trigger is a primary affordance of the header: it stays visible without… */
+
 .icon-btn.js-file-menu { opacity: 1; color: var(--fg-muted); }
 .icon-btn:hover { color: var(--fg); background: var(--bg-overlay); }
 .icon-btn svg { display: block; }
-/** Large-file placeholder: collapsed by default, one click to render. */
+
 .deferred-note {
   display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
   padding: 16px 18px; color: var(--fg-muted);
@@ -351,7 +339,7 @@ body.no-sidebar .gh-layout.tree-hidden { grid-template-columns: 0 0 minmax(0, 1f
 .deferred-title { font-size: 12px; font-weight: 600; color: var(--fg); }
 .deferred-text { font-size: 12px; }
 .is-deferred .diff-file-header { border-bottom: none; }
-/** Viewed: a short, quiet fade instead of an instant disappear. */
+
 @keyframes viewedFade {
   from { opacity: 1; transform: translateY(0); }
   to { opacity: 0; transform: translateY(-4px); }
@@ -365,7 +353,7 @@ body.no-sidebar .gh-layout.tree-hidden { grid-template-columns: 0 0 minmax(0, 1f
   overflow-y: auto;
   overflow-x: hidden;
   min-width: 0;
-  /** A grid item defaults to min-height:auto, which stops it shrinking below its content and… */
+
   min-height: 0;
   border-right: 1px solid var(--border);
   background: var(--bg-subtle);
@@ -391,7 +379,7 @@ body.no-sidebar .gh-layout.tree-hidden { grid-template-columns: 0 0 minmax(0, 1f
 }
 .tree-row:hover { background: var(--bg-overlay); }
 a.tree-row { text-decoration: none; }
-/** The file currently on screen stays highlighted, like GitHub's tree. */
+
 .tree-row.is-active {
   background: color-mix(in srgb, var(--accent-emphasis) 20%, transparent);
   box-shadow: inset 2px 0 0 var(--accent-fg);
@@ -399,7 +387,7 @@ a.tree-row { text-decoration: none; }
 .tree-row.is-active .tree-label { color: var(--fg); font-weight: 500; }
 .tree-row.is-active .tree-icon { color: var(--accent-fg); }
 .tree-row.is-active .tree-icon .tree-doc-path { fill: var(--accent-fg); }
-/** Minimal press feedback: a short, quiet flash rather than a bounce. */
+
 @keyframes pressPulse {
   0% { transform: scale(0.985); }
   60% { transform: scale(1.004); }
@@ -407,7 +395,7 @@ a.tree-row { text-decoration: none; }
 }
 .is-pressing { animation: pressPulse 180ms var(--ease); }
 .tree-row.dir { color: var(--fg); font-weight: 500; }
-/** One vertical guide per nesting level, GitHub-style. */
+
 .tree-indent {
   flex: none; width: var(--tree-indent, 4px); height: 22px; position: relative;
 }
@@ -438,7 +426,7 @@ a.tree-row { text-decoration: none; }
   font-size: 12.5px;
 }
 .tree-status { font-size: 10px; font-weight: 700; color: var(--fg-subtle); opacity: 0.7; }
-/** Added = green, modified = yellow, deleted = red, renamed = yellow. */
+
 .tree-row.status-added .tree-label { color: var(--success); }
 .tree-row.status-added .tree-icon .tree-doc-path { fill: var(--success); }
 .tree-row.status-added .tree-status { color: var(--success); }
@@ -457,7 +445,7 @@ a.tree-row { text-decoration: none; }
   background: var(--accent-emphasis); color: #fff; border-radius: 999px;
   font-size: 10px; font-weight: 600; padding: 0 5px; min-width: 16px; text-align: center; line-height: 16px;
 }
-/** --------------------------------- main -------------------------------- */
+
 .gh-main { min-width: 0; padding: 12px 20px 60px; }
 .gh-sticky-toolbar {
   position: sticky; top: var(--chrome-body); z-index: 30;
@@ -478,22 +466,19 @@ a.tree-row { text-decoration: none; }
   border-radius: var(--radius);
 }
 .view-label { font-weight: 600; font-family: ui-monospace, monospace; font-size: 12px; }
-/** ------------------------------ diff file ------------------------------ */
+
 .diff-file {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   margin-bottom: 16px;
   background: var(--bg);
 
-  /** `overflow`, `contain` and `content-visibility` on this element would create a containing block… */
+
 }
 .diff-file.flash { border-color: var(--accent-emphasis); }
-/** While a file's ⋯ menu is open the whole section must sit above the next one: the
-    sticky header creates a stacking context, so the popup inside it cannot. The
-    lift must also clear the page chrome (tabs 50, header 60), or the menu
-    disappears under them when it opens near the top of the window. */
+
 .diff-file.menu-open { position: relative; z-index: 70; }
-/** The header must stay visible while a long file is scrolled, so the reviewer can press "Viewed"… */
+
 .diff-file-header {
   display: flex; align-items: center; gap: 8px;
   padding: 7px 10px;
@@ -505,7 +490,7 @@ a.tree-row { text-decoration: none; }
   top: var(--diff-header-top, var(--chrome-body));
   z-index: 20;
   border-radius: var(--radius) var(--radius) 0 0;
-  /** A sticky header over long code needs an opaque background, or the rows underneath show through… */
+
   box-shadow: 0 1px 0 var(--border);
 }
 .diff-file.is-viewed .diff-file-header { background: color-mix(in srgb, var(--bg-subtle) 88%, var(--bg)); }
@@ -532,7 +517,7 @@ a.tree-row { text-decoration: none; }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   flex: 1; min-width: 0;
 }
-/** The path and its copy button form one group, pinned to the left. */
+
 .path-group { display: flex; align-items: center; gap: 2px; flex: 1 1 160px; min-width: 0; }
 .path-group .path { flex: 0 1 auto; }
 .path-group .icon-btn { opacity: 0.6; }
@@ -562,17 +547,13 @@ a.tree-row { text-decoration: none; }
 }
 .viewed-wrap.checked .viewed-box { background: var(--accent-emphasis); border-color: var(--accent-emphasis); color: #fff; }
 .viewed-wrap span:last-child { font-size: 12px; color: var(--fg-muted); }
-/** ------------------------------- diff body ------------------------------- */
+
 .diff-body {
-  /** No `content-visibility` / `contain: paint` here. They were a performance
-      hint, but they let the browser paint only part of a section: a file was
-      visually cut off mid-hunk with no expander to continue it, and no amount of
-      scrolling brought the rest back. Deferring large files and hydrating in
-      chunks already keeps the page responsive, so correctness wins here. */
+
 }
 .diff-file.collapsed .diff-body { display: none; }
 .diff-file.is-viewed .diff-body { opacity: 0.85; }
-/** -------------------------------- hunks -------------------------------- */
+
 .diff-hunk-header {
   display: flex; align-items: center; gap: 8px;
   background: var(--diff-hunk);
@@ -585,8 +566,7 @@ a.tree-row { text-decoration: none; }
 }
 .diff-hunk:first-child .diff-hunk-header { border-top: none; }
 .hunk-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/** The control spans the whole row: the blue target sits over the gutter and the
-    number columns, and the rest of the row carries GitHub's dotted rule. */
+
 .hunk-expander {
   background: transparent;
   border: none;
@@ -603,7 +583,7 @@ a.tree-row { text-decoration: none; }
   padding: 0 !important; height: 24px; position: relative;
   background: var(--diff-hunk);
 }
-/** The dark block marks the gutter, where the line numbers of the file live. */
+
 .expander-cell::before {
   content: ""; position: absolute; left: 0; top: 0; bottom: 0;
   width: var(--gutter-col); background: var(--diff-hunk-num);
@@ -619,17 +599,17 @@ a.tree-row { text-decoration: none; }
 }
 .hunk-expander-btn:hover { filter: brightness(1.5); }
 .hunk-expander-svg { display: block; width: 11px; height: 11px; }
-/** Dotted rules running the full width of the block, as GitHub draws them. */
+
 .hunk-expander-btn::before,
 .hunk-expander-btn::after {
   content: ""; display: block; flex: 1 1 auto; height: 1px;
   background-image: linear-gradient(to right, currentColor 1px, transparent 1px);
   background-size: 2px 1px; opacity: 0.45;
 }
-/** -------------------------------- table -------------------------------- */
+
 .diff-table {
   width: 100%;
-  /** `separate` avoids the browser recalculating every cell boundary on zoom; with `collapse` a… */
+
   border-collapse: separate;
   border-spacing: 0;
   font-size: 12px; line-height: 20px;
@@ -638,7 +618,7 @@ a.tree-row { text-decoration: none; }
 .diff-table td { padding: 0; vertical-align: top; }
 .diff-table .c-gutter { width: var(--gutter-col); }
 .diff-table .c-num { width: var(--num-col); }
-/** A file with no deletions has nothing on the left, so the column is gone. */
+
 .diff-table.no-old-side, .diff-table.split.no-old-side { width: 100%; }
 .diff-gutter {
   width: var(--gutter-col); position: relative;
@@ -651,9 +631,9 @@ a.tree-row { text-decoration: none; }
   border-right: 1px solid var(--border-subtle);
   pointer-events: none;
 }
-/** Expander cell: the arrow must stay clickable and must not start a drag. */
+
 .hunk-expander-btn { position: relative; z-index: 1; }
-/** The sign uses the plain text colour: a red `-` on the red gutter tint was invisible, which is… */
+
 .gutter-sign {
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 600; line-height: 1;
@@ -685,7 +665,7 @@ a.tree-row { text-decoration: none; }
 }
 .diff-num:hover { color: var(--accent-fg); }
 .diff-code { padding: 0 12px !important; white-space: pre-wrap; overflow-wrap: anywhere; }
-/** Only the code cells carry the row tint: painting the <tr> as well stacked two translucent… */
+
 .diff-table tr.row-add > td.diff-code { background: var(--diff-add); }
 .diff-table tr.row-del > td.diff-code { background: var(--diff-del); }
 .diff-table tr.row-add > td.diff-gutter,
@@ -693,11 +673,11 @@ a.tree-row { text-decoration: none; }
 .diff-table tr.row-del > td.diff-gutter,
 .diff-table tr.row-del > td.diff-num { background: var(--diff-del-strong); }
 .row-empty > td, .row-empty .diff-num, .row-empty .diff-gutter { background: var(--bg-subtle); }
-/** split view: colour per cell, both sides independent */
+
 .cell-add { background: var(--diff-add); }
 .cell-del { background: var(--diff-del); }
 .cell-empty { background: var(--bg-subtle); }
-/** stronger background over the characters that actually changed */
+
 .wm { background: var(--diff-add-word); border-radius: 2px; }
 .cell-del .wm { background: var(--diff-del-word); }
 [data-theme="light"] .wm { background: var(--diff-add-word); }
@@ -708,7 +688,7 @@ td.diff-gutter.gutter-add { background: var(--diff-add-strong); }
 td.diff-gutter.gutter-del { background: var(--diff-del-strong); }
 .row-selected > td { background: rgba(56, 139, 253, 0.18) !important; }
 .row-selected > td.diff-num { color: var(--fg); }
-/** Every occurrence of the selected text in the same file, IDE style. */
+
 mark.occurrence-hl {
   background: rgba(210, 153, 34, 0.28);
   color: inherit;
@@ -719,7 +699,7 @@ mark.occurrence-hl {
 mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
 .comment-row > td { padding: 0 !important; background: var(--bg); }
 .loading-row { padding: 24px; color: var(--fg-muted); }
-/** ------------------------------- comments ------------------------------ */
+
 .comment-box {
   margin: 8px 12px;
   border: 1px solid var(--border);
@@ -749,7 +729,7 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
 .editor-attach { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
 .editor-attach:empty { display: none; }
 .comment-box.drop-active .gh-textarea { border-color: var(--accent-emphasis); background: rgba(31, 111, 235, 0.06); }
-/** inline attachment chips (like opencode) */
+
 .attach-chip {
   position: relative; display: inline-flex; border-radius: 6px;
   border: 1px solid var(--border); overflow: hidden; background: var(--bg-subtle);
@@ -767,7 +747,7 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
 .comment-attachments { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 12px 12px; }
 .file-comment-banner { padding: 8px 12px 4px; border-bottom: 1px solid var(--border-subtle); background: var(--bg-subtle); }
 .file-comment-banner .comment-box { margin: 0 0 8px; }
-/** ------------------------------- sidebar ------------------------------- */
+
 .gh-sidebar {
   position: sticky; top: var(--chrome-body);
   max-height: calc(100vh - var(--chrome-body));
@@ -792,7 +772,7 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
 .comment-summary-item:hover { background: var(--bg-overlay); }
 .comment-summary-path { font-family: ui-monospace, monospace; font-size: 11px; color: var(--accent-fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .comment-summary-text { color: var(--fg); font-size: 12px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-/** Resolved review comments keep their place but stop competing for attention. */
+
 .comment-summary-item.is-resolved { opacity: 0.55; }
 .comment-summary-item.is-resolved .comment-summary-text { text-decoration: line-through; }
 .comment-box.is-resolved { opacity: 0.62; background: var(--bg-subtle); }
@@ -804,7 +784,7 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
   border: 1px solid rgba(63, 185, 80, 0.4);
   white-space: nowrap;
 }
-/** A comment whose lines changed after it was written, like GitHub's "outdated". */
+
 .outdated-pill {
   margin-left: 8px; padding: 0 7px; border-radius: 999px;
   font-size: 10px; font-weight: 600;
@@ -815,7 +795,7 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
 .comment-box.is-outdated { border-color: rgba(210, 153, 34, 0.45); }
 .comment-box.is-outdated .comment-head { background: rgba(210, 153, 34, 0.1); }
 .comment-summary-item.is-outdated .comment-summary-path { color: var(--attention-fg, #d29922); }
-/** The code a stale comment referred to, kept visible for comparison. */
+
 .comment-outdated-note {
   margin: 0 12px 10px;
   padding: 8px 10px;
@@ -835,18 +815,18 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
   overflow-wrap: anywhere;
   color: var(--fg);
 }
-/** Comments whose line no longer exists in the diff, pinned to the top of the file. */
+
 .orphan-comments { padding: 8px 12px 0; background: var(--bg-subtle); border-bottom: 1px solid var(--border-subtle); }
 .orphan-comments .comment-box { margin: 0 0 8px; }
-/** An orphan table is not a hunk table: it only carries full-width comment rows. */
+
 .orphan-table { width: 100%; border-collapse: separate; border-spacing: 0; }
 .orphan-table td { padding: 0; }
-/** The note field of the submit dialog takes screenshots the same way a comment does. */
+
 .note-wrap { position: relative; }
 .note-wrap.drop-active .gh-textarea { border-color: var(--accent-emphasis); background: rgba(31, 111, 235, 0.06); }
 .tree-comment-count.is-resolved { color: var(--success); background: rgba(63, 185, 80, 0.16); }
 .empty-state { color: var(--fg-muted); font-size: 12px; }
-/** --------------------------- scope picker (commits) --------------------- */
+
 .scope-bar {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   padding: 10px 14px;
@@ -854,15 +834,14 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
   background: var(--bg-subtle);
   position: sticky; top: var(--chrome-body); z-index: 20;
 }
-/* The branch bar sits above the scope bar; both are sticky, so only the upper
-   one may stick and the lower one must stack directly beneath it. */
+
 .scope-bar + .scope-bar { position: static; }
 .scope-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .scope-label { font-size: 12px; font-weight: 600; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.04em; }
 .scope-bar select.gh-input { max-width: 260px; }
 .dispatch-mode { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .radio-line { display: flex; align-items: center; gap: 6px; cursor: pointer; }
-/** ------------------------------- commits ------------------------------- */
+
 .commit-item {
   display: flex; align-items: center; gap: 12px; width: 100%;
   padding: 12px 14px; border-bottom: 1px solid var(--border-subtle);
@@ -887,7 +866,7 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
 }
 .commit-item:hover .commit-rename { opacity: 1; }
 .commit-rename:hover { color: var(--fg); border-color: var(--fg-subtle); }
-/** Pushed commits are greyed out; rewriting needs an explicit opt-in. */
+
 .commit-item.is-pushed .commit-subject { color: var(--fg-muted); }
 .commit-item.is-pushed .commit-dot { background: var(--fg-subtle); opacity: 0.65; }
 .commit-item.is-pushed .commit-rename { color: var(--fg-subtle); }
@@ -904,7 +883,7 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
 .commit-open { font-size: 12px; color: var(--accent-fg); opacity: 0; transition: opacity var(--speed); cursor: pointer; flex: none; }
 .commit-item:hover .commit-open { opacity: 1; }
 .js-rename-input { flex: 1; min-width: 0; padding: 2px 6px; font-size: 12.5px; }
-/** ---------------------------- commit picker ---------------------------- */
+
 .commit-picker-modal { width: min(640px, 96vw); }
 .commit-picker-body { max-height: 62vh; overflow: auto; padding: 0; }
 .commit-picker-hint { padding: 10px 16px; border-bottom: 1px solid var(--border-subtle); }
@@ -920,7 +899,7 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
 .commit-pick-title { font-weight: 500; overflow-wrap: anywhere; }
 .commit-pick-meta { font-size: 11px; color: var(--fg-muted); }
 .commit-pick-sha { font-family: ui-monospace, monospace; font-size: 11px; color: var(--fg-muted); flex: none; }
-/** --------------------------- settings popover -------------------------- */
+
 .settings-pop {
   position: fixed; top: calc(var(--header-h) + 4px); right: 16px; z-index: 90;
   width: 290px; padding: 14px;
@@ -931,7 +910,7 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
   max-height: calc(100vh - var(--header-h) - 20px);
   overflow-y: auto;
 }
-/** A 290px popover plus margins is wider than a phone screen. */
+
 @media (max-width: 420px) {
   .settings-pop { left: 12px; right: 12px; width: auto; }
 }
@@ -943,7 +922,7 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
 .settings-number { width: 72px; padding: 3px 6px; text-align: right; }
 .settings-foot { margin-top: 12px; display: flex; justify-content: flex-end; border-top: 1px solid var(--border-subtle); padding-top: 10px; }
 @keyframes popIn { from { opacity: 0; transform: translateY(-4px) scale(0.99); } to { opacity: 1; transform: none; } }
-/** ------------------------------- viewer -------------------------------- */
+
 .viewer-wrap { max-width: 1600px; margin: 0 auto; padding: 12px 20px 70px; }
 .viewer-toolbar {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
@@ -954,10 +933,7 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
 .viewer-toggle { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; color: var(--fg-muted); }
 .viewer-table {
   width: 100%; border-collapse: collapse;
-  /** `fixed` is what keeps a very long line inside the page: with the automatic
-      layout the table grows to the widest line, so the page scrolls sideways and
-      the line numbers leave the screen. The diff table has always been fixed,
-      which is why the same line wrapped there and not here. */
+
   table-layout: fixed;
   border: 1px solid var(--border); border-radius: var(--radius);
   font-size: 12.5px; line-height: 20px;
@@ -979,7 +955,7 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
 .v-changed, .v-changed .v-num, .v-changed .v-gutter { background: var(--diff-add); }
 .v-selected > td { background: rgba(56, 139, 253, 0.18) !important; }
 .v-target > td { box-shadow: inset 3px 0 0 var(--accent-emphasis); background: rgba(210, 168, 255, 0.16) !important; }
-/** -------------------------------- footer ------------------------------- */
+
 .action-bar {
   position: fixed; bottom: 0; left: 0; right: 0;
   background: var(--bg-subtle);
@@ -987,24 +963,21 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
   padding: 9px 20px;
   display: flex; gap: 10px; align-items: center;
   z-index: 60;
-  /** Wrapping keeps every control on screen: on a phone the status text alone
-      used to push "Submit review" past the right edge. */
+
   flex-wrap: wrap;
 }
 .action-bar .status {
   color: var(--fg-muted); font-size: 12px; font-variant-numeric: tabular-nums;
-  /** The hint is the only item that may shrink: the buttons keep their size and
-      stay on the same row. */
+
   flex: 1 1 auto; min-width: 0;
 }
 .action-bar .gh-btn { flex: none; }
-/** A phone has no room for the hint and both buttons: the hint is a hint, the
-    buttons are the work, so the hint goes and the row stays whole. */
+
 @media (max-width: 620px) {
   .action-bar .status { display: none; }
   .action-bar { justify-content: flex-end; }
 }
-/** ------------------------------ modals/toast --------------------------- */
+
 .modal-backdrop { position: fixed; inset: 0; background: rgba(1, 4, 9, 0.72); z-index: 200; display: none; align-items: flex-start; justify-content: center; padding-top: 8vh; }
 .modal-backdrop.show { display: flex; }
 .modal { width: min(600px, 92vw); background: var(--bg); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); }
@@ -1030,16 +1003,16 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
 .lightbox.show { display: flex; }
 .lightbox img { max-width: 90vw; max-height: 86vh; border-radius: 8px; }
 .lightbox-close { position: absolute; top: 14px; right: 20px; background: none; border: none; color: #fff; font-size: 32px; cursor: pointer; }
-/** --------------------------- syntax: GitHub ---------------------------- */
+
 .hljs { background: transparent !important; color: var(--fg); }
-/** hljs -> GitHub prettylights mapping, from the pl-* rules in… */
+
 .hljs-comment, .hljs-quote { color: #9198a1; font-style: italic; }
 .hljs-keyword, .hljs-selector-tag, .hljs-doctag, .hljs-formula { color: #ff7b72; }
 .hljs-section, .hljs-name, .hljs-deletion, .hljs-subst { color: #ffa198; }
 .hljs-literal, .hljs-number, .hljs-tag .hljs-attr, .hljs-template-variable, .hljs-variable, .hljs-attribute { color: #79c0ff; }
 .hljs-string, .hljs-regexp, .hljs-addition, .hljs-meta .hljs-string { color: #a5d6ff; }
 .hljs-attr, .hljs-selector-attr, .hljs-selector-pseudo, .hljs-template-tag { color: #79c0ff; }
-/** Types, class names and members are plain text on GitHub (pl-smi/pl-s1). */
+
 .hljs-type, .hljs-class .hljs-title, .hljs-title.class_, .hljs-built_in, .hljs-property { color: var(--fg); }
 .hljs-title, .hljs-title.function_, .hljs-function .hljs-title { color: #d2a8ff; }
 .hljs-params { color: var(--fg); }
@@ -1048,7 +1021,7 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
 .hljs-emphasis { font-style: italic; }
 .hljs-strong { font-weight: 600; }
 .hljs-punctuation, .hljs-operator { color: var(--fg); }
-/** Type names, class names and interface names are plain text on GitHub. */
+
 .hljs-plain, .hljs-plain * { color: var(--fg) !important; }
 [data-theme="light"] .hljs-comment, [data-theme="light"] .hljs-quote { color: #6e7781; }
 [data-theme="light"] .hljs-keyword, [data-theme="light"] .hljs-doctag, [data-theme="light"] .hljs-formula { color: #cf222e; }
@@ -1059,7 +1032,7 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
 [data-theme="light"] .hljs-type, [data-theme="light"] .hljs-built_in, [data-theme="light"] .hljs-property { color: var(--fg); }
 [data-theme="light"] .hljs-title, [data-theme="light"] .hljs-title.function_ { color: #8250df; }
 [data-theme="light"] .hljs-punctuation, [data-theme="light"] .hljs-operator { color: #1f2328; }
-/** symbol links: normal code colour, subtle dotted underline like GitHub */
+
 .sym-link {
   color: inherit;
   text-decoration: underline;
@@ -1071,9 +1044,9 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
 }
 .sym-link:hover { background: rgba(68, 147, 248, 0.14); text-decoration-style: solid; text-decoration-color: var(--accent-fg); }
 body.no-symlinks .sym-link { text-decoration: none; pointer-events: none; }
-/** GitHub colours C# like this: keywords/strings/comments from hljs, constants and literals blue,… */
+
 .sym-call { color: var(--sym-call); }
-/** Kept as no-ops so older markup and tests still resolve to the body colour. */
+
 .sym-type, .sym-value { color: inherit; }
 .sym-pop {
   position: fixed; z-index: 150; width: 560px; max-width: 92vw;
@@ -1097,7 +1070,7 @@ body.no-symlinks .sym-link { text-decoration: none; pointer-events: none; }
 .sym-kind { font-size: 10px; color: var(--fg-muted); border: 1px solid var(--border); border-radius: 999px; padding: 0 6px; flex: none; }
 .sym-sub { font-size: 11px; color: var(--fg-muted); padding: 8px 8px 4px; text-transform: uppercase; letter-spacing: 0.04em; }.sym-usage { padding: 6px 8px; }
 .sym-usage .sym-use { display: flex; }
-/** Per-file "more actions" menu (three dots). */
+
 .file-menu { position: relative; display: inline-flex; flex: none; }
 .file-menu[hidden] { display: none; }
 .file-menu-pop {
@@ -1116,7 +1089,7 @@ body.no-symlinks .sym-link { text-decoration: none; pointer-events: none; }
 }
 .file-menu-item:hover { background: var(--bg-subtle); color: var(--fg); text-decoration: none; }
 .file-menu-item svg { flex: none; color: var(--fg-muted); }
-/** Full file path on hover: the row truncates it with an ellipsis, and the native title tooltip… */
+
 .path-tip {
   position: fixed; z-index: 200;
   max-width: min(900px, 92vw);
@@ -1129,7 +1102,7 @@ body.no-symlinks .sym-link { text-decoration: none; pointer-events: none; }
   font-family: ui-monospace, monospace;
   font-size: 12.5px;
   line-height: 1.45;
-  /** A long path wraps on its separators instead of overflowing the screen. */
+
   white-space: normal;
   overflow-wrap: anywhere;
   pointer-events: none;

@@ -8,8 +8,7 @@
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
-    <!-- A VSIX package is produced by the VSSDK build tools on a machine with
-         the "Visual Studio extension development" workload installed. -->
+
     <GeneratePkgDefFile>true</GeneratePkgDefFile>
     <IncludeAssemblyInVSIXContainer>true</IncludeAssemblyInVSIXContainer>
     <IncludeDebugSymbolsInVSIXContainer>false</IncludeDebugSymbolsInVSIXContainer>
@@ -32,20 +31,15 @@
     <VSCTCompile Include="PrReviewPackage.vsct">
       <ResourceName>Menus.ctmenu</ResourceName>
     </VSCTCompile>
-    <!-- The VSSDK target merges the compiled command table into a managed
-         ResourceManager container. Visual Studio cannot read a raw embedded
-         CTO file, so the generated .resources output must be used. -->
+
   </ItemGroup>
-  <!-- The extension starts the review server itself, so the engine has to travel
-       inside the .vsix: without it, an installed copy has nothing to run. The
-       folder is written by `npm run bundle:server` and is not in source control. -->
+
   <ItemGroup>
     <Content Include="server\**\*">
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
   </ItemGroup>
-  <!-- `source.extension.vsixmanifest` is the shipped manifest. MSBuild merges it
-       with the build output, so the project has to name it explicitly. -->
+
   <PropertyGroup>
     <VsixSourceManifestPath>source.extension.vsixmanifest</VsixSourceManifestPath>
   </PropertyGroup>

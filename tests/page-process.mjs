@@ -1,11 +1,4 @@
-/**
- * The review page has to outlive the process that started it.
- *
- * The MCP server can be restarted at any time; the page in the browser must
- * keep working, otherwise a submit dies with the chat connection. This test
- * starts the page in a helper process, lets that helper exit and then checks
- * that the page still answers.
- */
+
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
@@ -44,7 +37,7 @@ try {
 
   const port = await findFreePort();
 
-  // The helper starts the page and exits right away: the page has to survive.
+
   await exec(process.execPath, [HELPER, repo, String(port)], { cwd: repo, timeout: 120_000 });
 
   let registry = null;
@@ -76,9 +69,9 @@ try {
   });
 
   await check("the helper that waits for a submit can reach the page", async () => {
-    // The page URL ends with a slash and the route starts with one. Joining
-    // them by hand produced `//api/result`, which the server does not serve, so
-    // every detached review looked unsubmitted even after the page had saved it.
+
+
+
     const payload = await fetchPageResult(registry);
     assert.ok(payload, "the page state is unreadable through the helper");
     assert.equal(payload.ok, true);
@@ -86,8 +79,8 @@ try {
   });
 
   await check("a page is found by its own id, not by whichever came first", async () => {
-    // Two pages of one repository can run at once. Looking up "any page" made a
-    // new scope open the older page.
+
+
     const mine = await findPageRegistry(repo, { match: (entry) => entry.pid === registry.pid });
     assert.ok(mine, "the page was not found by its process id");
     assert.equal(mine.reviewId, registry.reviewId);

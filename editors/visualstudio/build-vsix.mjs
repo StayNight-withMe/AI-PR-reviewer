@@ -1,18 +1,4 @@
-/**
- * Builds an installable .vsix for the Visual Studio extension without needing
- * the "Visual Studio extension development" workload.
- *
- * That workload supplies MSBuild targets; the tools they call ship inside the
- * Microsoft.VSSDK.BuildTools package, so running those directly produces the
- * same package on a plain machine.
- *
- * `VsixUtil package` writes the container (content types, catalog and file
- * manifest) but flattens every file to the archive root. The engine has to keep
- * its folders, so the archive is rebuilt with the same parts and its manifest
- * corrected: only the physical entry names change.
- *
- * Run: node editors/visualstudio/build-vsix.mjs
- */
+
 import { execFile } from "node:child_process";
 import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
@@ -29,15 +15,7 @@ const OUTPUT = join(BUILD, "PrReview.VisualStudio.vsix");
 const VSSDK = "C:\\Users\\Rog\\.nuget\\packages\\microsoft.vssdk.buildtools\\17.9.3168\\tools\\VSSDK";
 const IDE = "C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\Common7\\IDE";
 
-/**
- * Assemblies Visual Studio itself supplies.
- *
- * The build copies every dependency into `bin`, and shipping those copies is
- * what broke the editor: an extension folder that contains its own
- * `Microsoft.VisualStudio.Shell.15.0.dll` loads that file instead of the
- * installation's, and the packages that need the real one fail with "did not
- * load correctly". Only assemblies Visual Studio does not have may travel.
- */
+
 async function sharedWithEditor() {
   const roots = [join(IDE, "PublicAssemblies"), join(IDE, "PrivateAssemblies"), IDE];
   const shared = new Set();
@@ -63,12 +41,12 @@ async function exists(path) {
   }
 }
 
-/** Compiles the project and produces the .pkgdef the package registration needs. */
+
 async function build() {
-  // Use the .NET SDK MSBuild host rather than Visual Studio's MSBuild.exe:
-  // the latter cannot resolve SDK-style projects when the machine's global
-  // dotnet installation is incomplete. DOTNET_ROOT may point at a working SDK;
-  // otherwise fall back to the local SDK installed for this machine.
+
+
+
+
   const dotnetRoots = [
     process.env.DOTNET_ROOT,
     "Z:\\system\\temp\\dotnet-sdk",
@@ -99,15 +77,15 @@ async function build() {
     join(BUILD, "PrReview.VisualStudio.dll")]);
 }
 
-/** Copies what the package has to contain into one folder, keeping folders. */
+
 async function stage() {
   await rm(STAGE, { recursive: true, force: true });
   await mkdir(STAGE, { recursive: true });
 
   const shared = await sharedWithEditor();
 
-  // The assembly, the registration file and only the dependencies Visual Studio
-  // does not already provide.
+
+
   for (const entry of await readdir(BUILD)) {
     if (entry.endsWith(".vsix") || entry.endsWith(".pdb") || entry.endsWith(".xml")) continue;
     const source = join(BUILD, entry);
@@ -116,20 +94,20 @@ async function stage() {
     await cp(source, join(STAGE, entry));
   }
 
-  // WebView2 is host-provided by Visual Studio; its WPF wrapper, core assembly,
-  // and native loader must come from that same VS installation. The NuGet
-  // package's WPF wrapper may not match the IDE's private WebView2 runtime.
+
+
+
   for (const entry of ["Microsoft.Web.WebView2.Wpf.dll", "Microsoft.Web.WebView2.Core.dll", "WebView2Loader.dll"]) {
     if (!shared.has(entry)) continue;
     await rm(join(STAGE, entry), { force: true });
   }
 
-  // The engine the extension starts, already copied by `npm run bundle:server`.
-  // Without it an installed copy has nothing to launch.
+
+
   await cp(join(HERE, "server"), join(STAGE, "server"), { recursive: true });
 }
 
-/** The staged files, as the packer's flat list. */
+
 async function stagedFiles() {
   const entries = [];
   async function walk(dir) {
@@ -143,7 +121,7 @@ async function stagedFiles() {
   return entries;
 }
 
-/** Runs the official packer to get a valid container. */
+
 async function packFlat(files) {
   const listFile = join(HERE, "obj", "vsix-files.json");
   await writeFile(listFile, JSON.stringify({
@@ -160,7 +138,7 @@ async function packFlat(files) {
   ]);
 }
 
-/** A stored ZIP with the entries in the order they are added. */
+
 function zip(files) {
   const chunks = [];
   const central = [];
@@ -225,14 +203,14 @@ function zip(files) {
   return Buffer.concat([...chunks, ...directory, end]);
 }
 
-/** The directory record of one entry. */
+
 function column(header, entry, directory) {
   header.writeUInt32LE(0, 38);
   header.writeUInt32LE(entry.offset, 42);
   directory.push(header, entry.name);
 }
 
-/** Reads the entries of the packed archive. */
+
 async function entriesOf(path) {
   const script = [
     "Add-Type -AssemblyName System.IO.Compression.FileSystem",
@@ -244,7 +222,7 @@ async function entriesOf(path) {
   return JSON.parse(stdout);
 }
 
-/** Reads one entry of the packed archive as text. */
+
 async function entryText(path, name) {
   const script = [
     "Add-Type -AssemblyName System.IO.Compression.FileSystem",
@@ -259,7 +237,7 @@ async function entryText(path, name) {
   return stdout;
 }
 
-/** Reads one entry of the packed archive as bytes. */
+
 async function entryBinary(path, name) {
   const script = [
     "Add-Type -AssemblyName System.IO.Compression.FileSystem",
@@ -278,12 +256,7 @@ async function entryBinary(path, name) {
   return Buffer.from(stdout.trim(), "base64");
 }
 
-/**
- * Two files can share a base name — `src/core.js` and `src/assets/core.js` — and
- * the packer flattens the archive, so one would overwrite the other. Its own
- * output is therefore used only for the container parts (content types, catalog);
- * every file is written from the staged folder under its real path.
- */
+
 async function rebuild(files) {
   const names = await entriesOf(TEMP);
   const manifestText = await entryText(TEMP, "manifest.json");
@@ -319,8 +292,8 @@ await packFlat(files);
 await rebuild(files);
 const size = (await stat(OUTPUT)).size;
 
-// A package that shadows the editor's own assemblies installs cleanly and then
-// breaks the editor, which is far worse than a failed build.
+
+
 const shared = await sharedWithEditor();
 const shipped = files.map((file) => file.name).filter((name) => shared.has(name));
 if (shipped.length) {

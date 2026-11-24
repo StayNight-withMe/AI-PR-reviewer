@@ -1,9 +1,4 @@
-/**
- * Fifth visual probe: a resolved comment, an image attachment, the lightbox and
- * the note attachment inside the submit dialog.
- *
- * Run: node tests/visual-probe-5.mjs
- */
+
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -49,7 +44,7 @@ const review = await startReview({
 await rm(OUT, { recursive: true, force: true });
 await mkdir(OUT, { recursive: true });
 
-// A real 2x2 PNG, so the attachment renders instead of showing a broken image.
+
 const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGP8z8Dwn4GBgYEBAA4BAQH2g2MHAAAAAElFTkSuQmCC";
 
 const MEASURE = `return (function () {
@@ -124,7 +119,7 @@ try {
     await driver.get(review.url);
     await waitReady();
 
-    // A comment with an attached image, written through the real editor.
+
     await driver.executeScript(`return (async function () {
       var section = document.querySelector('.diff-file');
       var plus = section.querySelector('.line-plus[data-side="right"]');
@@ -150,7 +145,7 @@ try {
     results.push({ size: size.name, state: "comment-image", ...(await driver.executeScript(MEASURE)) });
     await shot(`${size.name}-comment-image`);
 
-    // The lightbox the attachment opens.
+
     await driver.executeScript(`(function () {
       var chip = document.querySelector('.comment-attachments .attach-chip img');
       if (chip) chip.click();
@@ -162,7 +157,7 @@ try {
     await driver.executeScript(`PR.els.lightbox.classList.remove('show'); return true;`);
     await new Promise((r) => setTimeout(r, 300));
 
-    // Resolve it, and look at what a resolved comment looks like on the page.
+
     const resolved = await driver.executeScript(`(async function () {
       var button = document.querySelector('.comment-box .js-resolve');
       if (!button) return { error: 'no resolve button' };
@@ -184,7 +179,7 @@ try {
     results.push({ size: size.name, state: "resolved", resolved });
     await shot(`${size.name}-resolved`);
 
-    // The note attachment inside the submit dialog.
+
     await driver.executeScript(`document.getElementById('btn-submit').click(); return true;`);
     await new Promise((r) => setTimeout(r, 500));
     await driver.executeScript(`(function () {

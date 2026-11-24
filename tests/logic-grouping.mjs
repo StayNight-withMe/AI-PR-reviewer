@@ -1,10 +1,4 @@
-/**
- * Comments follow the code they were written on, across reviews of the same
- * target. This checks the grouping rules: two reviews of one branch share their
- * comments, two branches do not, and a PR is keyed by its number.
- *
- * Run: node tests/logic-grouping.mjs
- */
+
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -39,7 +33,7 @@ try {
 
   await check("a pull request is keyed by its number, not its branch", async () => {
     assert.equal(threadsKey(prMeta(42, "feature/x")), "pr-42");
-    // Two PRs can point at the same branch: the numbers must stay apart.
+
     assert.notEqual(threadsKey(prMeta(42, "feature/x")), threadsKey(prMeta(43, "feature/x")));
   });
 
@@ -53,8 +47,8 @@ try {
     const comment = { id: "c1", path: "a.ts", side: "right", lineStart: 1, lineEnd: 1, body: "Note." };
     await writeThreads(root, meta, [comment]);
 
-    // The same branch, reviewed again with a different diff: the comments are
-    // stored under the same key, so they come back.
+
+
     const again = await readThreads(root, branchMeta("feature/share"));
     assert.equal(again.comments.length, 1);
     assert.equal(again.comments[0].body, "Note.");
@@ -68,9 +62,9 @@ try {
   });
 
   await check("a branch and a PR of it do not share comments", async () => {
-    // They are different review targets: the PR is reviewable by its number
-    // whatever the local branch is called, and the two must not overwrite each
-    // other.
+
+
+
     const branch = await readThreads(root, branchMeta("feature/share"));
     const pr = await readThreads(root, prMeta(7, "feature/share"));
     assert.equal(branch.comments.length, 1);
@@ -79,22 +73,22 @@ try {
 
   await check("a branch name with traversal segments cannot escape the folder", async () => {
     const nasty = threadsPath(root, branchMeta("../../etc/passwd"));
-    // The key may keep its text, but the file must resolve inside the artifacts
-    // root: no `..` may survive as a path segment.
+
+
     const segments = nasty.split(/[\\/]+/);
     assert.ok(!segments.includes(".."), `a traversal segment survived: ${nasty}`);
     assert.ok(nasty.startsWith(join(root, "artifacts")), `unexpected location ${nasty}`);
   });
 
   await check("a PR number cannot be used twice for different repositories", async () => {
-    // The repo folder is part of the path, so two projects with PR #1 keep
-    // separate comment files.
+
+
     const a = threadsPath(root, { repo: "shop", branch: "main", pr: { number: 1 } });
     const shopPath = a;
     const b = await (async () => {
       const other = { repo: "blog", branch: "main", pr: { number: 1 } };
-      // repoSlug depends on the repository root, which is the same here, so only
-      // the key can differ. Both must still be distinct files by key.
+
+
       return threadsPath(root, other);
     })();
     assert.equal(shopPath, b, "the same root and key must map to the same file");

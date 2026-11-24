@@ -1,12 +1,4 @@
-/**
- * The device-wide settings file, without a browser.
- *
- * Settings are deliberately NOT in localStorage: a review page is served from
- * an ephemeral port, and localStorage is scoped to the origin, port included.
- * They live in one small file per user instead.
- *
- * Run: node --test tests/settings-unit.mjs
- */
+
 import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -14,8 +6,8 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { readSettings, sanitizeSettings, settingsPath, writeSettings, migrateLegacySettings } from "../src/settings-store.js";
 import { GIT } from "../src/config.js";
-// The tests must never touch the real per-user file: a machine's actual
-// settings live in stableUserRoot() and the user would see them "reset".
+
+
 const sandbox = await mkdtemp(join(tmpdir(), "settings-unit-"));
 const env = { [GIT.ARTIFACTS_DIR_ENV]: sandbox };
 const clean = () => rm(settingsPath(env), { force: true }).catch(() => {});

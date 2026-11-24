@@ -1,13 +1,4 @@
-/**
- * Screenshots in a review are stored as files next to review.json.
- *
- * The page sends them as data URLs, which means the server writes a file named
- * after whatever the client called it. That is a trust boundary: a hostile
- * comment id could contain `../`, and an uploaded `image/svg+xml` would be
- * saved as a scriptable document inside the review folder.
- *
- * Run: node tests/note-images.mjs
- */
+
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -27,7 +18,7 @@ function check(name, fn) {
   );
 }
 
-/** A one-pixel PNG, as the clipboard would give it. */
+
 const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 
 const root = await mkdtemp(join(tmpdir(), "pr-review-images-"));
@@ -53,7 +44,7 @@ try {
   });
   const imagesDir = join(review.outputDir, "images");
 
-  /** Submits a review and returns what the page answered. */
+
   const submit = async (body) => {
     const response = await fetch(new URL(ROUTES.API_REVIEW, review.url), {
       method: "POST",
@@ -81,8 +72,8 @@ try {
   });
 
   await check("a comment id cannot steer the file name", async () => {
-    // The id comes from the browser and is only a label. Building a path from
-    // it let `../../escaped` write a file outside the review folder.
+
+
     const result = await submit({
       comments: [{ id: "../../escaped", path: "app.js", side: "right", lineStart: 2, lineEnd: 2, body: "x", images: [{ dataUrl: PNG }] }],
     });

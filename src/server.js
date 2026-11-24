@@ -59,7 +59,7 @@ export async function servePage(options) {
         response.destroy();
         return;
       }
-      // A body the caller sent wrongly is the caller's error, not ours.
+
       const status = error?.message === SERVER.BODY_TOO_LARGE
         ? SERVER.STATUS_BAD_REQUEST
         : SERVER.STATUS_ERROR;
@@ -148,7 +148,7 @@ async function dispatch(ctx) {
     }));
     return true;
   }
-  // Device-wide UI settings: one small file shared by every review page of
+
 
   if (get && url.pathname === ROUTES.API_SETTINGS) {
     send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, settings: await readSettings() }));
@@ -217,7 +217,7 @@ async function dispatch(ctx) {
 
   return false;
 }
-/** --------------------------------- handlers -------------------------------- */
+
 async function handleFileView({ response, url, buildFilePage }) {
   const filePath = url.searchParams.get(QUERY.PATH) ?? P.EMPTY;
   if (!filePath) {
@@ -237,7 +237,7 @@ async function handleFileJson({ response, url, readFile }) {
   }
   return true;
 }
-/** Batch variant of /api/file: one request for many files. */
+
 async function handleFilesBatch({ request, response, readFiles }) {
   const payload = JSON.parse(await readBody(request));
   const paths = Array.isArray(payload.paths) ? payload.paths.slice(P.ZERO, SERVER.MAX_BATCH_FILES) : P.EMPTY_ARRAY;
@@ -275,15 +275,7 @@ async function handleReviewSubmit({ request, response, outputDir, meta, onReview
   session.resolveSubmitted({ ...result, review });
   return true;
 }
-/**
- * Posts the review on the page to its GitHub pull request.
- *
- * This is deliberately separate from the submit above: publishing is an
- * explicit outward action (it notifies people on GitHub), while a submit only
- * saves the review and hands it to the agent. A publish therefore never
- * resolves the waiting `waitForReview`, and a failed publish leaves the page
- * and the typed comments untouched so the reviewer can retry.
- */
+
 async function handlePublish({ request, response, meta, onPublish }) {
   if (!onPublish) {
     send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: GH.ERROR_NOT_A_PR }));
@@ -300,16 +292,7 @@ async function handlePublish({ request, response, meta, onPublish }) {
   send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, ...result }));
   return true;
 }
-/**
- * Answers a request that did not come from the review page itself.
- *
- * The page listens on the loopback address, but any page in the same browser
- * can reach it: a `Host` header of a name the browser is rebinding, or a
- * cross-site POST that a browser sends without a preflight. Since the routes
- * read files, write review state and run git, both are refused.
- *
- * Returns true when the request was answered.
- */
+
 function rejectForeignRequest(request, response) {
   const host = String(request.headers.host ?? P.EMPTY);
   const hostname = host.replace(/:\d+$/, P.EMPTY).toLowerCase();
@@ -319,8 +302,8 @@ function rejectForeignRequest(request, response) {
     return true;
   }
 
-  // Only a POST can change state, and the page always sends JSON. A form from
-  // another site can only send text/plain, so requiring JSON is the check.
+
+
   if (request.method === SERVER.METHOD_POST) {
     const type = String(request.headers[HEADER_CONTENT_TYPE] ?? P.EMPTY);
     if (!type.toLowerCase().startsWith(SERVER.JSON_CONTENT_TYPE_PREFIX)) {
@@ -331,12 +314,7 @@ function rejectForeignRequest(request, response) {
 
   return false;
 }
-/**
- * The submitted review, with every field the server relies on in a known shape.
- * The body comes from the browser: a field of the wrong type used to crash the
- * submit with a 500, and a stored `null` comment broke the next page load.
- * Returns null when the body is not JSON at all.
- */
+
 export function normalizeReview(raw) {
   let payload;
   try {
@@ -364,7 +342,7 @@ function clampText(value, max) {
   const text = typeof value === P.TYPE_STRING ? value : P.EMPTY;
   return text.length > max ? text.slice(P.ZERO, max) : text;
 }
-/** The comments of a submit: objects with a path that is a non-empty string. */
+
 export function toComments(comments) {
   if (!Array.isArray(comments)) return P.EMPTY_ARRAY;
 
@@ -374,13 +352,13 @@ export function toComments(comments) {
     .map((comment) => ({
       ...comment,
       body: typeof comment.body === P.TYPE_STRING ? comment.body : P.EMPTY,
-      // A comment is open unless it says otherwise. Leaving the field absent
-      // made every reader guess, and the saved review carried no answer at all.
+
+
       resolved: comment.resolved === true,
       images: toImages(comment.images),
     }));
 }
-/** Screenshots of a submit: only entries that actually carry data. */
+
 export function toImages(images) {
   if (!Array.isArray(images)) return P.EMPTY_ARRAY;
 
@@ -519,7 +497,7 @@ async function handleCommitRename({ request, response, renameCommit }) {
   }
   return true;
 }
-/** --------------------------------- helpers -------------------------------- */
+
 function send(response, status, contentType, body) {
   response.writeHead(status, {
     [HEADER_CONTENT_TYPE]: contentType,
@@ -536,8 +514,8 @@ function readBody(request) {
     request.on("data", (chunk) => {
       if (tooLarge) return;
       size += chunk.length;
-      // Keep draining the request instead of cutting the socket: the answer can
-      // still be a readable 400 rather than a reset connection.
+
+
       if (size > SERVER.MAX_BODY_BYTES) {
         tooLarge = true;
         reject(new Error(SERVER.BODY_TOO_LARGE));
@@ -557,7 +535,7 @@ function readBody(request) {
 function delay(ms, value) {
   return new Promise((resolve) => setTimeout(() => resolve(value), ms));
 }
-/** Images pasted into comments arrive as data URLs; store them as real files. */
+
 async function persistImages(outputDir, review) {
   const saved = [];
   const imagesDir = join(outputDir, ARTIFACTS.IMAGES_DIR);
@@ -569,9 +547,9 @@ async function persistImages(outputDir, review) {
       const match = SERVER.DATA_URL_PATTERN.exec(image.dataUrl ?? P.EMPTY);
       if (!match) continue;
 
-      // Only the formats a screenshot really uses are stored, and the name is
-      // built from the index rather than from the comment: a crafted comment id
-      // could otherwise contain `../` and write outside the review folder.
+
+
+
       const extension = SERVER.IMAGE_TYPES[match[P.ONE].toLowerCase()];
       if (!extension) continue;
 
@@ -587,8 +565,8 @@ async function persistImages(outputDir, review) {
   for (const [index, comment] of (review.comments ?? P.EMPTY_ARRAY).entries()) {
     await collect(comment.images, `comment-${index}`);
   }
-  // A screenshot on the note itself belongs to the review, not to a line. It is
-  // sent as `noteImages`, a field of the review rather than of a comment.
+
+
   await collect(review.noteImages, SERVER.NOTE_IMAGE_PREFIX);
 
   return saved;

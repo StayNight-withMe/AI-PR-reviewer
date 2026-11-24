@@ -1,17 +1,4 @@
-/**
- * The whole pull-request flow through the MCP tools.
- *
- * Every piece of this is covered somewhere on its own: PR scoping, the review
- * page, publishing, comment state. What no test did was run them in one
- * sequence, the way a person does — open a PR review, comment on it, read the
- * review back in the chat, resolve a comment, publish it to GitHub. That is
- * where the parts hand work to each other, so that is where this test looks.
- *
- * No network and no account: `gh` is a local mock and the repository is built
- * by the shared fixture.
- *
- * Run: node tests/pr-publish-flow.mjs
- */
+
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -37,7 +24,7 @@ function check(name, fn) {
   );
 }
 
-/** A minimal MCP client over stdio, as a chat client would speak to the server. */
+
 function createClient(env) {
   const child = spawn(process.execPath, [SERVER], {
     stdio: ["pipe", "pipe", "pipe"],
@@ -74,7 +61,7 @@ function createClient(env) {
       }, 120_000);
     });
 
-  /** Calls a tool and returns its answer text, failing on an MCP-level error. */
+
   const call = async (name, args) => {
     const response = await request("tools/call", { name, arguments: args });
     const text = (response.result?.content ?? []).map((part) => part.text ?? "").join("\n");
@@ -95,8 +82,8 @@ await writeFile(ghDb, JSON.stringify({
   pullRequests: { [String(PR_NUMBER)]: pullRequestPayload(fixture, PR_NUMBER) },
 }));
 
-// The suite must never send a review into the chat that runs it, and its
-// artifacts must stay in its own temporary directory.
+
+
 const env = { ...process.env };
 for (const name of ["OPENCODE_SESSION_ID", "OPENCODE_SESSION", "PR_REVIEW_SESSION"]) delete env[name];
 env[GIT.ARTIFACTS_DIR_ENV] = join(work, "artifacts");
@@ -227,8 +214,8 @@ try {
   });
 
   await check("a second publish sends the review again, not a stale copy", async () => {
-    // Editing the review on disk and publishing must reflect the edit: the tool
-    // reads the saved review each time instead of a copy held in memory.
+
+
     await client.call("resolve_comments", { reviewId, resolved: true });
     const text = await client.call("publish_review", { reviewId, reviewState: "APPROVE", reviewBody: "Fixed, thanks." });
     assert.match(text, /Published to GitHub as APPROVE/, `unexpected answer: ${text}`);
@@ -239,9 +226,9 @@ try {
   });
 
   await check("a second review of the same repository opens its own page", async () => {
-    // Two reviews of one repository (a PR and a working tree, a branch and a
-    // range) must coexist. Reusing "whatever page is running" silently opened
-    // the older review instead of the requested one.
+
+
+
     const local = await client.call("start_review", {
       repoPath: fixture.repo,
       mode: "uncommitted",
@@ -257,7 +244,7 @@ try {
     assert.notEqual(localEntry.url, prEntry.url, "the second review opened the first review's page");
     assert.equal(localEntry.requested.mode, "uncommitted", "the second page shows the wrong scope");
 
-    // The first page must still be the PR review, untouched.
+
     const html = await (await fetch(prEntry.url)).text();
     assert.match(html, /class="pr-badge"/, "the PR review lost its identity");
 
@@ -309,7 +296,7 @@ try {
   await rm(work, { recursive: true, force: true }).catch(() => {});
 }
 
-/** Finds a review's artifacts on disk: the newest `page.json`, or the one of an id. */
+
 async function findArtifact(root, name, reviewId) {
   const { readdir } = await import("node:fs/promises");
   const base = join(root, "artifacts");
@@ -323,7 +310,7 @@ async function findArtifact(root, name, reviewId) {
       try {
         return JSON.parse(await readFile(join(base, repo.name, review.name, name), "utf8"));
       } catch {
-        // Not this folder.
+
       }
     }
   }

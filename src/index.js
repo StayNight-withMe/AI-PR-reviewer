@@ -24,7 +24,7 @@ import {
 } from "./page-process.js";
 import { APP, GH, MODE, P, SERVER, TOOLS } from "./config.js";
 import { listPullRequests, publishReview } from "./github.js";
-/** The instruction the MCP client shows to the model. */
+
 const INSTRUCTIONS = [
   "pr-review opens a local review page for a repository and reads the review back.",
   "Use the tools directly: start_review, await_review, get_review, list_review_scope, close_review.",
@@ -115,20 +115,20 @@ server.registerTool(
     };
   },
 );
-/** Opens the review page. */
+
 async function openReviewPage(args, extra) {
   const repoPath = resolve(args.repoPath ?? process.cwd());
-  // user is in, while the environment belongs to whoever started this server.
+
   const sessionId = resolveSessionId(args.sessionId, extra);
 
   try {
     const root = await resolveRepo(repoPath);
     const running = await findPageRegistry(root);
-    // A page of this repository is already open for the same scope: reuse it
-    // instead of starting a second one on another port.
+
+
     if (running && sameScope(running.requested, args)) {
-      // Reusing the page hands it to the caller: the owner file must move too,
-      // or the next submit would still go to the session that opened it first.
+
+
       await writeReviewOwner(running.outputDir, sessionId);
       await indexPage(running);
       return { ...running, detached: true };
@@ -158,7 +158,7 @@ async function openReviewPage(args, extra) {
       return { ...registry, detached: true };
     }
   } catch {
-  // page inside this process.
+
   }
 
   const result = await startReview({ ...args, sessionId });
@@ -176,14 +176,14 @@ async function openReviewPage(args, extra) {
     detached: false,
   };
 }
-/** True when a running page shows the same scope as the request. */
+
 function sameScope(requested, args) {
   if (!requested) return false;
 
   const sameMode = (requested.mode ?? MODE.UNCOMMITTED) === (args.mode ?? MODE.UNCOMMITTED);
   const sameBase = (requested.base ?? null) === (args.base ?? null);
   const sameHead = (requested.head ?? null) === (args.head ?? null);
-  // Two PRs are different reviews even when their commits happen to match.
+
   const samePr = (requested.pr ?? null) === (args.pr ?? null);
 
   return sameMode && sameBase && sameHead && samePr;
@@ -240,7 +240,7 @@ server.registerTool(
     };
   },
 );
-/** Finds a review by id, wherever it was opened. */
+
 async function resolveReview(reviewId) {
   const known = openReviews.get(reviewId);
   if (known) return known;
@@ -254,7 +254,7 @@ async function resolveReview(reviewId) {
 
   throw new Error(`Unknown reviewId: ${reviewId}. Call start_review first.`);
 }
-/** Waits for the review of a page that runs in its own process. */
+
 async function waitForSubmittedReview(review, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
 
@@ -307,7 +307,7 @@ server.registerTool(
     const pr = await pullRequestOf(entry, review);
     if (!pr?.number) throw new Error(GH.ERROR_NOT_A_PR);
 
-    // An explicit verdict wins; otherwise the one the reviewer picked is used.
+
     const payload = {
       ...review.review,
       reviewState: reviewState ?? review.review.reviewState,
@@ -332,7 +332,7 @@ server.registerTool(
     return { content: [{ type: "text", text: lines.join("\n") }] };
   },
 );
-/** The saved review of a page, or null when nothing was submitted yet. */
+
 async function readSavedReview(entry) {
   if (!entry?.outputDir) return null;
 
@@ -344,7 +344,7 @@ async function readSavedReview(entry) {
     return null;
   }
 }
-/** The pull request a review belongs to. */
+
 async function pullRequestOf(entry, review) {
   const meta = review?.meta ?? {};
   const number = entry?.pr ?? meta.pr?.number ?? null;
@@ -354,8 +354,8 @@ async function pullRequestOf(entry, review) {
     number,
     url: entry?.prUrl ?? meta.pr?.url ?? P.EMPTY,
     repo: meta.pr?.repo ?? entry?.prRepo ?? null,
-    // The commit the review was made against, so the published comments are
-    // anchored there instead of to a head that may have moved since.
+
+
     headOid: meta.head ?? null,
   };
 }
@@ -371,8 +371,8 @@ server.registerTool(
   },
   async ({ reviewId, path }) => {
     let target = path;
-    // Without an explicit path the reviewId is resolved across processes, so a
-    // review opened in another session is still readable here.
+
+
     if (!target && reviewId) {
       const review = await resolveReview(reviewId);
       target = join(review.outputDir, "review.json");
@@ -523,7 +523,7 @@ server.registerTool(
 );
 const transport = new StdioServerTransport();
 await server.connect(transport);
-/** The MCP client owns stdin. */
+
 process.stdin.on("end", () => {
   process.stderr.write("pr-review-mcp: stdin closed, the MCP client disconnected.\n");
 });

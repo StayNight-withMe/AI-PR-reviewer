@@ -1,11 +1,11 @@
-/** The single entry point every editor integration calls. */
+
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
 import { currentBranch, resolveRepo } from "./git.js";
 import { startReview } from "./core.js";
 import { CLI, MODE, P, SERVER } from "./config.js";
-/** --------------------------------- parsing -------------------------------- */
-/** Reads `--flag value` and `--flag` from argv, with the environment as fallback. */
+
+
 function parseArgs(argv) {
   const flags = new Map();
   const switches = new Set();
@@ -36,7 +36,7 @@ const prNumber = pick("pr", CLI.ENV.PR, undefined);
 const title = pick("title", CLI.ENV.TITLE, undefined);
 const jsonOnly = switches.has("json") || process.env[CLI.ENV.OPEN] === "0";
 const shouldOpen = switches.has("open") || process.env[CLI.ENV.OPEN] === "1";
-/** ---------------------------------- run ----------------------------------- */
+
 try {
   const root = await resolveRepo(repoPath).catch(() => repoPath);
   const branch = await currentBranch(root);
@@ -47,7 +47,7 @@ try {
     base,
     head,
     pr: prNumber,
-    // A PR brings its own title; only a local scope falls back to the branch.
+
     title: title ?? (mode === MODE.PR ? undefined : branch),
     host: SERVER.HOST,
     port: Number.isFinite(port) ? port : SERVER.DEFAULT_PORT,
@@ -74,7 +74,7 @@ try {
   process.stdout.write(CLI.READY_PREFIX + JSON.stringify(payload) + P.NEWLINE);
 
   if (shouldOpen) openInBrowser(result.url);
-  // is stopped. Without the timer Node would exit and take the page with it.
+
   setInterval(() => {}, SERVER.KEEPALIVE_MS);
 
   for (const signal of ["SIGINT", "SIGTERM"]) {
@@ -87,7 +87,7 @@ try {
   process.stderr.write(`PR_REVIEW_ERROR ${error?.message ?? error}\n`);
   process.exit(P.ONE);
 }
-/** Opens the review page in the default browser of the running platform. */
+
 function openInBrowser(url) {
   const platform = process.platform;
   const command = platform === "win32" ? "cmd" : platform === "darwin" ? "open" : "xdg-open";
@@ -97,6 +97,6 @@ function openInBrowser(url) {
     const child = spawn(command, args, { detached: true, stdio: "ignore", windowsHide: true });
     child.unref();
   } catch {
-  // A headless session has no browser; the extension still gets the URL.
+
   }
 }

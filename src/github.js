@@ -1,40 +1,40 @@
-/** GitHub pull-request scope, read through the GitHub CLI. */
+
 import { execFile, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { promisify } from "node:util";
 import { git } from "./git.js";
 import { GH, GIT, P } from "./config.js";
 const exec = promisify(execFile);
-/** The GitHub CLI executable, or the plain name when it is on PATH. */
+
 export function ghBinary(env = process.env) {
   const configured = env[GH.ENV_BIN];
   if (configured && configured.trim()) return configured.trim();
   return GH.BIN;
 }
-/** File extensions of a script that must be run with the Node binary. */
+
 const NODE_SCRIPT = /\.(?:mjs|cjs|js)$/i;
-/** The command and leading arguments that run `gh`. */
+
 export function ghCommand(env = process.env) {
   const binary = ghBinary(env);
   return NODE_SCRIPT.test(binary)
     ? { file: process.execPath, prefix: [binary] }
     : { file: binary, prefix: [] };
 }
-/** True when the configured `gh` exists or is resolvable on PATH. */
+
 export function hasGh(env = process.env) {
   const binary = ghBinary(env);
   if (binary !== GH.BIN) return existsSync(binary);
   return true;
-// resolved by the shell; a missing binary fails at spawn with a clear error
+
 }
-/** Runs `gh` and returns its stdout. */
+
 async function gh(repoPath, args, { allowFailure = true, input } = {}) {
   const { file, prefix } = ghCommand();
   try {
     const stdout = input === undefined
       ? (await exec(file, [...prefix, ...args], EXEC_OPTIONS(repoPath))).stdout
-      // `execFile` has no async stdin, and `gh api --input -` reads its payload
-      // from stdin: without a real pipe it waits forever.
+
+
       : await runWithInput(file, [...prefix, ...args], input, repoPath);
     return { ok: true, stdout };
   } catch (error) {
@@ -45,9 +45,9 @@ async function gh(repoPath, args, { allowFailure = true, input } = {}) {
     }
 
     const stderr = String(error.stderr ?? error.message ?? P.EMPTY).trim();
-    // A configured wrapper script that does not exist: node starts, cannot load
 
-    // logged-out user.
+
+
     if (/cannot find module|no such file|ENOENT/i.test(stderr)) {
       const failure = new Error(GH.ERROR_NO_BIN);
       if (allowFailure) return { ok: false, error: failure, missingBinary: true, stderr };
@@ -61,7 +61,7 @@ async function gh(repoPath, args, { allowFailure = true, input } = {}) {
     throw failure;
   }
 }
-/** Shared options for every `gh` call. */
+
 function EXEC_OPTIONS(repoPath) {
   return {
     cwd: repoPath,
@@ -71,7 +71,7 @@ function EXEC_OPTIONS(repoPath) {
     env: { ...process.env, GH_PAGER: P.EMPTY, GH_PROMPT_DISABLED: "1" },
   };
 }
-/** Runs a command, writes `input` to its stdin and resolves with its stdout. */
+
 function runWithInput(file, args, input, repoPath) {
   return new Promise((resolve, reject) => {
     const child = spawn(file, args, {
@@ -110,7 +110,7 @@ function runWithInput(file, args, input, repoPath) {
     child.stdin.end(input);
   });
 }
-/** Reads one pull request. */
+
 export async function viewPullRequest(repoPath, selector = {}) {
   await assertAuthenticated(repoPath);
 
@@ -130,12 +130,12 @@ export async function viewPullRequest(repoPath, selector = {}) {
     throw new Error(GH.ERROR_BAD_JSON);
   }
   const pr = normalizePullRequest(parsed);
-  // An explicit `--repo` names the repository even when the payload has no URL,
-  // and it is the one the caller asked about, so it wins.
+
+
   if (selector.repo) pr.repo = selector.repo;
   return pr;
 }
-/** Lists the pull requests of a repository, newest first. */
+
 export async function listPullRequests(repoPath, options = {}) {
   await assertAuthenticated(repoPath);
 
@@ -155,7 +155,7 @@ export async function listPullRequests(repoPath, options = {}) {
 
   return Array.isArray(parsed) ? parsed.map(normalizePullRequestSummary) : [];
 }
-/** Maps one `gh pr list` entry onto the fields the agent shows. */
+
 export function normalizePullRequestSummary(raw) {
   const number = Number(raw?.number);
   return {
@@ -175,20 +175,20 @@ function clampLimit(value) {
   if (!Number.isFinite(number) || number <= P.ZERO) return GH.LIST_DEFAULT_LIMIT;
   return Math.min(Math.floor(number), GH.LIST_MAX_LIMIT);
 }
-/** Verifies that `gh` is logged in, and turns a failure into the actionable message the page shows. */
+
 async function assertAuthenticated(repoPath) {
   const result = await gh(repoPath, GH.ARGS_AUTH_STATUS, { allowFailure: true });
   if (result.ok) return;
-  // A missing binary is a different problem than a logged-out user.
+
   if (result.missingBinary) throw result.error;
   throw new Error(GH.ERROR_NOT_AUTHED);
 }
-/** `owner/repo` of a pull-request URL, or an empty string. */
+
 export function repoFromUrl(url) {
   const match = /github\.com[:/]+([^/]+)\/([^/?#]+)/i.exec(String(url ?? P.EMPTY));
   return match ? `${match[P.ONE]}/${match[P.TWO].replace(/\.git$/i, P.EMPTY)}` : P.EMPTY;
 }
-/** Maps the `gh pr view --json` payload onto the fields the page uses. */
+
 export function normalizePullRequest(raw) {
   const number = Number(raw?.number);
   const url = String(raw?.url ?? P.EMPTY);
@@ -196,8 +196,8 @@ export function normalizePullRequest(raw) {
     number: Number.isFinite(number) ? number : null,
     title: String(raw?.title ?? P.EMPTY),
     url,
-    // `owner/repo` of the PR. Kept with the review so publishing goes back to
-    // the repository the PR lives in, which is not always the checkout's.
+
+
     repo: repoFromUrl(url),
     state: String(raw?.state ?? P.EMPTY),
     draft: raw?.isDraft === true,
@@ -212,7 +212,7 @@ export function normalizePullRequest(raw) {
     changedFiles: Number(raw?.changedFiles ?? P.ZERO),
   };
 }
-/** Makes sure both commits of the PR exist locally, then returns their SHAs. */
+
 export async function ensurePullRequestCommits(repoPath, pr, { remote = GH.DEFAULT_REMOTE } = {}) {
   const base = await ensureBase(repoPath, pr, remote);
   if (!base) throw new Error(`${GH.ERROR_FETCH_FAILED}cannot resolve base ${pr.baseRefName}.`);
@@ -222,8 +222,8 @@ export async function ensurePullRequestCommits(repoPath, pr, { remote = GH.DEFAU
   }
 
   const localRef = `${GH.HEAD_REF_PREFIX}${pr.number ?? "head"}`;
-  // Prefer the canonical pull ref: it works even when the source branch lives
-  // on a fork, where `remote/branch` does not exist.
+
+
   const pullRef = GH.HEAD_REF_TEMPLATE.replace("{number}", String(pr.number ?? P.EMPTY));
   const attempts = [
     [remote, pullRef],
@@ -236,8 +236,8 @@ export async function ensurePullRequestCommits(repoPath, pr, { remote = GH.DEFAU
     if (fetched.ok) {
       const sha = await revParse(repoPath, localRef);
       if (sha) {
-        // A fetched ref may disagree with the SHA gh reported (the PR moved
-        // between the two calls). The reported head is the one to review.
+
+
         if (pr.headOid && (await commitExists(repoPath, pr.headOid))) {
           return { base, head: pr.headOid, fetched: true };
         }
@@ -248,10 +248,10 @@ export async function ensurePullRequestCommits(repoPath, pr, { remote = GH.DEFAU
 
   throw new Error(`${GH.ERROR_FETCH_FAILED}${pr.headRefName || pr.number || "the head"}.`);
 }
-/** The base commit, fetched into a PRIVATE ref when it is not present locally. */
+
 async function ensureBase(repoPath, pr, remote) {
   if (pr.baseOid && (await commitExists(repoPath, pr.baseOid))) return pr.baseOid;
-  // A fetch into a private ref: no remote-tracking branch is touched.
+
   const localRef = `${GH.BASE_REF_PREFIX}${pr.number ?? "base"}`;
   const targets = [];
   if (pr.baseOid) targets.push(pr.baseOid);
@@ -264,7 +264,7 @@ async function ensureBase(repoPath, pr, remote) {
     const sha = await revParse(repoPath, localRef);
     if (sha) return sha;
   }
-  // Last resort: an already-present remote-tracking branch or local branch.
+
   if (pr.baseRefName) {
     for (const ref of [`${remote}/${pr.baseRefName}`, pr.baseRefName]) {
       const sha = await revParse(repoPath, ref);
@@ -275,8 +275,8 @@ async function ensureBase(repoPath, pr, remote) {
   return null;
 }
 async function commitExists(repoPath, sha) {
-// `rev-parse --verify` only checks that the string looks like an object name;
-  // really looks the object up, which is what "already fetched" means here.
+
+
   const { ok } = await git(repoPath, [...GIT.ARGS.CAT_FILE_EXISTS, sha]);
   return ok;
 }
@@ -284,22 +284,22 @@ async function revParse(repoPath, ref) {
   const { ok, stdout } = await git(repoPath, [...GIT.ARGS.REV_PARSE_COMMIT, `${ref}${GIT.COMMIT_SUFFIX}`]);
   return ok ? stdout.trim() : null;
 }
-/** A stable review-id fragment for a PR, distinct from any branch review. */
+
 export function pullRequestScope(pr) {
   return `${GH.SCOPE_PREFIX}${pr.number ?? P.EMPTY}`;
 }
-/** A human title for the page header, e.g. */
+
 export function pullRequestTitle(pr) {
   const number = pr.number ? `${GH.TITLE_PREFIX}${pr.number}` : GH.TITLE_PREFIX.trim();
   return pr.title ? `${number}: ${pr.title}` : number;
 }
-/** The verdict flags `gh pr review` understands, keyed by our review state. */
+
 const REVIEW_FLAGS = {
   APPROVE: GH.FLAG_APPROVE,
   REQUEST_CHANGES: GH.FLAG_REQUEST_CHANGES,
   COMMENT: GH.FLAG_COMMENT,
 };
-/** Maps one local comment onto a GitHub inline-comment payload. */
+
 export function toGitHubComment(comment) {
   const start = Number(comment?.lineStart);
   const end = Number(comment?.lineEnd ?? comment?.lineStart);
@@ -307,11 +307,11 @@ export function toGitHubComment(comment) {
   const body = String(comment?.body ?? P.EMPTY).trim();
   const path = String(comment?.path ?? P.EMPTY);
 
-  // GitHub attaches a comment to a line; anything else is kept in the body by
-  // the caller instead of being silently dropped.
+
+
   if (!path || !Number.isFinite(start) || start <= P.ZERO || !body) return null;
-  // A comment whose line has moved or vanished no longer has a place in the
-  // diff, and GitHub rejects the WHOLE review with 422 if it is included.
+
+
   if (comment?.outdated === true) return null;
 
   const last = Number.isFinite(end) && end >= start ? end : start;
@@ -322,7 +322,7 @@ export function toGitHubComment(comment) {
   }
   return payload;
 }
-/** Splits a review into the parts a GitHub review can carry. */
+
 export function toGitHubReview(review) {
   const state = REVIEW_FLAGS[review?.reviewState] ? review.reviewState : "COMMENT";
   const inline = [];
@@ -338,7 +338,7 @@ export function toGitHubReview(review) {
   const body = String(review?.reviewBody ?? P.EMPTY).trim();
   if (body) parts.push(body);
 
-  // A comment without a line cannot be posted inline, so it is kept in the body.
+
   if (loose.length) {
     parts.push("**Comments that do not belong to a line**");
     for (const comment of loose) {
@@ -346,8 +346,8 @@ export function toGitHubReview(review) {
     }
   }
 
-  // GitHub caps a review at 100 inline comments. The rest are kept in the body
-  // instead of disappearing, so nothing the reviewer wrote is lost.
+
+
   const kept = inline.slice(P.ZERO, GH.MAX_INLINE_COMMENTS);
   const overflow = inline.slice(GH.MAX_INLINE_COMMENTS);
   if (overflow.length) {
@@ -371,7 +371,7 @@ export function toGitHubReview(review) {
     overflowComments: overflow.length,
   };
 }
-/** Publishes a locally written review to GitHub as a real pull-request review. */
+
 export async function publishReview(repoPath, { review, pr, repo }) {
   if (!pr?.number) throw new Error(GH.ERROR_NOT_A_PR);
   await assertAuthenticated(repoPath);
@@ -379,9 +379,9 @@ export async function publishReview(repoPath, { review, pr, repo }) {
   const payload = toGitHubReview(review);
   const target = repo || pr.repo || null;
 
-  // Inline comments can only travel through the API: `gh pr review` has no flag
-  // for them. A review with nothing to attach still uses the simple CLI, which
-  // gives a clearer error for an already-approved PR.
+
+
+
   if (!payload.comments.length) return publishSimpleReview(repoPath, payload, pr, target);
 
   const resolved = target || (await repositoryOf(repoPath));
@@ -392,9 +392,9 @@ export async function publishReview(repoPath, { review, pr, repo }) {
     event: payload.event,
     comments: payload.comments,
   };
-  // Pin the review to the commit the reviewer actually read. Without this,
-  // GitHub anchors the comments to whatever the head is when the request
-  // arrives, and a push in between turns every comment into "outdated".
+
+
+
   if (pr.headOid) denormalized.commit_id = pr.headOid;
   const result = await gh(repoPath, [
     ...GH.ARGS_API,
@@ -409,7 +409,7 @@ export async function publishReview(repoPath, { review, pr, repo }) {
   try {
     url = JSON.parse(result.stdout)?.html_url ?? P.EMPTY;
   } catch {
-    /** A successful post without a readable body still counts. */
+
   }
 
   return {
@@ -421,7 +421,7 @@ export async function publishReview(repoPath, { review, pr, repo }) {
     url,
   };
 }
-/** A verdict-and-body review with no inline comments. */
+
 async function publishSimpleReview(repoPath, payload, pr, repo) {
   const args = [...GH.ARGS_REVIEW, String(pr.number), REVIEW_FLAGS[payload.state]];
   if (payload.body) args.push(...GH.ARGS_REVIEW_BODY, payload.body);
@@ -439,13 +439,13 @@ async function publishSimpleReview(repoPath, payload, pr, repo) {
     url: pr.url ?? P.EMPTY,
   };
 }
-/** `owner/repo` of the checkout, from its git remote. */
+
 async function repositoryOf(repoPath) {
   const { ok, stdout } = await git(repoPath, GIT.ARGS.REMOTE);
   if (!ok) return null;
 
   const value = stdout.trim();
-  // git@github.com:owner/repo.git  or  https://github.com/owner/repo.git
+
   const match = /github\.com[:/]+([^/]+)\/([^/]+?)(?:\.git)?\/?$/i.exec(value);
   return match ? `${match[P.ONE]}/${match[P.TWO]}` : null;
 }

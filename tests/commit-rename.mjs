@@ -1,14 +1,4 @@
-/**
- * Renaming a commit must only ever rewrite the checked-out branch.
- *
- * Two defects were reachable from the page. A sha from another branch was
- * replayed into HEAD: the branch's files appeared in the working tree, HEAD was
- * left detached, and the history gained a copy of an unrelated branch. And the
- * sha reached git as a plain argument, so `--output=<path>` was read as an
- * option.
- *
- * Run: node tests/commit-rename.mjs
- */
+
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -29,7 +19,7 @@ function check(name, fn) {
   );
 }
 
-/** A repository with two branches: `main`, and `side` forked from the first commit. */
+
 async function makeRepo(root) {
   const repo = join(root, "repo");
   const git = async (...args) => (await exec(GIT.BIN, args, { cwd: repo })).stdout.trim();
@@ -107,7 +97,7 @@ try {
     assert.deepEqual(subjects, ["main again, renamed", "main work, renamed"], `unexpected history: ${JSON.stringify(subjects)}`);
     assert.equal(await git("branch", "--show-current"), "main", "the replay left HEAD detached");
 
-    // The replay must keep every file, not just the messages.
+
     const files = (await git("ls-tree", "--name-only", "HEAD")).split("\n").filter(Boolean).sort();
     assert.deepEqual(files, ["main.txt", "more.txt"]);
   });
@@ -130,7 +120,7 @@ try {
     assert.equal(await readFile(victim, "utf8"), "ORIGINAL\n", "the sha was read as a git option");
   });
 
-  // The same two cases, over HTTP, the way the page reaches them.
+
   for (const name of ["OPENCODE_SESSION_ID", "OPENCODE_SESSION"]) delete process.env[name];
   process.env[GIT.ARTIFACTS_DIR_ENV] = join(root, "artifacts");
 

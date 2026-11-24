@@ -1,12 +1,4 @@
-/**
- * Comments must survive a reopen, and go out of date when their lines change.
- *
- * The bug: comments lived only in the page's localStorage under the review id.
- * A review id includes a diff fingerprint, so any fix produced a new id and the
- * reviewer's comments vanished from the next page.
- *
- * Run: node tests/threads.mjs
- */
+
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
@@ -27,7 +19,7 @@ function check(name, fn) {
 }
 
 const root = await mkdtemp(join(tmpdir(), "pr-review-threads-"));
-// The threads file lives in the artifacts root, which the test keeps to itself.
+
 process.env[GIT.ARTIFACTS_DIR_ENV] = join(root, "artifacts");
 
 const git = (...args) => exec(GIT.BIN, args, { cwd: join(root, "repo") });
@@ -41,7 +33,7 @@ const COMMENT = {
   body: "This line needs a guard",
 };
 
-/** Opens a range review of the repository and returns the running review. */
+
 async function openReview() {
   const head = (await git("rev-parse", "HEAD")).stdout.trim();
   const base = (await git("rev-parse", "HEAD~1")).stdout.trim();
@@ -57,7 +49,7 @@ async function openReview() {
   });
 }
 
-/** The comments a freshly opened page of the same scope carries. */
+
 async function commentsOnPage() {
   const review = await openReview();
   try {
@@ -111,8 +103,8 @@ try {
   });
 
   await check("a comment stays visible after the file is edited", async () => {
-    // An unrelated edit: the commented line itself is untouched, so the comment
-    // is still valid, but it must not disappear from the page.
+
+
     await writeFile(join(root, "repo", "app.js"), "const a = 1;\nconst b = 20;\nconst c = 30;\n");
     const comments = await commentsOnPage();
     assert.equal(comments.length, 1, "the comment disappeared after an unrelated edit");
@@ -125,7 +117,7 @@ try {
     assert.equal(comments.length, 1, "the comment disappeared");
     assert.equal(comments[0].outdated, true, "the comment should be outdated");
     assert.ok(comments[0].outdatedReason, "an outdated comment must say why");
-    // The snippet is what the reviewer commented on, not the edited text.
+
     assert.ok(comments[0].snippet.includes("const b = 20;"), "the snippet was replaced by the edited line");
   });
 
@@ -154,10 +146,10 @@ try {
   });
 
   await check("a comment on a removed line is not declared outdated", async () => {
-    // Removed lines exist only in the old file. Their numbers do not line up
-    // with the current one, so comparing them there both stored an unrelated
-    // snippet and marked the comment outdated the moment any line above it was
-    // removed too.
+
+
+
+
     await writeFile(join(root, "repo", "app.js"), "const a = 1;\nconst c = 3;\n");
     const review = await openReview();
     try {
@@ -184,8 +176,8 @@ try {
   });
 
   await check("an older removed-side comment that carries a snippet is not outdated", async () => {
-    // Comments saved by an earlier version may already hold a snippet taken
-    // from the wrong file. The comparison must not keep calling them outdated.
+
+
     const review = await openReview();
     try {
       await fetch(new URL("/api/threads", review.url), {

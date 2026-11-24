@@ -1,13 +1,4 @@
-/**
- * The review page must stay readable at the width of a Visual Studio tab.
- *
- * A tab is roughly 650 px wide. At that size the page has to give the diff the
- * whole pane, hide the tree, and never cut a line of code off the right edge.
- * On a wide screen the opposite matters: the sidebar has to sit beside the diff
- * instead of squeezing it.
- *
- * Run: node tests/layout-regression.mjs
- */
+
 import { Builder } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox.js";
 import { createE2eReview } from "./e2e-fixture.mjs";
@@ -23,7 +14,7 @@ function check(name, ok, detail) {
   console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? ` — ${detail}` : ""}`);
 }
 
-/** Everything the assertions need, measured in one round trip. */
+
 async function measure(driver, mode) {
   await driver.executeScript(`PR.setDiffMode('${mode}'); return true;`);
   await PAUSE(400);
@@ -82,13 +73,13 @@ async function main() {
         const m = await measure(driver, mode);
         const label = `${width}px [${mode}]`;
 
-        // Nothing may be cut off: not the page, not the pane, not the diff list.
+
         check(`${label}: the page does not scroll sideways`, m.docOverflow <= 1, `overflowX=${m.docOverflow}`);
         check(`${label}: the diff pane does not clip its content`,
           m.files && m.files.scroll <= m.files.client + 1,
           `client=${m.files?.client} scroll=${m.files?.scroll}`);
 
-        // Long lines wrap instead of disappearing past the right edge.
+
         check(`${label}: code lines wrap instead of being cut`, m.codeWrap === "pre-wrap", `white-space=${m.codeWrap}`);
 
         if (width === NARROW) {

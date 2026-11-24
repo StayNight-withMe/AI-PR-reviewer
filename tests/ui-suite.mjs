@@ -1,16 +1,4 @@
-/**
- * A large, self-contained UI test suite.
- *
- * Every other UI test needs a page started somewhere else, on a fixed port, with
- * a particular repository checked out. That made them brittle and narrow: they
- * only ever asserted the few things the last bug report was about. This suite
- * builds the repository it needs, opens the review itself, and drives a real
- * browser through the whole review flow — reading files, commenting, approving,
- * reloading, switching scope. A check here fails for a user-visible reason, not
- * because a helper moved.
- *
- * Run: node tests/ui-suite.mjs
- */
+
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -27,7 +15,7 @@ const exec = promisify(execFile);
 const failures = [];
 let checks = 0;
 
-/** Runs one check, recording a readable failure instead of stopping the suite. */
+
 async function check(name, fn) {
   checks += 1;
   try {
@@ -39,7 +27,7 @@ async function check(name, fn) {
   }
 }
 
-/** The C# fixture: real-looking code with the awkward names found in the wild. */
+
 const WIDGET = [
   "namespace Demo;",
   "",
@@ -61,7 +49,7 @@ const WIDGET = [
   "",
 ].join("\n");
 
-/** A TypeScript file with long lines, so wrapping and tabs are exercised. */
+
 const CHECKOUT = [
   "export interface CartLine { sku: string; quantity: number; price: number }",
   "",
@@ -81,7 +69,7 @@ const CHECKOUT = [
   "",
 ].join("\n");
 
-/** A Go file: a language the old bundle had no grammar for. */
+
 const MAIN_GO = [
   "package main",
   "",
@@ -93,10 +81,10 @@ const MAIN_GO = [
   "",
 ].join("\n");
 
-/** A long file, to exercise the large-file setting and the gap expander. */
+
 const LONG = Array.from({ length: 120 }, (_, index) => `const line${index + 1} = ${index + 1};`).join("\n") + "\n";
 
-/** The same file with one line changed in the middle and one at the end. */
+
 function longEdited() {
   const lines = LONG.trimEnd().split("\n");
   lines[59] = "const line60 = 600;";
@@ -104,12 +92,12 @@ function longEdited() {
   return `${lines.join("\n")}\n`;
 }
 
-/** A generated-looking file, big enough to trip the large-file setting. */
+
 function generated(count) {
   return Array.from({ length: count }, (_, index) => `export const value${index + 1} = ${index + 1};`).join("\n") + "\n";
 }
 
-/** Builds the repository, one commit with a realistic change set. */
+
 async function createRepository() {
   const root = await mkdtemp(join(tmpdir(), "pr-review-ui-"));
   const git = (...args) => exec(GIT.BIN, args, { cwd: root });
@@ -123,13 +111,13 @@ async function createRepository() {
   await git("add", "-A");
   await git("commit", "-m", "init");
 
-  // A long file that the reviewed commit never touches: the "open an unchanged
-  // file inside the review" path needs a file with real content.
+
+
   await mkdir(join(root, "docs"), { recursive: true });
   await writeFile(join(root, "docs", "GUIDE.md"), Array.from({ length: 40 }, (_, index) => `Line ${index + 1} of the guide.`).join("\n") + "\n");
-  // A file that is deleted in the reviewed commit.
+
   await writeFile(join(root, "docs", "old-notes.md"), "Old notes that the change removes.\n");
-  // A binary file the review must not try to render as text.
+
   await writeFile(join(root, "docs", "logo.png"), Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]));
   await git("add", "-A");
   await git("commit", "-m", "add the guide, old notes and a logo");
@@ -140,13 +128,13 @@ async function createRepository() {
   await writeFile(join(root, "src", "checkout", "Checkout.ts"), CHECKOUT);
   await writeFile(join(root, "src", "main.go"), MAIN_GO);
   await writeFile(join(root, "src", "long.ts"), LONG);
-  // A generated file over the large-file threshold, changed in the review.
+
   await writeFile(join(root, "src", "generated.ts"), generated(120));
   await git("add", "-A");
   await git("commit", "-m", "add the widget, checkout and go files");
 
-  // The reviewed change: a field in the widget, two distant lines in the long
-  // file, a regenerated snapshot, a deleted document and a new logo state.
+
+
   await writeFile(join(root, "src", "widgets", "Widget.cs"), WIDGET.replace("private decimal _price;", "private decimal _price;\n    private int _stock;"));
   await writeFile(join(root, "src", "long.ts"), longEdited());
   await writeFile(join(root, "src", "generated.ts"), generated(700));
@@ -158,7 +146,7 @@ async function createRepository() {
   return { root, git };
 }
 
-/** Waits for the page to say it is wired, then for every section to hydrate. */
+
 async function waitForPage(driver) {
   const js = (code) => driver.executeScript(`return (${code});`);
 
@@ -175,7 +163,7 @@ async function waitForPage(driver) {
 }
 
 const fixture = await createRepository();
-// The suite must never send a review into the chat that is running it.
+
 for (const name of ["OPENCODE_SESSION_ID", "OPENCODE_SESSION"]) delete process.env[name];
 process.env[GIT.ARTIFACTS_DIR_ENV] = join(fixture.root, "artifacts");
 
@@ -206,7 +194,7 @@ try {
   await driver.get(reviewState.url);
   await waitForPage(driver);
 
-  /** Collects console errors, so a broken page cannot pass silently. */
+
   async function runtimeErrors() {
     const entries = await driver.manage().logs().get("browser").catch(() => []);
     return entries
@@ -290,8 +278,8 @@ try {
       });
       return report;
     })()`);
-    // A file with a hidden tail must show an expander; a file without a tail
-    // must render its real last line. Neither may silently lose lines.
+
+
     const broken = state.filter((file) => !file.deferred && file.totalLines > 0 && file.lastShown < file.totalLines && file.bars === 0);
     assert.deepEqual(broken, [], `files lost their tail with no way to open it: ${JSON.stringify(broken)}`);
   });
@@ -348,9 +336,9 @@ try {
   await check("files are ordered like a directory tree", async () => {
     const paths = await js(`PR.state.files.map(f => f.path)`);
     const sorted = [...paths].sort((a, b) => a.localeCompare(b));
-    // Directories before files at the same level, then alphabetical: the exact
-    // order is asserted by the server's own sort, so the check is that the
-    // display order is stable and complete rather than random.
+
+
+
     assert.equal(paths.length, sorted.length, "files were lost in the ordering");
     assert.deepEqual(await js(`PR.state.files.map(f => f.path)`), paths, "the file order changed between reads");
   });
@@ -506,7 +494,7 @@ try {
     assert.ok(state.before.bars > 0, "the fixture should hide a region");
     assert.ok(state.after.rows > state.before.rows, "Expand all revealed nothing");
     assert.equal(state.after.bars, 0, "the expander button survived Expand all");
-    // The hidden lines in between must now be present, in order and complete.
+
     const before = new Set(state.before.numbers);
     const added = state.after.numbers.filter((number) => !before.has(number));
     assert.ok(added.length > 5, `only ${added.length} hidden line(s) appeared`);
@@ -719,8 +707,8 @@ try {
   });
 
   await check("a screenshot on the note is saved with the review", async () => {
-    // The dialog is the only way a user attaches a screenshot to the note, and
-    // the note is a separate field from the comments. It must reach disk.
+
+
     const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 
     const state = await js(`(async () => {
@@ -755,7 +743,7 @@ try {
     const markdown = await readFile(join(reviewState.outputDir, "review.md"), "utf8");
     assert.match(markdown, /!\[attachment\]\(images\/note-0\.png\)/, "review.md does not show the note image");
 
-    // Clearing the note after a submit means the next review starts clean.
+
     const after = await js(`(async () => {
       document.getElementById('btn-submit').click();
       const body = document.getElementById('review-body').value;
@@ -822,8 +810,8 @@ try {
   });
 
   await check("typing in the tree filter does not lose characters or the caret", async () => {
-    // The search box used to be rebuilt on every keystroke, which replaced the
-    // focused input: a fast typist lost characters and the caret jumped.
+
+
     const state = await js(`(async () => {
       const input = document.getElementById('tree-filter-input');
       input.focus();
@@ -979,8 +967,8 @@ try {
   });
 
   await check("a comment goes out of date when its line is edited, and says so", async () => {
-    // Written on the widget, then the commented line is changed in the working
-    // tree: the next page must show the comment, flag it, and quote the original.
+
+
     const written = await js(`(async () => {
       const section = [...document.querySelectorAll('.diff-file')].find(s => s.dataset.path.endsWith('Widget.cs'));
       const cells = [...section.querySelectorAll('td.diff-num[data-side="right"]')]
@@ -1007,7 +995,7 @@ try {
       }),
     });
 
-    // Change exactly that line, without committing it.
+
     const filePath = join(fixture.root, written.path);
     const content = await readFile(filePath, "utf8");
     const lines = content.replace(/\r\n/g, "\n").split("\n");
@@ -1058,7 +1046,7 @@ try {
       await reopened.page.close();
     }
 
-    // Put the file back so later checks see the reviewed content.
+
     await writeFile(filePath, content);
     await driver.get(reviewState.url);
     await waitForPage(driver);
@@ -1140,8 +1128,8 @@ try {
   });
 
   await check("clicking a comment in the sidebar brings its file into view", async () => {
-    // Give the page enough height that "off screen" and "on screen" differ: a
-    // short page fits in one window, and then a scroll check proves nothing.
+
+
     await js(`(async () => {
       PR.state.settings.contextCollapseLines = 1000;
       PR.renderFileList();
@@ -1213,7 +1201,7 @@ try {
     assert.equal(restored.hideViewed, true, "the viewed setting was lost on reload");
     assert.ok(restored.splitTables > 0, "the page did not render the saved split view");
 
-    // Back to the defaults for the rest of the suite.
+
     await js(`(async () => {
       PR.state.settings.hideViewed = false;
       document.getElementById('set-diff-mode').value = PR.DIFF_MODE.UNIFIED;
@@ -1285,8 +1273,8 @@ try {
     assert.deepEqual(state.back, state.unified, "switching back did not restore the unified view");
   });
 
-  // A row whose cells do not add up to the table's columns shifts every number
-  // under the wrong code, and in split view pushes the right side off its column.
+
+
   await check("every diff row has exactly as many cells as its table has columns", async () => {
     const report = await js(`(async () => {
       const inspect = () => {
@@ -1333,8 +1321,8 @@ try {
     }
   });
 
-  // A fixed or sticky element that crosses the right edge hides content and
-  // makes the page scroll sideways on a narrow window.
+
+
   await check("the page fits the window at every width a reviewer uses", async () => {
     const widths = [1440, 1024, 768, 500];
     const problems = [];
@@ -1387,9 +1375,9 @@ try {
     assert.deepEqual(problems, [], problems.join(" | "));
   });
 
-  // Additions and deletions are one figure ("+2 / -1"). They were separate flex
-  // items, so on a narrow tab `flex-wrap` pushed `-1` onto the next line while
-  // `+2` stayed at the end of the previous one.
+
+
+
   await check("the additions and deletions stay on one line when the tab is narrow", async () => {
     const widths = [1440, 1024, 768, 500];
     const problems = [];
@@ -1415,11 +1403,11 @@ try {
       })()`);
 
       if (stats.missing) { problems.push(`${width}px: the header shows no stats`); continue; }
-      // Same line: their tops agree within a pixel.
+
       if (Math.abs(stats.add - stats.del) > 1) {
         problems.push(`${width}px: "+" sits at ${stats.add}px but "-" at ${stats.del}px`);
       }
-      // And in reading order, with the pair not overlapping.
+
       if (stats.delLeft < stats.addRight - 1) {
         problems.push(`${width}px: "-" starts at ${stats.delLeft}px before "+" ends at ${stats.addRight}px`);
       }
@@ -1429,8 +1417,8 @@ try {
     assert.deepEqual(problems, [], problems.join(" | "));
   });
 
-  // A control that looks clickable but does nothing is worse than no control.
-  // The layout switch in the toolbar had no handler at all.
+
+
   await check("the toolbar layout switch changes the layout and shows which one is on", async () => {
     await driver.get(reviewState.url);
     await waitForPage(driver);
@@ -1467,8 +1455,8 @@ try {
     await new Promise(r => setTimeout(r, 1200));
   });
 
-  // On a narrow screen the sidebar used to be hidden outright, taking the
-  // review status and every comment with it.
+
+
   await check("the sidebar stays reachable on a narrow screen", async () => {
     const problems = [];
     for (const width of [1440, 890, 500]) {
@@ -1494,7 +1482,7 @@ try {
       if (state.bodyScrollsSideways) problems.push(`${width}px: the page scrolls sideways`);
       if (!/hide/i.test(state.label)) problems.push(`${width}px: the button says "${state.label}" while the sidebar is shown`);
 
-      // The button must actually hide and restore it.
+
       await driver.executeScript(`document.getElementById('btn-sidebar').click(); return true;`);
       await new Promise(r => setTimeout(r, 300));
       const hidden = await js(`(function () {

@@ -1,9 +1,4 @@
-/**
- * Visual probe: opens the real page at several window sizes, saves screenshots
- * and measures layout problems (overflow, clipping, overlap).
- *
- * Run: node tests/visual-probe.mjs
- */
+
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -17,7 +12,7 @@ import { GIT, MODE } from "../src/config.js";
 const exec = promisify(execFile);
 const OUT = "Z:\\system\\temp\\pr-review-visual";
 
-/* ------------------------------- fixture --------------------------------- */
+
 const WIDGET = [
   "namespace Shop {",
   "  public class Widget {",
@@ -232,12 +227,12 @@ try {
     const png = await driver.takeScreenshot();
     await writeFile(join(OUT, `${size.name}.png`), png, "base64");
 
-    // The top of the page is what a person sees first.
+
     const headerShot = await driver.takeScreenshot();
     void headerShot;
   }
 
-  // A few states at one comfortable size.
+
   await driver.manage().window().setRect({ width: 1440, height: 900 });
   await driver.get(review.url);
   await driver.wait(async () => {
@@ -289,7 +284,7 @@ try {
     return true;
   })()`);
 
-  // The same states at a narrow width: they are the ones that break first.
+
   for (const size of SIZES.filter((s) => s.width <= 768)) {
     await driver.manage().window().setRect({ width: size.width, height: size.height });
     await driver.get(review.url);

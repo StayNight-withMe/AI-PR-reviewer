@@ -1,17 +1,4 @@
-/**
- * The whole review cycle, the way it is really used:
- *
- *   1. a person opens the page and reviews the change, writing comments;
- *   2. the person fixes nothing and hands the review to the agent;
- *   3. the agent resolves the comments it fixed and edits the code;
- *   4. the person opens the review again and sees what is left.
- *
- * The agent is simulated: it reads the same review.json and the same prompt the
- * real one would, and acts through the same functions the MCP tools call. gh is
- * not involved, so nothing leaves the machine.
- *
- * Run: node tests/logic-cycle.mjs
- */
+
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -61,7 +48,7 @@ await writeFile(join(root, "cart.ts"), SOURCE);
 await git("add", "-A");
 await git("commit", "-m", "base");
 
-// The change under review: a bug that never adds a price.
+
 await writeFile(join(root, "cart.ts"), SOURCE.replace("sum += line.quantity;", "sum += line.quantity * 1;"));
 await git("add", "-A");
 await git("commit", "-m", "add the total");
@@ -71,7 +58,7 @@ process.env[GIT.ARTIFACTS_DIR_ENV] = join(root, "artifacts");
 
 const base = (await git("rev-parse", "HEAD~1")).stdout.trim();
 
-/** The comments the page currently shows, read the way the page reads them. */
+
 async function pageComments(page) {
   const html = await (await fetch(page.url)).text();
   const match = /<script id="pr-review-data"[^>]*>([\s\S]*?)<\/script>/.exec(html);
@@ -138,8 +125,8 @@ try {
   });
 
   await step("4. the agent fixes the price bug and resolves only that comment", async () => {
-    // Only the line inside the loop changes, so the comment on the interface
-    // above it keeps its code.
+
+
     await writeFile(join(root, "cart.ts"),
       SOURCE.replace("sum += line.quantity;", "sum += line.quantity * line.price;"));
     const touched = await setCommentsResolved(page, ["c-price"], true);
@@ -164,8 +151,8 @@ try {
   await page.page.close();
   page = null;
 
-  // A new round: the reviewer opens the page again. The fixed comment must come
-  // back resolved, and the one about the rename must come back open.
+
+
   page = await openReview();
 
   await step("6. reopening the review keeps both comments with their state", async () => {
@@ -177,10 +164,10 @@ try {
   });
 
   await step("7. a comment whose code changed is outdated on the next review", async () => {
-    // Line 1 of the reviewed change (the interface) is still as it was, so that
-    // comment stays current. Line 6 in the committed change never changed either
-    // (the fix is uncommitted, and outdated follows the working tree) — so the
-    // price comment is outdated now, which is exactly GitHub's behaviour.
+
+
+
+
     const comments = await pageComments(page);
     const byId = Object.fromEntries(comments.map((c) => [c.id, c]));
     assert.equal(byId["c-price"].outdated, true,
@@ -193,7 +180,7 @@ try {
   page = null;
   await git("checkout", "--", "cart.ts");
 
-  // The agent commits its fix; the reviewer opens a review of the new state.
+
   await writeFile(join(root, "cart.ts"),
     SOURCE.replace("sum += line.quantity;", "sum += line.quantity * line.price;"));
   await git("add", "-A");
@@ -208,7 +195,7 @@ try {
   await step("8. the next review of the same target still carries the comments", async () => {
     const comments = await pageComments(second);
     assert.equal(comments.length, 2, "the next review lost the earlier comments");
-    // The page shows them even though they point at lines of an older change.
+
     const byId = Object.fromEntries(comments.map((c) => [c.id, c]));
     assert.equal(byId["c-name"].resolved, false);
   });

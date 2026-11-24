@@ -1,15 +1,4 @@
-/**
- * Only the review page itself may drive the local server.
- *
- * The page listens on the loopback address, so any other page in the same
- * browser can reach it. Two ways were open: a `Host` header naming another site
- * (what DNS rebinding sends) was served as usual, and a cross-site POST was
- * accepted, because a browser sends `text/plain` without asking permission
- * first. Since the routes read files, write review state and run git, both are
- * refused now.
- *
- * Run: node tests/foreign-request.mjs
- */
+
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { request } from "node:http";
@@ -53,7 +42,7 @@ try {
   });
   const port = new URL(review.url).port;
 
-  /** A raw request, so the Host header can be anything. */
+
   const raw = (path, { host, method = "GET", type, body } = {}) => new Promise((resolve, reject) => {
     const req = request(
       { host: "127.0.0.1", port, path, method, headers: { host, ...(type ? { "content-type": type } : {}) } },
@@ -86,8 +75,8 @@ try {
   });
 
   await check("a cross-site POST is refused", async () => {
-    // A form on another site can only send text/plain, and sends it without a
-    // preflight, so this is the request that must not be trusted.
+
+
     const answer = await raw(ROUTES.API_SETTINGS, {
       host: `127.0.0.1:${port}`,
       method: "POST",

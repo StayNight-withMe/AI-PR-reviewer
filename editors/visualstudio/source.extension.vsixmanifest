@@ -6,8 +6,7 @@
     <Description xml:space="preserve">Open a GitHub-style review of the current branch in a dockable tab, using the same page the MCP server and the AI use.</Description>
   </Metadata>
   <Installation>
-    <!-- VS 2022 and later require the architecture: a target without it is not
-         a valid installation target and the package is rejected as malformed. -->
+
     <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0,19.0)">
       <ProductArchitecture>amd64</ProductArchitecture>
     </InstallationTarget>
@@ -25,8 +24,7 @@
     <Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[17.0,)" DisplayName="Visual Studio core editor" />
   </Prerequisites>
   <Assets>
-    <!-- The VS package asset must point at the assembly. The package's
-         generated .pkgdef is discovered separately by the VSIX engine. -->
+
     <Asset Type="Microsoft.VisualStudio.VsPackage" Path="PrReview.VisualStudio.dll" />
   </Assets>
 </PackageManifest>

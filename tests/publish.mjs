@@ -1,12 +1,4 @@
-/**
- * Publishing a locally written review back to GitHub as a real PR review.
- *
- * Everything runs against the mock `gh` and a local fixture, so no network and
- * no GitHub account are involved. The mock records what it was asked to post,
- * and the test reads it back.
- *
- * Run: node tests/publish.mjs
- */
+
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -44,7 +36,7 @@ process.env.MOCK_GH_DB = dbPath;
 const pr = { number: PR_NUMBER, url: `https://github.com/o/r/pull/${PR_NUMBER}`, repo: "o/r" };
 const readDb = async () => JSON.parse(await readFile(dbPath, "utf8"));
 
-/* ------------------------------- pure mapping ------------------------------ */
+
 
 await check("a line comment becomes a GitHub inline comment", () => {
   const mapped = toGitHubComment({ path: "a.cs", side: "right", lineStart: 10, lineEnd: 10, body: "rename this" });
@@ -99,7 +91,7 @@ await check("comments over GitHub's limit move into the body instead of vanishin
   assert.match(payload.body, /note 102/);
 });
 
-/* ----------------------------- publishing ---------------------------------- */
+
 
 await check("a review with inline comments goes through the API", async () => {
   await resetDb();
@@ -176,7 +168,7 @@ await check("a logged-out gh is reported, not silently ignored", async () => {
 });
 
 await check("a review that GitHub rejects reports its message", async () => {
-  // A closed PR is what GitHub refuses, and gh passes the reason through.
+
   await resetDb({ pullRequests: {} });
   await assert.rejects(
     () => publishReview(fixture.repo, {

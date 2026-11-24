@@ -1,10 +1,10 @@
-/** Inline comments: rendering, editing, image attachments and drag selection. */
+
 (function () {
   "use strict";
 
   var PR = window.PR;
 
-  /** ------------------------------- rendering ------------------------------ */
+
   function attachmentChip(image, index, removable) {
     var src = image.dataUrl || image.file || "";
     return '<span class="attach-chip">' +
@@ -50,7 +50,7 @@
     "</div>";
   }
 
-  /** Flips a comment between resolved and open. */
+
   PR.toggleResolved = function (id) {
     var comment = PR.state.comments.find(function (item) { return item.id === id; });
     if (!comment) return;
@@ -62,7 +62,7 @@
     PR.toast(comment.resolved ? "Comment resolved" : "Comment reopened");
   };
 
-  /** True when every comment on a file is resolved (used by the tree badge). */
+
   PR.fileFullyResolved = function (path) {
     var own = PR.state.comments.filter(function (comment) { return comment.path === path; });
     return own.length > 0 && own.every(function (comment) { return comment.resolved === true; });
@@ -71,15 +71,15 @@
   PR.renderComments = function () {
     var state = PR.state;
     document.querySelectorAll(".comment-row, .file-comment-banner, .orphan-comments").forEach(function (node) {
-      // would wipe a form the user is typing in.
+
       if (node.classList.contains("js-editor") || node.querySelector(".js-editor")) return;
       node.remove();
     });
 
     state.comments.forEach(function (comment) {
       var section = PR.findSection(comment.path);
-      // A comment on a file that is not part of this diff still has to be
-      // visible: it is the reviewer's own work, not something to hide.
+
+
       if (!section) return;
 
       if (!comment.lineStart) {
@@ -101,15 +101,15 @@
         rows[rows.length - 1].parentNode.insertBefore(row, rows[rows.length - 1].nextSibling);
         return;
       }
-      // The line is gone from the diff (a rewrite, an unrelated edit): show the
-      // comment at the top of its file instead of dropping it silently.
+
+
       mountOrphanComment(section, row);
     });
 
     renderSidebar();
   };
 
-  /** Comments whose line no longer exists, grouped at the top of their file. */
+
   function mountOrphanComment(section, row) {
     var host = section.querySelector(".orphan-comments");
     if (!host) {
@@ -118,9 +118,9 @@
       var header = section.querySelector(".diff-file-header");
       header.parentNode.insertBefore(host, header.nextSibling);
     }
-    // The table must not carry `diff-table`: that class is how the rest of the
-    // page finds a file's hunk table, and an orphan table has no colgroup, so it
-    // used to be picked first, reporting zero columns and breaking new comments.
+
+
+
     var table = document.createElement("table");
     table.className = "orphan-table";
     var body = document.createElement("tbody");
@@ -129,7 +129,7 @@
     host.appendChild(table);
   }
 
-  /** Number of columns in the diff table that holds `row`. */
+
   function columnCount(row) {
     var table = row.closest ? row.closest("table") : null;
     if (!table) return 1;
@@ -148,13 +148,13 @@
     return widest || 1;
   }
 
-  /** Number of columns in the diff table of a file section. */
+
   function sectionColumnCount(section) {
     var table = section.querySelector(".diff-table");
     return table ? columnCount(table) : 1;
   }
 
-  /** Rows whose number cell on `side` falls inside the line range. */
+
   function rowsInRange(section, side, from, to) {
     var rows = [];
     var cells = section.querySelectorAll('td.diff-num[data-side="' + side + '"][data-line]');
@@ -205,7 +205,7 @@
     }).join(""));
   }
 
-  /** --------------------------------- form --------------------------------- */
+
   PR.openCommentForm = function (path, side, lineStart, lineEnd, existing) {
     PR.closeCommentForms();
 
@@ -305,7 +305,7 @@
     anchor.parentNode.insertBefore(banner, anchor.nextSibling);
   }
 
-  /** Binds paste/drop of images to a textarea, reporting each image it receives. */
+
   PR.bindImageInput = function (textarea, box, onImage) {
     function addFiles(files) {
       Array.from(files || []).forEach(function (file) {
@@ -368,7 +368,7 @@
   }
 
   PR.closeCommentForms = function () {
-    // A form can live in the diff list or in the inline host (an unchanged file opened from the…
+
     var hosts = [PR.els.diffFiles, document.getElementById(PR.IDS.INLINE_HOST)];
     hosts.forEach(function (host) {
       if (!host) return;
@@ -376,7 +376,7 @@
     });
   };
 
-  /** ------------------------------- selection ------------------------------ */
+
   PR.clearSelection = function () {
     document.querySelectorAll(".row-selected").forEach(function (row) { row.classList.remove("row-selected"); });
     PR.state.selection = null;
@@ -395,10 +395,10 @@
     rowsInRange(section, side, start, end).forEach(function (row) { row.classList.add("row-selected"); });
   };
 
-  /** Selects every visual row between two rows (GitHub-style drag), then derives a line range on… */
+
   PR.selectRowRange = function (section, startRow, endRow, side) {
     PR.clearSelection();
-    // Use every diff row; split rows have line numbers on the number cells rather than on the <tr>,…
+
     var rows = Array.from(section.querySelectorAll("tr")).filter(function (row) {
       return row.querySelector("td.diff-num");
     });

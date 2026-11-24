@@ -1,14 +1,4 @@
-/**
- * Callers cannot turn a revision or a search query into a git option.
- *
- * Every one of these values comes from the browser, as a query parameter. A
- * value that starts with a dash is read by git as an option, and two of them
- * are dangerous: `--output=<path>` writes a file anywhere the user can write,
- * and `-O<script>` in `git grep` runs that script. Both were reachable over
- * plain HTTP with a GET request.
- *
- * Run: node tests/arg-guard.mjs
- */
+
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -47,7 +37,7 @@ try {
   await git("commit", "-am", "second");
   const head = (await git("rev-parse", "HEAD")).stdout.trim();
 
-  // A script git grep would run if the query reached it as an option.
+
   const proof = join(root, "search-ran.txt");
   await writeFile(join(repo, "run.sh"), `#!/bin/sh\necho RAN > '${proof}'\n`);
 

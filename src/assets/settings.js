@@ -1,4 +1,4 @@
-/** Settings panel + theme. */
+
 (function () {
   "use strict";
 
@@ -43,7 +43,7 @@
     if (PR.syncDiffModeButtons) PR.syncDiffModeButtons();
   };
 
-  /** Indent size for the tree, in pixels per nesting level. */
+
   PR.applyTreeIndent = function () {
     var size = clampIndent(PR.state.settings.treeIndent);
     PR.state.settings.treeIndent = size;
@@ -61,7 +61,7 @@
     return Math.max(PR.TREE_SIZE.MIN_INDENT, Math.min(PR.TREE_SIZE.MAX_INDENT, size));
   }
 
-  /** The toolbar button reflects the current filter instead of a fixed label. */
+
   PR.syncViewedToggle = function () {
     var button = document.getElementById("toggle-viewed");
     if (!button) return;
@@ -128,7 +128,7 @@
       PR.state.settings.treeIndent = Number(value);
       PR.applyTreeIndent();
     });
-    // A number input only fires `change` on blur/Enter; apply while typing too.
+
     var indentField = document.getElementById(FIELDS.treeIndent);
     if (indentField) {
       indentField.addEventListener("input", function () {
@@ -157,7 +157,7 @@
 
       PR.renderFileList();
     });
-    // A number input only fires `change` on blur/Enter; apply while typing too.
+
     var contextField = document.getElementById(FIELDS.contextCollapseLines);
     if (contextField) {
       contextField.addEventListener("input", function () {
@@ -184,7 +184,7 @@
     });
   };
 
-  /** The toolbar buttons must show which layout is on screen. */
+
   PR.syncDiffModeButtons = function () {
     var mode = PR.state.diffMode;
     document.querySelectorAll(".js-mode-opt").forEach(function (button) {
@@ -194,7 +194,7 @@
     });
   };
 
-  /** Switches the layout from the toolbar, the way the settings field does. */
+
   PR.setDiffMode = function (mode) {
     if (!mode || mode === PR.state.diffMode) return;
     PR.state.diffMode = mode;
@@ -205,7 +205,7 @@
     PR.syncDiffModeButtons();
   };
 
-  /** Sidebar visibility is a persisted layout choice, not a per-session tweak. */
+
   PR.applySidebar = function () {    var on = PR.state.settings.showSidebar;
     document.body.classList.toggle("no-sidebar", !on);
     var button = document.getElementById(PR.IDS.BTN_SIDEBAR);

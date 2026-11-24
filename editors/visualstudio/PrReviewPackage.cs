@@ -9,22 +9,13 @@ using Microsoft.VisualStudio.Shell.Interop;
 using Task = System.Threading.Tasks.Task;
 namespace PrReview.VisualStudio
 {
-    /// <summary>
-    /// The VS 2022 integration entry point.
-    ///
-    /// A menu button opens a tool window that hosts the review page in WebView2.
-    /// Everything the user reviews comes from the bundled Node server, so this
-    /// package is only a thin host: it starts the server and shows its URL.
-    /// </summary>
+
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [InstalledProductRegistration("PR Review", "Reviews the current branch in a tab.", "0.1.12")]
     [ProvideMenuResource("Menus.ctmenu", 1)]
-    // Load with a solution (the normal case) and with none, so the Tools entry
-    // and the toolbar button are there from the first second of a session.
+
     [ProvideAutoLoad(UIContextGuids80.SolutionExists, PackageAutoLoadFlags.BackgroundLoad)]
-    // No fixed size: an MDI tool window keeps the size it was created with, and
-    // a wide default is clipped by a narrow document area. The page then lays
-    // out for a viewport the user cannot see.
+
     [ProvideToolWindow(typeof(ReviewToolWindow), Style = VsDockStyle.MDI, MultiInstances = false)]
     [Guid(PackageGuidString)]
     public sealed class PrReviewPackage : AsyncPackage
@@ -33,7 +24,6 @@ namespace PrReview.VisualStudio
 
         private ServerRunner? _runner;
 
-        /// <summary>The one running server, shared with the tool window.</summary>
         internal static ServerRunner? Runner { get; private set; }
         internal static PrReviewPackage? Current { get; private set; }
 
@@ -46,10 +36,7 @@ namespace PrReview.VisualStudio
             Current = this;
 
             var commandService = await GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
-            // With the startup (NoSolution) autoload the shell may still be
-            // building its menus, and the service is not there yet. Retry
-            // instead of silently registering nothing — a package that loads
-            // without a command looks broken to the user.
+
             for (var attempt = 0; commandService == null && attempt < 40; attempt++)
             {
                 await Task.Delay(250, cancellationToken);
@@ -64,7 +51,6 @@ namespace PrReview.VisualStudio
             }
         }
 
-        /// <summary>Opens the tool window, starting the server on first use.</summary>
         private void OpenReview(object sender, EventArgs e)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
@@ -82,13 +68,6 @@ namespace PrReview.VisualStudio
             }
         }
 
-        /// <summary>
-        /// The folder of the open solution, or null when none is open.
-        ///
-        /// A Visual Studio process starts in its own installation folder, so the
-        /// tool window cannot use the current directory to find the code the user
-        /// opened.
-        /// </summary>
         internal string? SolutionDirectory()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
@@ -100,9 +79,6 @@ namespace PrReview.VisualStudio
             if (!string.IsNullOrWhiteSpace(directory)) return directory;
             if (!string.IsNullOrWhiteSpace(file)) return Path.GetDirectoryName(file);
 
-            // Visual Studio 18 Insiders can report an open solution while
-            // GetSolutionInfo returns empty strings. Fall back to the first
-            // loaded project, whose canonical path identifies the same folder.
             var empty = Guid.Empty;
             if (solution.GetProjectEnum((uint)__VSENUMPROJFLAGS.EPF_LOADEDINSOLUTION, ref empty, out IEnumHierarchies projects) == 0 &&
                 projects != null)
@@ -118,9 +94,6 @@ namespace PrReview.VisualStudio
                 }
             }
 
-            // Some Visual Studio 18 builds expose the solution through DTE
-            // before the IVsSolution path is populated. The selected document
-            // is a reliable fallback and identifies the same repository.
             if (GetService(typeof(IVsMonitorSelection)) is IVsMonitorSelection selection)
             {
                 selection.GetCurrentSelection(out IntPtr hierarchyPointer, out uint itemId, out _, out _);
@@ -151,7 +124,6 @@ namespace PrReview.VisualStudio
         }
     }
 
-    /// <summary>Identifiers shared by the command table and the package.</summary>
     internal static class CommandGuids
     {
         public const string CommandSetGuidString = "1c2e9f34-7a5b-4d68-9e01-2b3c4d5e6f70";

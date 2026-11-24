@@ -1,4 +1,4 @@
-/** Project file tree: all tracked files, coloured by change status. */
+
 (function () {
   "use strict";
 
@@ -6,10 +6,10 @@
 
   var STATUS_LETTER = PR.STATUS_LETTER;
 
-  /** Octicon-style 16px shapes; colour comes from CSS `currentColor`. */
+
   var SVG_OPEN = '<svg class="tree-svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false">';
   var SVG_CLOSE = "</svg>";
-  // Outer outline plus the inner hole: without it the icon renders as a blob.
+
   var DOC_PATH = "M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0 1 13.25 16h-9.5A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 9 4.25V1.5Zm6.75.062V4.25c0 .138.112.25.25.25h2.688l-.011-.013-2.914-2.914-.013-.011Z";
   var FOLDER_PATH = "M1.75 1A1.75 1.75 0 0 0 0 2.75v10.5C0 14.216.784 15 1.75 15h12.5A1.75 1.75 0 0 0 16 13.25v-8.5A1.75 1.75 0 0 0 14.25 3H7.5a.25.25 0 0 1-.2-.1l-.9-1.2C6.07 1.26 5.55 1 5 1Z";
   var CHEVRON_PATH = "M12.78 5.22a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L3.22 6.28a.75.75 0 0 1 1.06-1.06L8 8.94l3.72-3.72a.75.75 0 0 1 1.06 0Z";
@@ -45,7 +45,7 @@
 
   function statusOf(path) { return PR.state.changedMap[path] || "unchanged"; }
 
-  /** One 16px guide column per nesting level, like GitHub's tree lines. */
+
   function indent(depth) {
     var html = "";
     for (var i = 0; i < depth; i += 1) html += '<span class="tree-indent"></span>';
@@ -57,10 +57,10 @@
     var query = state.treeFilter.trim().toLowerCase();
     var nodes = buildNodes(state.allFiles);
 
-    // The search box is created once. Rebuilding it on every keystroke replaced
-    // the focused input mid-typing: the caret jumped to the end and the next
-    // character landed wherever the browser decided, so a fast typist lost
-    // letters. Only the list below it is redrawn while the user types.
+
+
+
+
     if (!PR.els.tree.querySelector(".tree-head")) {
       PR.setHtml(PR.els.tree,
         '<div class="tree-head">' +
@@ -147,7 +147,7 @@
       "</a></div>";
   }
 
-  /** Auto-expands folders that contain changed files. */
+
   function expandChangedPaths() {
     var seen = {};
     PR.state.files.forEach(function (file) {
@@ -161,15 +161,15 @@
         var row = PR.els.tree.querySelector('.tree-row[data-path="' + PR.cssEscape(prefix) + '"][data-dir="true"]');
         if (!row) continue;
         var wrap = row.closest(".tree-node").querySelector(".tree-children");
-        if (wrap && wrap.classList.contains("hidden")) {
-          wrap.classList.remove("hidden");
+        if (wrap && wrap.classList.contains(PR.SELECTORS.HIDDEN)) {
+          wrap.classList.remove(PR.SELECTORS.HIDDEN);
           row.querySelector(".tree-chevron").classList.remove("collapsed");
         }
       }
     });
   }
 
-  /** Updates one row in place (used after commenting / viewing) without re-rendering the tree. */
+
   PR.updateTreeFileRow = function (path) {
     var row = PR.els.tree.querySelector('.tree-row[data-path="' + PR.cssEscape(path) + '"][data-dir="false"]');
     if (!row) return;
@@ -189,7 +189,7 @@
     }
   };
 
-  /** Marks the tree row of the file currently in view. */
+
   PR.setActiveTreeFile = function (path) {
     var rows = PR.els.tree.querySelectorAll(PR.SELECTORS.TREE_ROW + ".is-active");
     for (var i = 0; i < rows.length; i += 1) rows[i].classList.remove("is-active");
@@ -213,7 +213,7 @@
     );
   }
 
-  /** False when any ancestor folder is folded or collapsed. */
+
   function isTreeRowVisible(row) {
     var node = row.parentElement;
     while (node && node !== PR.els.tree) {
@@ -223,7 +223,7 @@
     return true;
   }
 
-  /** Expands every folder on the way to a file so its row becomes visible. */
+
   PR.revealTreePath = function (path) {
     var parts = path.split("/");
     var prefix = "";
@@ -236,43 +236,43 @@
       if (!dirRow) continue;
 
       var wrap = dirRow.closest(".tree-node").querySelector(PR.SELECTORS.TREE_CHILDREN);
-      if (wrap && wrap.classList.contains("hidden")) {
-        wrap.classList.remove("hidden");
+      if (wrap && wrap.classList.contains(PR.SELECTORS.HIDDEN)) {
+        wrap.classList.remove(PR.SELECTORS.HIDDEN);
         var chevron = dirRow.querySelector(PR.SELECTORS.TREE_CHEVRON);
         if (chevron) chevron.classList.remove("collapsed");
       }
     }
   };
 
-  /** Scrolls the tree pane (only it) so the active row is centred. */
+
   function scrollTreeTo(row) {
     var pane = PR.els.tree;
     var paneRect = pane.getBoundingClientRect();
     var rowRect = row.getBoundingClientRect();
 
     if (rowRect.top >= paneRect.top && rowRect.bottom <= paneRect.bottom) return;
-    // offsetTop is relative to offsetParent, not to the scroll pane, so use the measured rectangles…
+
     var delta = rowRect.top - paneRect.top - (pane.clientHeight - rowRect.height) / 2;
     pane.scrollTo({ top: Math.max(0, pane.scrollTop + delta), behavior: "smooth" });
   }
 
-  /** Explicit navigation wins over the scroll spy until the user scrolls. */
+
   PR.pinActiveTreeFile = function (path) {
     PR.state.spySuppressed = true;
     PR.state.activePinnedPath = path;
     PR.setActiveTreeFile(path);
   };
 
-  /** Released by a real user gesture, never by programmatic scrolling. */
+
   PR.releaseTreePin = function () {
     PR.state.spySuppressed = false;
   };
 
-  /** Tiny press animation, used on click targets that change the pane. */
+
   PR.pressFeedback = function (element) {
     if (!element || !element.classList) return;
     element.classList.remove("is-pressing");
-    // Force a reflow so the animation restarts on repeated clicks.
+
     void element.offsetWidth;
     element.classList.add("is-pressing");
     setTimeout(function () { element.classList.remove("is-pressing"); }, 220);

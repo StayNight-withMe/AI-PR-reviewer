@@ -1,13 +1,4 @@
-/**
- * A malformed submit is answered, not fatal.
- *
- * Everything here is a body the page could send, either because of a bug on its
- * side or because the request came from somewhere else. A wrong type used to
- * crash the submit with a 500, a stored `null` comment broke the next page load,
- * and an oversized body reset the connection instead of explaining itself.
- *
- * Run: node tests/bad-input.mjs
- */
+
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";

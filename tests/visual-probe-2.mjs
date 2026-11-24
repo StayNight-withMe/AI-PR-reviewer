@@ -1,10 +1,4 @@
-/**
- * Second visual probe: the states the first one did not touch — comments on the
- * page, a long path, deep tree nesting, the comment picker, the light theme at a
- * narrow width, and the position a file lands at after a jump from the tree.
- *
- * Run: node tests/visual-probe-2.mjs
- */
+
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -248,7 +242,7 @@ try {
     await shot(size.name);
   }
 
-  // Comments on the page: a line comment, a file comment, and a note image.
+
   await driver.manage().window().setRect({ width: 1440, height: 900 });
   await driver.get(review.url);
   await waitReady();
@@ -270,7 +264,7 @@ try {
   await shot("state-comments");
   results.push({ size: "desktop-1440", state: "comments", ...(await driver.executeScript(MEASURE)) });
 
-  // The same page with a file header whose path is long enough to be cut.
+
   const longPathRow = await driver.executeScript(`return (function () {
     var headers = [...document.querySelectorAll('.diff-file-header')];
     var target = headers.map(function (h) { return h.querySelector('.path'); })
@@ -280,7 +274,7 @@ try {
   })()`);
   results.push({ size: "desktop-1440", state: "long-path", longPath: longPathRow });
 
-  // Jump from the tree must not land the file under the sticky chrome.
+
   const landing = await driver.executeScript(`return (async function () {
     var row = [...document.querySelectorAll('.tree-row[data-dir="false"]')].pop();
     row.click();
@@ -300,7 +294,7 @@ try {
   results.push({ size: "desktop-1440", state: "tree-jump", landing });
   await shot("state-tree-jump");
 
-  // The commit picker at a narrow width.
+
   for (const size of [{ name: "tablet-768", width: 768, height: 1024 }, { name: "phone-390", width: 390, height: 844 }]) {
     await driver.manage().window().setRect({ width: size.width, height: size.height });
     await driver.get(review.url);
@@ -318,7 +312,7 @@ try {
     await shot(`${size.name}-commit-picker`);
   }
 
-  // Light theme at a phone width: colours were only checked on a wide screen.
+
   await driver.manage().window().setRect({ width: 390, height: 844 });
   await driver.get(review.url);
   await waitReady();

@@ -1,26 +1,4 @@
-/**
- * Makes the GitHub CLI available for `mode=pr`.
- *
- * Reviewing a pull request uses `gh` (the GitHub CLI), which owns the token,
- * the host and the authentication. Rather than ask the user to install it by
- * hand, this script checks for `gh` and offers to install it with the platform's
- * own package manager. It is deliberately conservative:
- *
- *   - a tool the user already has is never touched;
- *   - `--check` only reports (exit 0 = ready, 1 = missing), for CI and the
- *     postinstall hook;
- *   - `--install` is the only mode that changes the machine, and only when the
- *     package manager reports success;
- *   - a sandboxed or offline environment is not an error: it prints the exact
- *     command the user can run later.
- *
- * Usage:
- *   node scripts/ensure-gh.mjs             # report, install when possible
- *   node scripts/ensure-gh.mjs --check     # report only (CI / postinstall)
- *   node scripts/ensure-gh.mjs --check --never-fail   # postinstall: never fails
- *   node scripts/ensure-gh.mjs --install   # install if missing
- *   node scripts/ensure-gh.mjs --json      # machine-readable result
- */
+
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import { promisify } from "node:util";
@@ -43,7 +21,7 @@ const PACKAGE_MANAGERS = {
   ],
 };
 const DOCS_URL = "https://cli.github.com";
-/** True when the `gh` binary answers. */
+
 async function ghPresent(binary) {
   try {
     await exec(binary, ["--version"], { windowsHide: true, timeout: 15_000 });
@@ -52,7 +30,7 @@ async function ghPresent(binary) {
     return false;
   }
 }
-/** The first package manager that exists on this machine. */
+
 async function findPackageManager() {
   const platform = process.platform === "win32"
     ? "win32"
@@ -73,7 +51,7 @@ async function commandExists(bin) {
     return false;
   }
 }
-/** Installs `gh` with the platform manager; returns a result, never throws. */
+
 async function install(packageManager) {
   const command = packageManager.sudo ? "sudo" : packageManager.bin;
   const args = packageManager.sudo ? [packageManager.bin, ...packageManager.args] : packageManager.args;
@@ -114,7 +92,7 @@ async function main() {
   if (present) {
     result.authenticated = await ghAuthenticated(binary);
   } else if (!checkOnly) {
-    // --install, or the default mode: try the platform manager.
+
     const manager = await findPackageManager();
     if (manager) {
       const outcome = await install(manager);

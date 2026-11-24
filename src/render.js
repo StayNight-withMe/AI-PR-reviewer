@@ -41,7 +41,7 @@ export function escapeHtml(value) {
     .replace(/>/g, RENDER.HTML_GT)
     .replace(/"/g, RENDER.HTML_QUOTE);
 }
-/** The PR badge in the header: a link to the pull request, with its state. */
+
 function prBadge(pr) {
   if (!pr) return P.EMPTY;
   const label = pr.number ? `#${pr.number}` : "PR";
@@ -63,8 +63,8 @@ const GITHUB_MARK =
 export async function buildPage(meta, files, stats, allFiles, comments, reviewState, options = {}) {
   const assets = await loadAssets();
 
-  // A pull-request review is published to GitHub, so "comment" is the honest
-  // default there: posting notes must not block the pull request by accident.
+
+
   const defaultVerdict = meta.pr ? REVIEW_STATE.COMMENT : REVIEW_STATE.REQUEST_CHANGES;
 
   const data = {
@@ -74,7 +74,7 @@ export async function buildPage(meta, files, stats, allFiles, comments, reviewSt
     base: meta.base,
     head: meta.head,
     mode: meta.mode,
-    // The header and the publish action need the pull request, not just its scope.
+
     pr: meta.pr ? { number: meta.pr.number ?? null, url: meta.pr.url ?? P.EMPTY } : null,
     commits: meta.commits ?? P.EMPTY_ARRAY,
     files,
@@ -448,8 +448,8 @@ ${assets.hljsScript ? `<script>${assets.hljsScript}</script>` : P.EMPTY}
 }
 export function buildMarkdown(meta, review) {
   const lines = [];
-  // A submit may omit the summary (an API client, an older page, a test): the
-  // Markdown must still be produced instead of failing the whole request.
+
+
   const summary = review.summary ?? P.EMPTY_OBJECT;
   const pending = summary.files === undefined;
 
@@ -493,7 +493,7 @@ export function buildMarkdown(meta, review) {
     lines.push(P.EMPTY);
     lines.push(review.reviewBody);
   }
-  // Screenshots attached to the note: saved next to review.json, so the path stays relative.
+
   for (const image of review.noteImages ?? P.EMPTY_ARRAY) {
     if (image.file) lines.push(P.EMPTY, `![attachment](${image.file})`);
   }
