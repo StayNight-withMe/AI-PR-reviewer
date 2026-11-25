@@ -299,8 +299,9 @@
         var settings = result.settings;
         if (settings.diffMode) {
           PR.state.diffMode = settings.diffMode;
-          delete settings.diffMode;
         }
+        // Server wins over anything local: it is the same person, the same
+        // choices, and the only copy that survives a new port or browser.
         PR.state.settings = Object.assign(PR.state.settings, settings);
       })
       .catch(function () {});
@@ -317,13 +318,11 @@
 
 
   function restoreSettings(saved) {
+    // The server copy is the source of truth: it follows the person across
+    // reviews and ports. The browser copy only fills what the server does not
+    // know yet, so a stale localStorage value never overrides a saved choice.
     var device = readSettings();
-
-    PR.state.settings = Object.assign(PR.state.settings, saved.settings || {});
-
-    var deviceSettings = Object.assign({}, device);
-    delete deviceSettings.diffMode;
-    PR.state.settings = Object.assign(PR.state.settings, deviceSettings);
+    PR.state.settings = Object.assign(PR.state.settings, device, saved.settings || {});
   }
 
 

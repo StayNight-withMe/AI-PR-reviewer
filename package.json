@@ -7,7 +7,8 @@
   "bin": {
     "pr-review-mcp": "src/index.js",
     "pr-review": "src/cli.js",
-    "pr": "src/pr.js"
+    "pr": "src/pr.js",
+    "review": "src/pr.js"
   },
   "scripts": {
     "start": "node src/index.js",
