@@ -300,22 +300,30 @@ function splitRepo(repo) {
 }
 
 async function graphql(repoPath, query, variables) {
-  const result = await gh(repoPath, GH.ARGS_GRAPHQL, {
-    allowFailure: true,
-    input: JSON.stringify({ query, variables }),
-  });
-  if (!result.ok) throw result.error;
-
-  let parsed;
-  try {
-    parsed = JSON.parse(result.stdout);
-  } catch {
-    throw new Error(GH.ERROR_BAD_JSON);
+  // GitHub intermittently answers its own mutations with "Something went
+  // wrong"; a short retry turns that flap into a working call without
+  // hiding a real failure, which still surfaces after the last attempt.
+  let lastError = null;
+  for (let attempt = P.ZERO; attempt < GH.GRAPHQL_RETRIES; attempt += P.ONE) {
+    const result = await gh(repoPath, GH.ARGS_GRAPHQL, {
+      allowFailure: true,
+      input: JSON.stringify({ query, variables }),
+    });
+    if (!result.ok) {
+      lastError = result.error;
+    } else {
+      let parsed;
+      try {
+        parsed = JSON.parse(result.stdout);
+      } catch {
+        throw new Error(GH.ERROR_BAD_JSON);
+      }
+      if (!Array.isArray(parsed.errors) || !parsed.errors.length) return parsed.data;
+      lastError = new Error(`${GH.ERROR_VIEWED_FAILED}${parsed.errors[P.ZERO]?.message ?? P.EMPTY}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, GH.GRAPHQL_RETRY_DELAY_MS));
   }
-  if (Array.isArray(parsed.errors) && parsed.errors.length) {
-    throw new Error(`${GH.ERROR_VIEWED_FAILED}${parsed.errors[P.ZERO]?.message ?? P.EMPTY}`);
-  }
-  return parsed.data;
+  throw lastError;
 }
 
 // GitHub keeps "viewed" per user on its own server, so it survives a new local

@@ -132,6 +132,8 @@ export const GH = {
     UNVIEWED: "UNVIEWED",
   },
   VIEWED_PAGE_LIMIT: 50,
+  GRAPHQL_RETRIES: 4,
+  GRAPHQL_RETRY_DELAY_MS: 1500,
   FLAG_METHOD: "--method",
   FLAG_INPUT: "--input",
   STDIN: "-",
