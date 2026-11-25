@@ -7,7 +7,7 @@ import { buildFilePage, buildMarkdown, buildPage, loadAssets, reviewId } from ".
 import { servePage, writeReviewFiles } from "./server.js";
 import { buildSymbolIndex } from "./symbols.js";
 import { readFileForViewer, readFilesForHighlight } from "./fileview.js";
-import { MODE_LABELS, DIFF, GIT, MODE, P, REVIEW_STATE, SERVER } from "./config.js";
+import { MODE_LABELS, DIFF, GH, GIT, MODE, P, REVIEW_STATE, SERVER } from "./config.js";
 import { removeLegacyArtifacts, reviewDir } from "./artifacts.js";
 import { repoLabel } from "./models/repo.js";
 import { resolveScope } from "./models/scope.js";
@@ -17,7 +17,7 @@ import { attachGapMetadata } from "./models/gaps.js";
 import { readReviewOwner, writeReviewOwner } from "./models/owner.js";
 import { markOutdated, readThreads, withSnippets, writeThreads } from "./models/threads.js";
 import { buildDispatchMessage, buildDispatchPrompt, currentSessionId, dispatchToSession, resolveSessionId, writeDispatchPrompt } from "./dispatch.js";
-import { publishReview } from "./github.js";
+import { publishReview, pullRequestViewedFiles, setPullRequestFileViewed } from "./github.js";
 export { MODE_LABELS, repoLabel };
 
 const AGENT_REASON_EMPTY_REVIEW = "The review has no comments or summary, so there is nothing to fix.";
@@ -232,6 +232,39 @@ export async function startReview(params) {
     ? (review) => publishReview(root, { review, pr: meta.pr, repo: meta.pr.repo })
     : null;
 
+  // GitHub owns "viewed": the same person sees the same checked files on the
+  // page as on github.com, and the state survives new commits and a new port.
+  // The node id is cached for the life of the page, since it never changes.
+  let viewedPullRequestId = null;
+  const getViewed = !meta.pr
+    ? null
+    : async () => {
+      const snapshot = await pullRequestViewedFiles(root, meta.pr.repo, meta.pr.number);
+      viewedPullRequestId = snapshot.id ?? viewedPullRequestId;
+      return { available: Boolean(snapshot.id), ...snapshot };
+    };
+  const setViewed = !meta.pr
+    ? null
+    : async ({ path, viewed }) => {
+      // Only a file that is part of this pull request can be marked viewed;
+      // GitHub would reject anything else, so refuse it before the call.
+      const known = new Set(files.map((file) => file.path));
+      if (!known.has(path)) throw new Error(`Not a file of this pull request: ${path}`);
+
+      if (!viewedPullRequestId) {
+        const snapshot = await pullRequestViewedFiles(root, meta.pr.repo, meta.pr.number);
+        viewedPullRequestId = snapshot.id;
+      }
+      if (!viewedPullRequestId) {
+        throw new Error(`${GH.ERROR_VIEWED_FAILED}cannot resolve the pull request id.`);
+      }
+      return setPullRequestFileViewed(root, {
+        pullRequestId: viewedPullRequestId,
+        path,
+        viewed,
+      });
+    };
+
   const page = await servePage({
     html,
     outputDir,
@@ -259,6 +292,8 @@ export async function startReview(params) {
       const anchored = await withSnippets(list, reviewedLines);
       return writeThreads(root, meta, anchored);
     },
+    getViewed,
+    setViewed,
     findUsages: (name) => usages[name] ?? [],
     renameCommit: (sha, message, options) => renameCommitMessage(root, sha, message, options),
     listCommits: () => loadLiveCommits(root, scope),

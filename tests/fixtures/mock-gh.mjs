@@ -114,6 +114,53 @@ if (argv[0] === "pr" && argv[1] === "review") {
   process.stdout.write(`Reviewed pull request #${number}\n`);
   process.exit(0);
 }
+if (argv[0] === "api" && argv[1] === "graphql") {
+  const db = await loadDb();
+  if (db.auth === false) fail("You are not logged into any GitHub hosts. Run gh auth login.", 1);
+  if (!argv.includes("--input")) fail("mock gh api graphql: expected --input -", 2);
+
+  const body = JSON.parse(await readStdin());
+  const query = String(body.query ?? "");
+  const variables = body.variables ?? {};
+  const viewed = db.viewed ?? {};
+
+  const prKey = String(variables.number ?? db.default ?? "");
+  const pull = db.pullRequests?.[prKey];
+  if (!pull) fail(`Could not resolve to a PullRequest with the number of ${prKey}.`, 1);
+
+  const pullRequestId = db.pullRequestId ?? `PR_mock_${prKey}`;
+  const files = viewed[prKey] ?? {};
+
+  if (/FileAsViewed/.test(query)) {
+    const path = String(variables.path ?? "");
+    if (!path) fail("mock gh graphql: missing path", 2);
+    // unmarkFileAsViewed contains markFileAsViewed as a substring, so the
+    // unmark check must come first.
+    const mark = !/unmarkFileAsViewed/.test(query);
+    files[path] = mark ? "VIEWED" : "UNVIEWED";
+    viewed[prKey] = files;
+    db.viewed = viewed;
+    await saveDb(db);
+    process.stdout.write(JSON.stringify({
+      data: { [mark ? "markFileAsViewed" : "unmarkFileAsViewed"]: { pullRequest: { id: pullRequestId } } },
+    }) + "\n");
+    process.exit(0);
+  }
+
+  // The reviewed-files query: every tracked path plus the real PR files.
+  const nodes = Object.keys(files).map((path) => ({ path, viewerViewedState: files[path] }));
+  process.stdout.write(JSON.stringify({
+    data: {
+      repository: {
+        pullRequest: {
+          id: pullRequestId,
+          files: { nodes, pageInfo: { hasNextPage: false, endCursor: null } },
+        },
+      },
+    },
+  }) + "\n");
+  process.exit(0);
+}
 if (argv[0] === "api") {
 
   const db = await loadDb();
@@ -155,11 +202,14 @@ async function recordReview(db, review) {
   const entry = { id: published.length + 1, ...review, at: new Date().toISOString() };
   published.push(entry);
   db.publishedReviews = published;
+  await saveDb(db);
+  return entry;
+}
 
+async function saveDb(db) {
   const body = JSON.stringify(db, null, 2);
   const { writeFile } = await import("node:fs/promises");
   await writeFile(process.env.MOCK_GH_DB, body, "utf8");
-  return entry;
 }
 
 function readStdin() {

@@ -24,6 +24,7 @@
     VERSION: "/api/version",
     SETTINGS: "/api/settings",
     THREADS: "/api/threads",
+    VIEWED: "/api/viewed",
   };
 
   window.PR.REVIEW_STATE = {
