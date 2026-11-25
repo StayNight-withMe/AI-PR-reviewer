@@ -1,16 +1,18 @@
 {
   "name": "pr-review-mcp",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "GitHub-style pull request review UI as an MCP server: builds a local review page for uncommitted changes, branch commits or explicit commits, collects inline comments and exports the review as Markdown/JSON for an AI.",
   "type": "module",
   "main": "src/index.js",
   "bin": {
     "pr-review-mcp": "src/index.js",
-    "pr-review": "src/cli.js"
+    "pr-review": "src/cli.js",
+    "pr": "src/pr.js"
   },
   "scripts": {
     "start": "node src/index.js",
     "review": "node src/cli.js",
+    "pr": "node src/pr.js",
     "review:serve": "node scripts/serve-5454.js",
     "test": "node --test tests/unit.mjs tests/github-unit.mjs tests/settings-unit.mjs tests/config.test.mjs",
     "test:ui": "node tests/e2e.mjs",
@@ -26,6 +28,9 @@
     "test:editors:configs": "python tests/editors_configs.py",
     "test:github": "node tests/github.mjs",
     "test:pr": "node tests/pr-mode.mjs",
+    "test:pr:command": "node tests/pr-command.mjs",
+    "test:update": "node tests/self-update.mjs",
+    "update": "node scripts/self-update.mjs",
     "test:publish": "node tests/publish.mjs",
     "test:pr:flow": "node tests/pr-publish-flow.mjs",
     "test:committed": "node tests/committed-content.mjs",
@@ -44,7 +49,7 @@
     "gh:check": "node scripts/ensure-gh.mjs --check",
     "gh:install": "node scripts/ensure-gh.mjs --install",
     "postinstall": "node scripts/ensure-gh.mjs --check --never-fail",
-    "test:all": "npm run test && npm run test:session && npm run test:session:isolation && npm run test:cli && npm run test:synthetic && npm run test:page && npm run test:mcp && npm run test:github && npm run test:pr && npm run test:publish && npm run test:committed && npm run test:logic && npm run test:threads && npm run test:pr:ui && npm run test:pr:flow && npm run test:artifacts && npm run test:header:ui && npm run test:resolve && npm run test:defects && npm run test:foreign && npm run test:bad-input && npm run test:rename && npm run test:path-guard && npm run test:arg-guard && npm run test:note-images && npm run test:settings && npm run test:editors && npm run test:editors:vscode && npm run test:editors:vscode:package && npm run test:ui:regressions && npm run test:layout && npm run test:ui:suite && npm run test:ui && npm run test:ui:extra",
+    "test:all": "npm run test && npm run test:session && npm run test:session:isolation && npm run test:cli && npm run test:synthetic && npm run test:page && npm run test:mcp && npm run test:github && npm run test:pr && npm run test:publish && npm run test:committed && npm run test:logic && npm run test:threads && npm run test:pr:ui && npm run test:pr:flow && npm run test:artifacts && npm run test:header:ui && npm run test:resolve && npm run test:defects && npm run test:foreign && npm run test:bad-input && npm run test:rename && npm run test:path-guard && npm run test:arg-guard && npm run test:note-images && npm run test:settings && npm run test:pr:command && npm run test:update && npm run test:editors && npm run test:editors:vscode && npm run test:editors:vscode:package && npm run test:ui:regressions && npm run test:layout && npm run test:ui:suite && npm run test:ui && npm run test:ui:extra",
     "test:arg-guard": "node tests/arg-guard.mjs",
     "test:path-guard": "node tests/path-guard.mjs",
     "test:rename": "node tests/commit-rename.mjs",

@@ -33,7 +33,7 @@ export const P = {
 
 export const APP = {
   NAME: "pr-review",
-  VERSION: "1.2.0",
+  VERSION: "1.3.0",
 
   PROTOCOL_VERSION: "1",
 };
@@ -380,8 +380,15 @@ export const GIT = {
   STATUS_RENAMED: "renamed",
   STATUS_MODIFIED: "modified",
   ENOENT: "ENOENT",
-  ERROR_NOT_INSTALLED: "git executable not found. Install Git and make sure it is on PATH.",
-  ERROR_NOT_A_REPO: "Not a git repository: ",
+  ERROR_NOT_INSTALLED: "Git was not found. Install Git (https://git-scm.com/downloads) and restart Visual Studio so the new PATH is picked up.",
+  ERROR_NOT_A_REPO: "This folder is not a Git repository: ",
+  ERROR_FOLDER_MISSING: "This folder does not exist: ",
+  ERROR_GIT_GUIDE:
+    "Open a folder that contains a .git directory in Visual Studio, or run `git init` in it, then press PR Review again.",
+  ERROR_EMPTY_REPO:
+    "This repository has no commits yet, so there is nothing to review. Make a commit first.",
+  ERROR_NO_BRANCH:
+    "This repository has no branch checked out (or it is detached). Create or switch to a branch, then press PR Review again.",
 
   ERROR_BAD_REF: "Not a valid revision: ",
 

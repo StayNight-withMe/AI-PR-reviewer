@@ -28,9 +28,13 @@ export function resetGitBinary() {
 export async function git(repoPath, args, { allowFailure = true, input } = {}) {
   const binary = resolveGitBinary();
 
-
-
   const safeArgs = [...GIT.ARGS.QUOTE_PATH_OFF, ...args];
+  // Node reports a missing working directory and a missing binary with the same
+  // ENOENT, and blaming Git for a folder that does not exist sends the user to
+  // reinstall software that is already installed. Check what is actually wrong.
+  if (!existsSync(repoPath)) {
+    throw new Error(`${GIT.ERROR_FOLDER_MISSING}${repoPath}`);
+  }
   try {
     const { stdout } = await exec(binary, safeArgs, {
       cwd: repoPath,
@@ -56,7 +60,9 @@ export async function git(repoPath, args, { allowFailure = true, input } = {}) {
 export async function resolveRepo(repoPath) {
   const { ok, stdout, stderr } = await git(repoPath, GIT.ARGS.REV_PARSE_TOPLEVEL);
   if (!ok) {
-    throw new Error(`${GIT.ERROR_NOT_A_REPO}${repoPath}${stderr ? ` (${stderr.trim()})` : P.EMPTY}`);
+    throw new Error(
+      `${GIT.ERROR_NOT_A_REPO}${repoPath}${stderr ? ` (${stderr.trim()})` : P.EMPTY}. ${GIT.ERROR_GIT_GUIDE}`,
+    );
   }
   return stdout.trim();
 }
