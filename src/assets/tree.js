@@ -94,7 +94,7 @@
 
       if (query && !matches(child, path, query, isDir)) continue;
 
-      html += isDir ? renderDir(name, path, child, depth, query) : renderFile(name, path, child, depth);
+      html += isDir ? renderDir(name, path, child, depth, query, !!query) : renderFile(name, path, child, depth);
     }
     return html;
   }
@@ -116,15 +116,19 @@
     return false;
   }
 
-  function renderDir(name, path, child, depth, query) {
+  function renderDir(name, path, child, depth, query, expanded) {
+    // A search hides everything that does not match, so a matching folder is
+    // opened: the file the person searched for must be visible, not one
+    // expansion away.
+    var open = expanded === true;
     return '<div class="tree-node" data-path="' + PR.escapeHtml(path) + '">' +
       '<div class="tree-row dir" data-path="' + PR.escapeHtml(path) + '" data-dir="true">' +
         indent(depth) +
-        '<span class="tree-chevron collapsed">' + chevronIcon() + "</span>" +
+        '<span class="tree-chevron' + (open ? "" : " collapsed") + '">' + chevronIcon() + "</span>" +
         '<span class="tree-icon folder">' + folderIcon() + "</span>" +
         '<span class="tree-label">' + PR.escapeHtml(name) + "</span>" +
       "</div>" +
-      '<div class="tree-children hidden">' + renderNode(child.children, depth + 1, path, query) + "</div>" +
+      '<div class="tree-children' + (open ? "" : " hidden") + '">' + renderNode(child.children, depth + 1, path, query) + "</div>" +
     "</div>";
   }
 

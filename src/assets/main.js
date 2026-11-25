@@ -557,6 +557,7 @@
     if (input.id === PR.IDS.FILTER_INPUT) {
       PR.state.filter = input.value;
       PR.renderFileList();
+      if (PR.closeInlineFile && input.value.trim()) PR.closeInlineFile();
       restoreCaret(PR.IDS.FILTER_INPUT);
       return;
     }

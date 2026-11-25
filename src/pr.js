@@ -21,6 +21,7 @@ import { GH, MODE, P, SERVER } from "./config.js";
 
 const USAGE = [
   "Usage: pr <pull-request> [options]",
+  "       review <pull-request> [options]      (the same command)",
   "",
   "  <pull-request>  a GitHub PR URL (https://github.com/owner/repo/pull/123),",
   "                  a short form (owner/repo#123), or a plain number",

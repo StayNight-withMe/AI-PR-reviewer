@@ -97,6 +97,11 @@ try {
       var out = {
         open: modal.classList.contains('show'),
         hasPublish: !!document.getElementById('btn-publish-github'),
+        // A pull request review is published to GitHub; it must not offer the
+        // local save or the AI hand-off.
+        hasSubmitLocally: !!document.getElementById('btn-dispatch-submit'),
+        hasSendSwitch: !!document.getElementById('dispatch-send'),
+        footerButtons: [].slice.call(modal.querySelectorAll('.modal-footer button')).map(function (b) { return b.textContent.trim(); }),
         verdicts: [].slice.call(modal.querySelectorAll('input[name="review-verdict"]')).map(function (i) { return i.value; }),
         defaultVerdict: checked ? checked.value : null,
       };
@@ -105,6 +110,9 @@ try {
     })();`);
     assert.equal(state.open, true, "the dialog did not open");
     assert.equal(state.hasPublish, true, "a pull request review must be publishable from the page");
+    assert.equal(state.hasSubmitLocally, false, "a pull request review must not offer a local save");
+    assert.equal(state.hasSendSwitch, false, "a pull request review must not offer the AI hand-off");
+    assert.deepEqual(state.footerButtons, ["Cancel", "Publish to GitHub"], `unexpected dialog buttons: ${state.footerButtons.join(", ")}`);
     assert.deepEqual(state.verdicts.sort(), ["APPROVE", "COMMENT", "REQUEST_CHANGES"]);
     assert.equal(state.defaultVerdict, "COMMENT", "posting notes must not block the pull request by default");
   });

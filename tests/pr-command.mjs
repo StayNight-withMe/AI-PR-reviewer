@@ -160,15 +160,17 @@ try {
     assert.match(output, /owner\/repo#123/);
   });
 
-  await check("running outside a Git repository says what to do", async () => {
+  await check("outside any repository a plain number explains what to pass", async () => {
+    // With only a number there is no repository to clone, so the command must
+    // say what it needs instead of guessing.
     const empty = await mkdtemp(join(tmpdir(), "pr-command-empty-"));
     try {
-      const output = await runFailing([`https://github.com/acme/fixture/pull/${PR_NUMBER}`, "--no-open"], {
+      const output = await runFailing([String(PR_NUMBER), "--no-open"], {
         cwd: empty,
         timeoutMs: 30_000,
       });
-      assert.match(output, /not a Git repository/);
-      assert.match(output, /checkout/);
+      assert.match(output, /needs a checkout|not a Git repository/);
+      assert.match(output, /--repo|URL/);
     } finally {
       await rm(empty, { recursive: true, force: true });
     }

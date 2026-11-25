@@ -365,10 +365,16 @@
         if (!result || !result.ok || !Array.isArray(result.branches)) return;
 
         var current = PR.DATA.branch;
-        select.innerHTML = result.branches.map(function (branch) {
+        var options = result.branches.slice();
+        // A pull request review can be on a branch the checkout does not have
+        // (a scratch clone, a fork head); the reviewed branch must still be in
+        // the list and selected, not silently replaced by the first branch.
+        if (current && options.indexOf(current) === -1) options.unshift(current);
+        select.innerHTML = options.map(function (branch) {
           return '<option value="' + PR.escapeHtml(branch) + '"' +
             (branch === current ? " selected" : "") + ">" + PR.escapeHtml(branch) + "</option>";
         }).join("");
+        select.value = current || (options[0] || "");
         PR.syncBranchHint();
       })
       .catch(function () {

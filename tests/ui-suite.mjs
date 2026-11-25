@@ -847,6 +847,42 @@ try {
     assert.ok(state.restored > state.filters.length, "clearing the filter did not restore the tree");
   });
 
+  await check("a filtered file is already visible, not hidden inside collapsed folders", async () => {
+    const state = await js(`(async () => {
+      const input = document.getElementById('tree-filter-input');
+      input.value = 'Widget';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      await new Promise(r => setTimeout(r, 500));
+
+      const visible = (el) => {
+        if (!el) return false;
+        let node = el.parentElement;
+        while (node) {
+          if (node.classList && node.classList.contains('hidden')) return false;
+          node = node.parentElement;
+        }
+        const rect = el.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      };
+      const rows = [...document.querySelectorAll('.tree-row[data-dir="false"]')];
+      const out = {
+        files: rows.map(r => ({ path: r.dataset.path, visible: visible(r) })),
+        collapsedFolders: [...document.querySelectorAll('.tree-chevron.collapsed')]
+          .filter(c => visible(c.closest('.tree-row'))).length,
+      };
+      input.value = '';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      await new Promise(r => setTimeout(r, 400));
+      return out;
+    })()`);
+    assert.ok(state.files.length >= 1, "the filter matched nothing");
+    assert.ok(
+      state.files.every((file) => file.visible),
+      `a searched file is hidden behind a collapsed folder: ${JSON.stringify(state.files)}`,
+    );
+    assert.equal(state.collapsedFolders, 0, "a folder matched by the search stayed collapsed");
+  });
+
   await check("the viewer page renders the whole file with line numbers", async () => {
     const reviewHandle = await driver.getWindowHandle();
     const served = await js(`fetch('/api/file?path=' + encodeURIComponent('src/widgets/Widget.cs'))

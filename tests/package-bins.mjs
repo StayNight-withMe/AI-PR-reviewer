@@ -28,6 +28,10 @@ await check("package.json declares the pr command", () => {
   assert.equal(pkg.bin?.pr, "src/pr.js", "the pr command is not declared in bin");
 });
 
+await check("review is an alias of the pr command", () => {
+  assert.equal(pkg.bin?.review, pkg.bin?.pr, "review must run the same entry point as pr");
+});
+
 for (const [name, file] of bins) {
   await check(`${name} starts with a Node shebang`, async () => {
     const source = await readFile(join(ROOT, "..", file), "utf8");
