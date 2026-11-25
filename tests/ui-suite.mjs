@@ -809,6 +809,82 @@ try {
     assert.deepEqual(state.restored, state.before, "clearing the filter did not restore the tree");
   });
 
+  await check("the file filter can search all files, not just the changed ones", async () => {
+    const state = await js(`(async () => {
+      const button = document.getElementById('toggle-scope');
+      const before = {
+        text: button.textContent.trim(),
+        pressed: button.getAttribute('aria-pressed'),
+        placeholder: document.getElementById('filter-input').placeholder,
+      };
+
+      button.click();
+      await new Promise(r => setTimeout(r, 200));
+      const after = {
+        text: button.textContent.trim(),
+        pressed: button.getAttribute('aria-pressed'),
+        scope: PR.state.filterScope,
+      };
+
+      button.click();
+      await new Promise(r => setTimeout(r, 200));
+      return { before, after, restored: PR.state.filterScope };
+    })()`);
+    assert.equal(state.before.text, "Changed only", "the toolbar does not show the default scope");
+    assert.equal(state.before.pressed, "false");
+    assert.match(state.before.placeholder, /searches content/i, "the filter does not say it searches content");
+    assert.equal(state.after.text, "All files", "the button did not switch to all files");
+    assert.equal(state.after.pressed, "true");
+    assert.equal(state.after.scope, "all");
+    assert.equal(state.restored, "changed", "the second click did not switch back");
+  });
+
+  await check("a filter matches file content, not only the file name", async () => {
+    const state = await js(`(async () => {
+      const input = document.getElementById('filter-input');
+      // A distinct string from the fixture's file body that no path contains.
+      const marker = [...document.querySelectorAll('.diff-code')]
+        .map(cell => cell.textContent.trim())
+        .find(text => text.length > 6 && /^[A-Za-z]/.test(text));
+      const pathMisses = !PR.state.files.some(f => f.path.includes(marker));
+      input.value = marker;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      await new Promise(r => setTimeout(r, 900));
+      const shown = [...document.querySelectorAll('#diff-files section.diff-file')].map(s => s.dataset.path);
+
+      input.value = '';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      await new Promise(r => setTimeout(r, 400));
+      return { marker, pathMisses, shown, restored: document.querySelectorAll('#diff-files section.diff-file').length };
+    })()`);
+    assert.ok(state.marker, "the fixture has no text to search for");
+    assert.equal(state.pathMisses, true, "the chosen marker also appears in a path");
+    assert.ok(state.shown.length >= 1, `a content search found nothing: ${state.marker}`);
+    assert.ok(state.restored > state.shown.length, "clearing the filter did not restore the list");
+  });
+
+  await check("filtering closes a file that was open inline", async () => {
+    const state = await js(`(async () => {
+      PR.openInlineFile(PR.state.files[0].path, null);
+      await new Promise(r => setTimeout(r, 700));
+      const opened = !document.getElementById('inline-file-host').classList.contains('hidden');
+
+      const input = document.getElementById('filter-input');
+      input.value = 'Widget';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      await new Promise(r => setTimeout(r, 600));
+      const afterFilter = document.getElementById('inline-file-host').classList.contains('hidden');
+
+      input.value = '';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      await new Promise(r => setTimeout(r, 400));
+      return { opened, afterFilter, files: document.querySelectorAll('#diff-files section.diff-file').length };
+    })()`);
+    assert.equal(state.opened, true, "the inline file did not open");
+    assert.equal(state.afterFilter, true, "filtering left the inline file open under the results");
+    assert.ok(state.files >= 1, "the list was empty after clearing the filter");
+  });
+
   await check("typing in the tree filter does not lose characters or the caret", async () => {
 
 

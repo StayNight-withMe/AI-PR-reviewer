@@ -282,6 +282,7 @@
   window.PR.IDS = {
     FILTER_INPUT: "filter-input",
     TREE_FILTER_INPUT: "tree-filter-input",
+    TOGGLE_SCOPE: "toggle-scope",
     REVIEW_BODY: "review-body",
     REVIEW_NOTE_WRAP: "review-note-wrap",
     REVIEW_NOTE_CHIPS: "review-note-chips",

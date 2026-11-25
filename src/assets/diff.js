@@ -12,8 +12,85 @@
     return state.files.filter(function (file) {
       if (state.settings.hideViewed && state.viewed.has(file.path)) return false;
       if (!query) return true;
-      return file.path.toLowerCase().indexOf(query) !== -1;
+
+      // Content hits from the server widen the match: a filter that only looks
+      // at the path misses a symbol you remember but not the file name.
+      if (state.filterHits && state.filterHits.has(file.path)) return true;
+      if (file.path.toLowerCase().indexOf(query) !== -1) return true;
+
+      var text = searchableText(file);
+      return text.indexOf(query) !== -1;
     });
+  };
+
+
+  // The diff text of a file, lowercased once per render pass.
+  function searchableText(file) {
+    if (file._searchText !== undefined) return file._searchText;
+    var parts = [];
+    var hunks = file.hunks || [];
+    for (var i = 0; i < hunks.length; i += 1) {
+      var lines = hunks[i].lines || [];
+      for (var j = 0; j < lines.length; j += 1) parts.push(lines[j]);
+    }
+    file._searchText = parts.join("\n").toLowerCase();
+    return file._searchText;
+  }
+
+
+  // Asks the server for content hits, so a query can match text that lives
+  // outside the changed hunks of a file.
+  PR.searchInFiles = function (query) {
+    var trimmed = String(query || "").trim();
+    var seq = ++PR.state.filterSearchSeq;
+
+    if (trimmed.length < PR.SEARCH.MIN_LENGTH) {
+      PR.state.filterHits = null;
+      PR.applyFilterHits(seq);
+      return;
+    }
+
+    fetch(PR.API.SEARCH + "?q=" + encodeURIComponent(trimmed))
+      .then(function (response) { return response.json(); })
+      .then(function (result) {
+        if (seq !== PR.state.filterSearchSeq) return;
+        var hits = result && result.ok ? result.hits || [] : [];
+        var paths = new Set();
+        hits.forEach(function (hit) { if (hit && hit.path) paths.add(hit.path); });
+        PR.state.filterHits = paths.size ? paths : null;
+        PR.applyFilterHits(seq);
+      })
+      .catch(function () {
+        if (seq !== PR.state.filterSearchSeq) return;
+        PR.state.filterHits = null;
+        PR.applyFilterHits(seq);
+      });
+  };
+
+
+  PR.applyFilterHits = function (seq) {
+    if (seq !== undefined && seq !== PR.state.filterSearchSeq) return;
+    PR.renderFileList();
+  };
+
+
+  PR.setFilterScope = function (scope) {
+    PR.state.filterScope = scope === "all" ? "all" : "changed";
+    PR.syncFilterScope();
+    PR.renderFileList();
+    if (PR.state.filter.trim()) PR.searchInFiles(PR.state.filter);
+  };
+
+
+  PR.syncFilterScope = function () {
+    var button = document.getElementById(PR.IDS.TOGGLE_SCOPE);
+    if (!button) return;
+    var all = PR.state.filterScope === "all";
+    button.textContent = all ? "All files" : "Changed only";
+    button.setAttribute("aria-pressed", all ? "true" : "false");
+    button.title = all
+      ? "Searching the whole repository; click to search changed files only"
+      : "Searching changed files only; click to search the whole repository";
   };
 
 
@@ -22,15 +99,45 @@
     var files = PR.visibleFiles();
 
     if (!files.length) {
-      PR.setHtml(PR.els.diffFiles, '<div class="empty-state" style="padding:24px">No files match.</div>');
+      var onlyUnchanged = unchangedMatches();
+      PR.setHtml(PR.els.diffFiles, onlyUnchanged.length
+        ? extrasBlock(onlyUnchanged)
+        : '<div class="empty-state" style="padding:24px">No files match.</div>');
       return;
     }
 
-    PR.setHtml(PR.els.diffFiles, files.map(fileSection).join(""));
+    PR.setHtml(PR.els.diffFiles, files.map(fileSection).join("") + extrasBlock(unchangedMatches()));
 
     if (PR.renderComments) PR.renderComments();
     PR.scheduleHydration(files);
   };
+
+
+  // In "all files" scope, a query may also match files that are not part of the
+  // review. They have no diff, so they are offered as links that open the file
+  // instead of pretending to be changed.
+  function unchangedMatches() {
+    if (PR.state.filterScope !== "all") return [];
+    if (!PR.state.filterHits || !PR.state.filterHits.size) return [];
+    var out = [];
+    PR.state.filterHits.forEach(function (path) {
+      if (!PR.state.changedPaths.has(path)) out.push(path);
+    });
+    return out.sort();
+  }
+
+
+  function extrasBlock(paths) {
+    if (!paths.length) return "";
+    return '<div class="unchanged-matches">' +
+      '<div class="unchanged-title">Also found in ' + paths.length + ' unchanged file' +
+        (paths.length === 1 ? "" : "s") + "</div>" +
+      paths.map(function (path) {
+        return '<a class="unchanged-link js-open-file" href="' + PR.fileUrl(path) + '" data-path="' +
+          PR.escapeHtml(path) + '">' + PR.pathHtml(path) + "</a>";
+      }).join("") +
+    "</div>";
+  }
 
 
   PR.scheduleHydration = function (files) {
