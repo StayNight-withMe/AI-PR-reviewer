@@ -389,7 +389,7 @@
     var openFile = target.closest(".js-open-file");
     if (openFile) {
       var section = openFile.closest(PR.SELECTORS.DIFF_FILE);
-      var path = section ? section.dataset.path : PR.P_EMPTY;
+      var path = section ? section.dataset.path : openFile.dataset.path || PR.P_EMPTY;
       var href = openFile.getAttribute("href");
 
       if (wantsNewTab(event)) {
@@ -525,6 +525,9 @@
         PR.renderFileList();
         PR.syncViewedToggle();
         return true;
+      case "toggle-scope":
+        PR.setFilterScope(PR.state.filterScope === "all" ? "changed" : "all");
+        return true;
       case "back-to-last": {
         var last = lastViewedTarget();
         if (last && PR.revealFile(last)) { PR.toast("Jumped to " + last); return true; }
@@ -557,7 +560,10 @@
     if (input.id === PR.IDS.FILTER_INPUT) {
       PR.state.filter = input.value;
       PR.renderFileList();
-      if (PR.closeInlineFile && input.value.trim()) PR.closeInlineFile();
+      // An inline file opened earlier would otherwise sit under the new results
+      // and look like a broken match.
+      if (PR.closeInlineFile) PR.closeInlineFile();
+      if (PR.searchInFiles) PR.searchInFiles(input.value);
       restoreCaret(PR.IDS.FILTER_INPUT);
       return;
     }
@@ -902,6 +908,7 @@
     PR.renderTree();
     PR.renderCommits();
     PR.loadBranches();
+    PR.syncFilterScope();
     PR.renderFileList();
     PR.renderSummary();
     PR.renderProgress();

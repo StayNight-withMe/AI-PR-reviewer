@@ -238,7 +238,8 @@ export async function buildPage(meta, files, stats, allFiles, comments, reviewSt
     <div id="files-tab">
       <div class="gh-sticky-toolbar">
         <div class="toolbar">
-          <input class="gh-input" id="filter-input" placeholder="Filter changed files…" autocomplete="off">
+          <input class="gh-input" id="filter-input" placeholder="Filter changed files… (searches content too)" autocomplete="off">
+          <button class="gh-btn gh-btn-sm" id="toggle-scope" title="Search changed files only, or the whole repository" aria-pressed="false">Changed only</button>
           <button class="gh-btn gh-btn-sm is-toggle" id="toggle-viewed" aria-pressed="false">Hide viewed</button>
           <span class="btn-group" role="group" aria-label="Diff layout">
             <button class="gh-btn gh-btn-sm js-mode-opt" data-mode="unified">Unified</button>
