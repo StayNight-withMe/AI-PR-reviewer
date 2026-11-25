@@ -62,7 +62,7 @@ for (let index = 0; index < argv.length; index += 1) {
   const token = argv[index];
   if (token === "--no-open") flags.open = false;
   else if (token === "--port") { port = Number(argv[index + P.ONE]); index += P.ONE; }
-  else if (token === "--repo") { checkout = argv[index + P.ONE]; index += P.ONE; }
+  else if (token === "--repo") { checkout = argv[index + P.ONE]; flags.userRepo = true; index += P.ONE; }
   else if (!prArgument) prArgument = token;
 }
 
@@ -72,7 +72,59 @@ if (!pr) {
   process.exit(P.ONE);
 }
 
-const root = await resolveRepo(resolve(checkout)).catch(() => null);
+/**
+ * A review needs a Git checkout to fetch the pull request into. When the
+ * command runs outside any repository, make one in the cache: a bare-free
+ * clone of the PR's repository, reused across runs so repeated reviews are
+ * fast and stay up to date.
+ */
+async function prepareScratchCheckout(pr) {
+  const { existsSync } = await import("node:fs");
+  const { mkdir, rm } = await import("node:fs/promises");
+  const { execFile } = await import("node:child_process");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { promisify } = await import("node:util");
+  const exec = promisify(execFile);
+
+  if (!pr.repo) {
+    throw new Error("a plain PR number needs a checkout; pass --repo <path> or use a full URL");
+  }
+
+  const base = join(tmpdir(), "pr-review-mcp");
+  const scratch = join(base, pr.repo.replace(/[\\/]/g, "__"));
+  const git = (...args) => exec("git", args, { windowsHide: true, maxBuffer: 64 * 1024 * 1024 });
+
+  if (existsSync(join(scratch, ".git"))) {
+    // Reuse: fetch the new head instead of cloning every time.
+    await git("-C", scratch, "fetch", "--prune", "origin").catch(() => {});
+  } else {
+    await mkdir(base, { recursive: true });
+    const partial = join(base, `.partial-${Date.now()}`);
+    try {
+      await git("clone", "--filter=blob:none", `https://github.com/${pr.repo}.git`, partial);
+      try { await rm(scratch, { recursive: true, force: true }); } catch { /* fresh reuse */ }
+      await exec("cmd", ["/c", "move", partial.replace(/\//g, "\\"), scratch.replace(/\//g, "\\")], { windowsHide: true }).catch(async () => {
+        await import("node:fs/promises").then((fs) => fs.rename(partial, scratch));
+      });
+    } catch (error) {
+      await rm(partial, { recursive: true, force: true }).catch(() => {});
+      throw new Error(`git clone of https://github.com/${pr.repo}.git failed: ${error.message}`);
+    }
+  }
+  const { resolveRepo } = await import("./git.js");
+  return resolveRepo(scratch);
+}
+
+let root = await resolveRepo(resolve(checkout)).catch(() => null);
+if (!root && !flags.userRepo) {
+  // No checkout here: prepare a scratch clone in the cache, so `pr <url>`
+  // works from any folder — a desktop, a download dir, anywhere.
+  root = await prepareScratchCheckout(pr).catch((error) => {
+    process.stderr.write(`Could not prepare a scratch checkout: ${error.message}\n`);
+    process.exit(P.ONE);
+  });
+}
 if (!root) {
   process.stderr.write(
     `"${resolve(checkout)}" is not a Git repository. Run this command from a checkout of the repository\n`
