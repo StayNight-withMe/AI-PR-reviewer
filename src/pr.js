@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * The `pr` command: open a review of a GitHub pull request from its URL.
  *
