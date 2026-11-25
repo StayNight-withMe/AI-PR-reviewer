@@ -895,6 +895,9 @@
     PR.loadSettings().then(function () {
       PR.applySettings();
       startUi();
+      // GitHub's own "viewed" state wins over localStorage: it is the copy the
+      // person sees on github.com and the one that follows new commits.
+      if (PR.syncViewedFromGitHub) PR.syncViewedFromGitHub();
     });
   }
 

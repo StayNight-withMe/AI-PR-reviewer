@@ -26,6 +26,8 @@ export async function servePage(options) {
     listBranches,
     loadBranchCommits,
     saveThreads,
+    getViewed,
+    setViewed,
     port = SERVER.DEFAULT_PORT,
     host = SERVER.HOST,
     symbols = P.EMPTY_OBJECT,
@@ -49,7 +51,7 @@ export async function servePage(options) {
         request, response, url, html, outputDir, meta, session,
         buildFilePage, readFile, readFiles, loadCommit, loadRange, findUsages, symbols, onReview, onDispatch, onPublish,
         searchProject, renameCommit, listCommits, listBranches, loadBranchCommits,
-        saveThreads,
+        saveThreads, getViewed, setViewed,
       });
       if (!handled) {
         send(response, SERVER.STATUS_NOT_FOUND, SERVER.MIME.TEXT, SERVER.DEFAULT_ERROR);
@@ -208,6 +210,14 @@ async function dispatch(ctx) {
 
   if (post && url.pathname === ROUTES.API_THREADS) {
     return handleThreadsSave(ctx);
+  }
+
+  if (get && url.pathname === ROUTES.API_VIEWED) {
+    return handleViewedGet(ctx);
+  }
+
+  if (post && url.pathname === ROUTES.API_VIEWED) {
+    return handleViewedSet(ctx);
   }
 
   if (get && url.pathname === ROUTES.FAVICON) {
@@ -465,6 +475,60 @@ async function handleThreadsSave({ request, response, saveThreads }) {
     send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, saved }));
   } catch (error) {
     send(response, SERVER.STATUS_ERROR, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: String(error.message) }));
+  }
+  return true;
+}
+async function handleViewedGet({ response, getViewed }) {
+  if (!getViewed) {
+    send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, available: false, files: {} }));
+    return true;
+  }
+
+  try {
+    const viewed = await getViewed();
+    send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({
+      ok: true,
+      available: viewed?.available !== false,
+      id: viewed?.id ?? null,
+      files: viewed?.files ?? P.EMPTY_OBJECT,
+      truncated: viewed?.truncated === true,
+    }));
+  } catch (error) {
+    send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({
+      ok: false,
+      available: false,
+      files: {},
+      error: String(error?.message ?? error),
+    }));
+  }
+  return true;
+}
+
+async function handleViewedSet({ request, response, setViewed }) {
+  if (!setViewed) {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.VIEWED_UNAVAILABLE }));
+    return true;
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(await readBody(request));
+  } catch {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.INVALID_BODY }));
+    return true;
+  }
+
+  const path = typeof payload?.path === P.TYPE_STRING ? payload.path : P.EMPTY;
+  if (!path) {
+    send(response, SERVER.STATUS_BAD_REQUEST, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: SERVER.MISSING_PATH }));
+    return true;
+  }
+
+  try {
+    await setViewed({ path, viewed: payload.viewed === true });
+    send(response, SERVER.STATUS_OK, SERVER.MIME.JSON, JSON.stringify({ ok: true, path, viewed: payload.viewed === true }));
+  } catch (error) {
+    send(response, SERVER.STATUS_ERROR, SERVER.MIME.JSON, JSON.stringify({ ok: false, error: String(error?.message ?? error) }));
   }
   return true;
 }

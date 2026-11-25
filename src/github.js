@@ -294,6 +294,76 @@ export function pullRequestTitle(pr) {
   return pr.title ? `${number}: ${pr.title}` : number;
 }
 
+function splitRepo(repo) {
+  const match = /^([^/]+)\/([^/]+)$/.exec(String(repo ?? P.EMPTY).trim());
+  return match ? { owner: match[P.ONE], name: match[P.TWO] } : null;
+}
+
+async function graphql(repoPath, query, variables) {
+  const result = await gh(repoPath, GH.ARGS_GRAPHQL, {
+    allowFailure: true,
+    input: JSON.stringify({ query, variables }),
+  });
+  if (!result.ok) throw result.error;
+
+  let parsed;
+  try {
+    parsed = JSON.parse(result.stdout);
+  } catch {
+    throw new Error(GH.ERROR_BAD_JSON);
+  }
+  if (Array.isArray(parsed.errors) && parsed.errors.length) {
+    throw new Error(`${GH.ERROR_VIEWED_FAILED}${parsed.errors[P.ZERO]?.message ?? P.EMPTY}`);
+  }
+  return parsed.data;
+}
+
+// GitHub keeps "viewed" per user on its own server, so it survives a new local
+// page, a new port, and a re-review after more commits. Reading it is the only
+// way to show the same files as reviewed in github.com.
+export async function pullRequestViewedFiles(repoPath, repo, number) {
+  const target = splitRepo(repo);
+  if (!target || !number) return { id: null, files: {}, truncated: false };
+
+  const files = {};
+  let cursor = null;
+  let id = null;
+
+  for (let page = P.ZERO; page < GH.VIEWED_PAGE_LIMIT; page += P.ONE) {
+    const data = await graphql(repoPath, GH.GRAPHQL_VIEWED_QUERY, {
+      owner: target.owner,
+      name: target.name,
+      number: Number(number),
+      cursor,
+    });
+
+    const pull = data?.repository?.pullRequest;
+    if (!pull) return { id, files, truncated: false };
+    id = pull.id ?? id;
+
+    const nodes = pull.files?.nodes ?? P.EMPTY_ARRAY;
+    for (const node of nodes) {
+      if (node?.path) files[node.path] = String(node.viewerViewedState ?? GH.VIEWED_STATE.UNVIEWED);
+    }
+
+    if (!pull.files?.pageInfo?.hasNextPage) return { id, files, truncated: false };
+    cursor = pull.files.pageInfo.endCursor ?? null;
+    if (!cursor) return { id, files, truncated: false };
+  }
+
+  return { id, files, truncated: true };
+}
+
+export async function setPullRequestFileViewed(repoPath, { pullRequestId, path, viewed }) {
+  if (!pullRequestId || !path) throw new Error(GH.ERROR_VIEWED_FAILED + "the pull request or file is unknown.");
+
+  await graphql(repoPath, viewed ? GH.GRAPHQL_MARK_VIEWED : GH.GRAPHQL_UNMARK_VIEWED, {
+    pullRequestId,
+    path,
+  });
+  return true;
+}
+
 const REVIEW_FLAGS = {
   APPROVE: GH.FLAG_APPROVE,
   REQUEST_CHANGES: GH.FLAG_REQUEST_CHANGES,

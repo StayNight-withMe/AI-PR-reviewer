@@ -5,43 +5,50 @@
   var PR = window.PR;
 
 
+  // Applies one viewed flag to the page: the state, the section, the tree row.
+  // Used both by the checkbox and by a rollback when GitHub rejects the change.
+  PR.setViewedLocal = function (path, on) {
+    var state = PR.state;
+    if (on) {
+      state.viewed.add(path);
+      state.lastViewedFile = path;
+    } else {
+      state.viewed.delete(path);
+      if (state.lastViewedFile === path) state.lastViewedFile = null;
+    }
+
+    var section = PR.els.diffFiles.querySelector('section[data-path="' + PR.cssEscape(path) + '"]');
+    if (section) {
+      section.classList.toggle("is-viewed", on);
+      var wrap = section.querySelector(".viewed-wrap");
+      if (wrap) wrap.classList.toggle("checked", on);
+
+      if (on && state.settings.collapseViewed) {
+        state.collapsed.add(path);
+        collapseWithAnimation(section);
+      } else if (!on) {
+        state.collapsed.delete(path);
+        section.classList.remove(PR.SELECTORS.COLLAPSED);
+      }
+    } else if (on) {
+      state.collapsed.add(path);
+    }
+
+    PR.updateTreeFileRow(path);
+    PR.renderSummary();
+    PR.renderProgress();
+    PR.store();
+  };
+
+
   PR.toggleViewed = function (path) {
     PR.perf("Viewed", function () {
-      var state = PR.state;
-      var on = !state.viewed.has(path);
+      var on = !PR.state.viewed.has(path);
+      PR.setViewedLocal(path, on);
 
-      if (on) {
-        state.viewed.add(path);
-        state.lastViewedFile = path;
-      } else {
-        state.viewed.delete(path);
-
-        if (state.lastViewedFile === path) state.lastViewedFile = null;
-      }
-
-      var section = PR.els.diffFiles.querySelector('section[data-path="' + PR.cssEscape(path) + '"]');
-      if (section) {
-        section.classList.toggle("is-viewed", on);
-        var wrap = section.querySelector(".viewed-wrap");
-        if (wrap) wrap.classList.toggle("checked", on);
-
-        if (on && state.settings.collapseViewed) {
-
-          state.collapsed.add(path);
-          collapseWithAnimation(section);
-        } else if (!on) {
-
-          state.collapsed.delete(path);
-          section.classList.remove(PR.SELECTORS.COLLAPSED);
-        }
-      } else if (on) {
-        state.collapsed.add(path);
-      }
-
-      PR.updateTreeFileRow(path);
-      PR.renderSummary();
-      PR.renderProgress();
-      PR.store();
+      // GitHub is the storage: the same checkbox state then shows on
+      // github.com and survives new commits pushed to the pull request.
+      if (PR.pushViewedToGitHub) PR.pushViewedToGitHub(path, on);
     });
   };
 

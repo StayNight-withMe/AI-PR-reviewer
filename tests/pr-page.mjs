@@ -261,6 +261,95 @@ try {
     assert.match(posted.comments[0].body, /needs a test/);
   });
 
+  await check("a viewed file is written to GitHub and restored from it", async () => {
+    // Start from a clean GitHub viewed state and a page that shows every file,
+    // so the assertion is about this page and not about leftover settings.
+    const cleanDb = JSON.parse(await readFile(dbPath, "utf8"));
+    cleanDb.viewed = {};
+    await writeFile(dbPath, JSON.stringify(cleanDb));
+
+    await driver.get(started.url);
+    await driver.wait(until.elementLocated(By.css(".diff-file")), 20_000);
+    await driver.wait(async () => driver.executeScript(`return document.body.dataset.booted === '1';`), 15_000);
+    await PAUSE(800);
+
+    await driver.executeScript(`return (function(){
+      PR.state.settings.hideViewed = false;
+      PR.state.settings.collapseViewed = false;
+      PR.applySettings();
+      PR.renderFileList();
+      return true;
+    })();`);
+    await PAUSE(300);
+
+    const before = await driver.executeScript(`return PR.state.viewed.size;`);
+    assert.equal(before, 0, "a file is viewed before anything was checked");
+
+    // Click the Viewed checkbox of the app file and wait for GitHub to store it.
+    await driver.executeScript(`return (function(){
+      var section = [].slice.call(document.querySelectorAll('.diff-file'))
+        .filter(function (n) { return n.dataset.path === 'src/app.ts'; })[0];
+      section.querySelector('.viewed-wrap').click();
+      return true;
+    })();`);
+
+    let stored = null;
+    for (let attempt = 0; attempt < 60 && !stored; attempt += 1) {
+      const db = JSON.parse(await readFile(dbPath, "utf8"));
+      stored = db.viewed?.[String(PR_NUMBER)]?.["src/app.ts"] ?? null;
+      if (!stored) await PAUSE(250);
+    }
+    assert.equal(stored, "VIEWED", "the viewed mark never reached GitHub");
+
+    // Reload: the checkbox must come back from GitHub, not from localStorage.
+    await driver.executeScript(`localStorage.clear(); return true;`);
+    await driver.get(started.url);
+    await driver.wait(until.elementLocated(By.css(".diff-file")), 20_000);
+    await driver.wait(async () => driver.executeScript(`return document.body.dataset.booted === '1';`), 15_000);
+
+    await driver.executeScript(`return (function(){
+      PR.state.settings.hideViewed = false;
+      PR.state.settings.collapseViewed = false;
+      PR.applySettings();
+      PR.renderFileList();
+      return true;
+    })();`);
+    await PAUSE(300);
+
+    let restored = "";
+    let debug = null;
+    for (let attempt = 0; attempt < 60 && !restored; attempt += 1) {
+      const state = await driver.executeScript(`return (function(){
+        var section = [].slice.call(document.querySelectorAll('.diff-file'))
+          .filter(function (n) { return n.dataset.path === 'src/app.ts'; })[0];
+        return {
+          hasSection: !!section,
+          booted: document.body.dataset.booted,
+          viewed: PR.state.viewed.size,
+          has: PR.state.viewed.has('src/app.ts'),
+          cls: section ? section.classList.contains('is-viewed') : null,
+          hasPr: !!(PR.DATA && PR.DATA.pr),
+          hasSync: typeof PR.syncViewedFromGitHub,
+          changed: PR.state.changedPaths.has('src/app.ts'),
+        };
+      })()`);
+      debug = JSON.stringify(state);
+      if (state.has && state.cls) restored = "yes";
+      if (!restored) await PAUSE(250);
+    }
+    assert.equal(restored, "yes", `a file viewed on GitHub was not restored after clearing localStorage: ${debug}`);
+
+    // Unchecking must clear it on GitHub too.
+    await driver.executeScript(`return PR.toggleViewed('src/app.ts');`, true);
+    let cleared = "VIEWED";
+    for (let attempt = 0; attempt < 60 && cleared === "VIEWED"; attempt += 1) {
+      const db = JSON.parse(await readFile(dbPath, "utf8"));
+      cleared = db.viewed?.[String(PR_NUMBER)]?.["src/app.ts"] ?? "UNVIEWED";
+      if (cleared === "VIEWED") await PAUSE(250);
+    }
+    assert.notEqual(cleared, "VIEWED", "unchecking did not clear the mark on GitHub");
+  });
+
   await check("the page raised no JavaScript error", async () => {
     const errors = await driver.executeScript(`return window.__errors || [];`);
     assert.deepEqual(errors, [], `runtime errors: ${JSON.stringify(errors)}`);

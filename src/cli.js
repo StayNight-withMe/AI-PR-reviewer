@@ -2,7 +2,8 @@
 
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
-import { currentBranch, resolveRepo } from "./git.js";
+import { currentBranch } from "./git.js";
+import { parsePrArgument, resolveReviewRoot } from "./checkout.js";
 import { startReview } from "./core.js";
 import { CLI, MODE, P, SERVER } from "./config.js";
 
@@ -39,17 +40,41 @@ const jsonOnly = switches.has("json") || process.env[CLI.ENV.OPEN] === "0";
 const shouldOpen = switches.has("open") || process.env[CLI.ENV.OPEN] === "1";
 
 try {
-  const root = await resolveRepo(repoPath).catch(() => repoPath);
-  const branch = await currentBranch(root);
+  // A pull-request URL or owner/repo#N anywhere in the arguments switches the
+  // bridge into PR mode, exactly like `pr <url>`: the review then works from
+  // any folder, including ones without a Git checkout at all.
+  const positional = process.argv.slice(P.TWO).filter((token) => !token.startsWith("--"));
+  const prArgument = positional.map((token) => parsePrArgument(token)).find(Boolean) ?? null;
+  const prFromFlag = prNumber !== undefined && prNumber !== null && String(prNumber).trim()
+    ? { repo: null, number: Number(String(prNumber).trim()) }
+    : null;
+  const pr = prArgument ?? prFromFlag;
+
+  const root = await resolveReviewRoot({
+    checkout: repoPath,
+    pr,
+    allowScratch: !flags.has("repo"),
+  }).then((r) => r.root);
+
+  if (!root) {
+    throw new Error(
+      `"${repoPath}" is not a Git repository. Open a folder with a checkout of the repository, `
+      + "or pass a full pull-request URL so a scratch checkout can be prepared.",
+    );
+  }
+
+  const branch = pr ? undefined : await currentBranch(root);
 
   const result = await startReview({
     repoPath: root,
-    mode,
+    mode: pr ? MODE.PR : mode,
     base,
     head,
-    pr: prNumber,
+    pr: pr ? pr.number : prNumber,
+    prRepo: pr?.repo ?? undefined,
+    remote: pr?.repo ? `https://github.com/${pr.repo}` : undefined,
 
-    title: title ?? (mode === MODE.PR ? undefined : branch),
+    title: title ?? (pr ? undefined : branch),
     host: SERVER.HOST,
     port: Number.isFinite(port) ? port : SERVER.DEFAULT_PORT,
   });
@@ -61,7 +86,7 @@ try {
     port: result.page.port,
     repo: root,
     branch: result.meta.branch ?? branch,
-    mode,
+    mode: pr ? MODE.PR : mode,
     base: result.meta.base,
     head: result.meta.head,
     pr: result.meta.pr ? result.meta.pr.number : null,
