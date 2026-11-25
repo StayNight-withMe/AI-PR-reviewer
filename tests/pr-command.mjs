@@ -118,6 +118,27 @@ function runFailing(args, { cwd = fixture.repo, timeoutMs = 120_000 } = {}) {
 }
 
 try {
+  // checkout.js keeps its scratch clone in tmpdir()/pr-review-mcp; putting the
+  // fixture there first means the commands reuse it instead of cloning from
+  // github.com (the fixture repository does not exist on the internet).
+  const { promisify } = await import("node:util");
+  const exec = promisify((await import("node:child_process")).execFile);
+  const scratchParent = join(tmpdir(), "pr-review-mcp");
+  const scratch = join(scratchParent, "acme__fixture");
+  let seeded = false;
+
+  async function seedScratchCheckout() {
+    if (seeded) return;
+    seeded = true;
+    const { mkdirSync, existsSync } = await import("node:fs");
+    mkdirSync(scratchParent, { recursive: true });
+    if (!existsSync(join(scratch, ".git"))) {
+      // A leftover from an earlier failed run is reused, not re-cloned over.
+      await rm(scratch, { recursive: true, force: true, maxRetries: 3, retryDelay: 400 }).catch(() => {});
+      await exec("git", ["clone", "--no-hardlinks", fixture.repo, scratch], { windowsHide: true });
+    }
+  }
+
   await check("a full GitHub URL opens the review and prints a local address", async () => {
     const run = await startPr([`https://github.com/acme/fixture/pull/${PR_NUMBER}`, "--no-open"]);
     try {
@@ -176,6 +197,92 @@ try {
     }
   });
 
+  await check("the review command behaves exactly like pr from an empty folder", async () => {
+    // The `review` bin points at the same file, but a broken install used to
+    // route it to the editor bridge, which failed with "not a Git repository".
+    // Going through the real bin file proves the alias serves the same code.
+    const empty = await mkdtemp(join(tmpdir(), "pr-command-review-"));
+    await seedScratchCheckout();
+    try {
+      const reviewBin = join(ROOT, "..", "src", "pr.js");
+      const child = spawn(process.execPath, [reviewBin, `https://github.com/acme/fixture/pull/${PR_NUMBER}`, "--no-open"], {
+        cwd: empty,
+        windowsHide: true,
+        env: {
+          ...process.env,
+          [GH.ENV_BIN]: MOCK_GH,
+          MOCK_GH_DB: dbPath,
+          PR_REVIEW_ARTIFACTS_DIR: join(dbDir, "artifacts"),
+        },
+      });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (chunk) => { stdout += chunk; });
+      child.stderr.on("data", (chunk) => { stderr += chunk; });
+
+      const url = await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(`timeout; stderr=${stderr.slice(0, 300)}`)), 180_000);
+        child.stdout.on("data", () => {
+          const match = /Local page: (http\S+)/.exec(stdout);
+          if (match) { clearTimeout(timer); resolve(match[1]); }
+        });
+        child.on("exit", (code) => { clearTimeout(timer); reject(new Error(`exit ${code}; stderr=${stderr.slice(0, 200)}`)); });
+      });
+
+      const version = await fetch(`${url}api/version`).then((r) => r.json());
+      assert.equal(version.ok, true, "the review alias did not start a working page");
+      const html = await (await fetch(url)).text();
+      assert.match(html, /pr-badge/, "the page from the review alias has no PR badge");
+      child.kill();
+      await PAUSE(800);
+    } finally {
+      await rm(empty, { recursive: true, force: true, maxRetries: 5, retryDelay: 400 }).catch(() => {});
+    }
+  });
+
+  await check("the editor bridge accepts a pull-request URL from an empty folder", async () => {
+    // The Visual Studio / JetBrains bridge goes through cli.js: a PR URL there
+    // used to fail with "This folder is not a Git repository" instead of
+    // preparing a scratch checkout like pr does.
+    const empty = await mkdtemp(join(tmpdir(), "pr-command-cli-"));
+    await seedScratchCheckout();
+    try {
+      const child = spawn(process.execPath, [join(ROOT, "..", "src", "cli.js"), `https://github.com/acme/fixture/pull/${PR_NUMBER}`], {
+        cwd: empty,
+        windowsHide: true,
+        env: {
+          ...process.env,
+          [GH.ENV_BIN]: MOCK_GH,
+          MOCK_GH_DB: dbPath,
+          PR_REVIEW_ARTIFACTS_DIR: join(dbDir, "artifacts"),
+        },
+      });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (chunk) => { stdout += chunk; });
+      child.stderr.on("data", (chunk) => { stderr += chunk; });
+
+      const payload = await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(`timeout; stderr=${stderr.slice(0, 300)}`)), 180_000);
+        child.stdout.on("data", () => {
+          const match = /PR_REVIEW_READY (\{.*\})/.exec(stdout);
+          if (match) { clearTimeout(timer); resolve(JSON.parse(match[1])); }
+        });
+        child.on("exit", (code) => { clearTimeout(timer); reject(new Error(`exit ${code}; stderr=${stderr.slice(0, 200)}`)); });
+      });
+
+      assert.equal(payload.ok, true, "the bridge did not start");
+      assert.equal(payload.mode, "pr", "the bridge did not switch to PR mode");
+      assert.equal(payload.pr, PR_NUMBER, "the bridge did not read the pull request");
+      const version = await fetch(new URL("api/version", payload.url)).then((r) => r.json());
+      assert.equal(version.ok, true, "the bridge page does not answer");
+      child.kill();
+      await PAUSE(800);
+    } finally {
+      await rm(empty, { recursive: true, force: true, maxRetries: 5, retryDelay: 400 }).catch(() => {});
+    }
+  });
+
   await check("an unknown pull request names the problem", async () => {
     const output = await runFailing(["https://github.com/acme/fixture/pull/9999", "--no-open"]);
     assert.match(output, /no pull requests found|Check that the pull request exists/i);
@@ -189,6 +296,7 @@ try {
 } finally {
   await fixture.cleanup();
   await rm(dbDir, { recursive: true, force: true }).catch(() => {});
+  if (typeof scratchParent !== "undefined") await rm(scratch, { recursive: true, force: true }).catch(() => {});
 }
 
 if (failures.length) {

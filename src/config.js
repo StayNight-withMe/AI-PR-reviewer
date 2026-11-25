@@ -117,6 +117,21 @@ export const GH = {
   ARGS_REVIEW: ["pr", "review"],
   ARGS_REVIEW_BODY: ["--body"],
   ARGS_API: ["api"],
+  ARGS_GRAPHQL: ["api", "graphql", "--input", "-"],
+  GRAPHQL_VIEWED_QUERY:
+    "query($owner:String!,$name:String!,$number:Int!,$cursor:String){repository(owner:$owner,name:$name){"
+    + "pullRequest(number:$number){id files(first:100,after:$cursor){"
+    + "nodes{path viewerViewedState} pageInfo{hasNextPage endCursor}}}}}",
+  GRAPHQL_MARK_VIEWED:
+    "mutation($pullRequestId:ID!,$path:String!){markFileAsViewed(input:{pullRequestId:$pullRequestId,path:$path}){pullRequest{id}}}",
+  GRAPHQL_UNMARK_VIEWED:
+    "mutation($pullRequestId:ID!,$path:String!){unmarkFileAsViewed(input:{pullRequestId:$pullRequestId,path:$path}){pullRequest{id}}}",
+  VIEWED_STATE: {
+    VIEWED: "VIEWED",
+    DISMISSED: "DISMISSED",
+    UNVIEWED: "UNVIEWED",
+  },
+  VIEWED_PAGE_LIMIT: 50,
   FLAG_METHOD: "--method",
   FLAG_INPUT: "--input",
   STDIN: "-",
@@ -135,6 +150,7 @@ export const GH = {
   ERROR_PUBLISH_FAILED: "GitHub rejected the review: ",
   ERROR_NOT_A_PR: "This review is not about a pull request, so there is nothing to publish to GitHub.",
   ERROR_PUBLISH_NEEDS_GH: "Publishing a review needs the GitHub CLI (gh) to be installed and logged in.",
+  ERROR_VIEWED_FAILED: "GitHub rejected the viewed-file change: ",
 };
 
 export const SERVER = {
@@ -185,6 +201,7 @@ export const SERVER = {
   MISSING_COMMIT_MESSAGE: "Missing sha or message",
   RENAME_UNAVAILABLE: "Commit renaming is not available",
   THREADS_UNAVAILABLE: "This page cannot store review comments",
+  VIEWED_UNAVAILABLE: "This page cannot change the GitHub viewed state",
 
   NOTE_IMAGE_PREFIX: "note",
   INVALID_BODY: "Invalid JSON body",
@@ -237,6 +254,7 @@ export const ROUTES = {
   API_VERSION: "/api/version",
   API_SETTINGS: "/api/settings",
   API_THREADS: "/api/threads",
+  API_VIEWED: "/api/viewed",
   FAVICON: "/favicon.ico",
 };
 export const QUERY = {
@@ -728,7 +746,7 @@ export const FILEVIEW = {
   DIFF_HEADER_NEW: "+++",
 };
 export const ASSETS = {
-  JS: ["constants.js", "core.js", "highlight.js", "tree.js", "tree-resize.js", "diff.js", "comments.js", "search.js", "commits.js", "settings.js", "occurrences.js", "pathtip.js", "main.js"],
+  JS: ["constants.js", "core.js", "highlight.js", "tree.js", "tree-resize.js", "diff.js", "comments.js", "search.js", "commits.js", "viewed-sync.js", "settings.js", "occurrences.js", "pathtip.js", "main.js"],
   BUNDLE: "hljs-bundle.js",
   STYLES: "styles.css",
 
