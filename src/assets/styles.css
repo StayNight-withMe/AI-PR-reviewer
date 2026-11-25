@@ -827,6 +827,27 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
 .tree-comment-count.is-resolved { color: var(--success); background: rgba(63, 185, 80, 0.16); }
 .empty-state { color: var(--fg-muted); font-size: 12px; }
 
+.unchanged-matches {
+  margin: 12px 14px 24px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-subtle);
+  padding: 10px 12px;
+}
+.unchanged-title {
+  font-size: 12px; font-weight: 600; color: var(--fg-muted);
+  margin-bottom: 8px;
+}
+.unchanged-link {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 3px 0;
+  color: var(--accent-fg);
+  text-decoration: none;
+}
+.unchanged-link:hover { text-decoration: underline; }
+
 .scope-bar {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   padding: 10px 14px;
