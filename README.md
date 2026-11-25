@@ -96,6 +96,36 @@ What the page tells you about a publish:
 - Publishing is only offered for a pull-request review, and only from the full
   pull request — a commit or range view has no lines GitHub would accept.
 
+## Reviewing a GitHub pull request from the terminal
+
+One command opens the review page of any pull request and prints its local
+address:
+
+```bash
+pr https://github.com/owner/repo/pull/123
+pr owner/repo#123
+pr 123                       # the PR of the current branch
+```
+
+It opens the page in the browser, and that page can post the review back to
+GitHub with **Publish to GitHub**. Useful flags: `--no-open` (print the address
+only), `--port 8080`, `--repo <path>` (a checkout to fetch into).
+
+Installed as a package, the command is `pr`; from a checkout it is
+`npm run pr -- https://github.com/owner/repo/pull/123`.
+
+## Updating
+
+```bash
+npm run update -- --check    # is a newer version published?
+npm run update               # install it
+```
+
+The updater compares versions and never downgrades: if the registry lags behind
+your checkout, it says "Up to date". A review command also prints a one-line
+"newer version is available" note at most once a day; set
+`PR_REVIEW_NO_UPDATE_CHECK=1` to switch that off.
+
 ## Installation
 
 Requires Node.js 20 or newer.
