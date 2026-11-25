@@ -48,7 +48,7 @@ try {
   await check("settings are written to the server, not just localStorage", async () => {
     await openPage(first.url);
 
-    assert.deepEqual(await driver.executeScript(`return [document.getElementById('set-tree-indent').value, getComputedStyle(PR.els.tree).getPropertyValue('--tree-indent').trim()]`), ['4', '4px']);
+    assert.deepEqual(await driver.executeScript(`return [document.getElementById('set-tree-indent').value, getComputedStyle(PR.els.tree).getPropertyValue('--tree-indent').trim()]`), ['5', '5px']);
 
 
     await driver.executeScript(`return (function(){
@@ -145,6 +145,23 @@ try {
     assert.equal(state.mode, "unified", "the toolbar choice was lost after a reload");
     assert.equal(state.splitTables, 0, "the page came back in the other layout");
     assert.equal(state.pressed, "true", "the toolbar does not show the stored layout");
+  });
+
+  await check("a stale browser copy does not override the saved settings", async () => {
+
+    // The server holds the person's real choice. A stale localStorage value —
+    // what a different port or an older page left behind — must not win.
+    await driver.executeScript(`return (function(){
+      localStorage.setItem('pr-review:settings:v1', JSON.stringify({ treeIndent: 30, hideViewed: false, theme: 'dark' }));
+      return true;
+    })();`);
+    await openPage(first.url);
+    const state = await driver.executeScript(`return {
+      treeIndent: PR.state.settings.treeIndent,
+      theme: PR.state.settings.theme,
+    };`);
+    assert.equal(state.treeIndent, 24, "a stale browser indent overrode the saved settings");
+    assert.equal(state.theme, "light", "a stale browser theme overrode the saved settings");
   });
 
   await check("a corrupt settings file does not break the page", async () => {

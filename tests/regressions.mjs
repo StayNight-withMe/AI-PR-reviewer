@@ -1325,10 +1325,10 @@ try {
         rendered: indent ? Math.round(indent.getBoundingClientRect().width) : 0,
       };
     })()`);
-    assert.equal(out.constant, 4, "the documented default changed");
-    assert.equal(out.setting, 4, `stored default is ${out.setting}`);
-    assert.equal(out.field, "4", `the settings field shows ${out.field}`);
-    assert.equal(out.rendered, 4, `rendered indent is ${out.rendered}px`);
+    assert.equal(out.constant, 5, "the documented default changed");
+    assert.equal(out.setting, 5, `stored default is ${out.setting}`);
+    assert.equal(out.field, "5", `the settings field shows ${out.field}`);
+    assert.equal(out.rendered, 5, `rendered indent is ${out.rendered}px`);
   });
 
   await check("tree indent size is configurable by typing any value", async () => {
@@ -1350,7 +1350,7 @@ try {
       };
 
       // Narrow values below the old 12px preset must work.
-      for (const size of [6, 8, 10]) results.push(apply(size));
+      for (const size of [5, 6, 8, 10]) results.push(apply(size));
       // Arbitrary values must be accepted.
       results.push(apply(14));
       // Out-of-range input must clamp instead of breaking the layout.

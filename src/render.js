@@ -169,7 +169,7 @@ export async function buildPage(meta, files, stats, allFiles, comments, reviewSt
       min="4" max="48" step="1" list="tree-indent-presets" title="Pixels per nesting level (4-48)">
   </label>
   <datalist id="tree-indent-presets">
-    <option value="4"></option>
+    <option value="5"></option>
     <option value="6"></option>
     <option value="10"></option>
     <option value="12"></option>
@@ -343,34 +343,34 @@ export async function buildPage(meta, files, stats, allFiles, comments, reviewSt
         <input type="radio" name="review-verdict" value="${REVIEW_STATE.REQUEST_CHANGES}"${defaultVerdict === REVIEW_STATE.REQUEST_CHANGES ? " checked" : ""}>
         <span>
           <span class="title">Request changes</span><br>
-          <span class="desc">The AI fixes what the notes say.</span>
+          <span class="desc">${meta.pr ? "Block the pull request until the notes are addressed." : "The AI fixes what the notes say."}</span>
         </span>
       </label>
       <label class="radio-card">
         <input type="radio" name="review-verdict" value="${REVIEW_STATE.APPROVE}">
         <span>
           <span class="title">Approve</span><br>
-          <span class="desc">The work is good. The AI only reads the note and stays hands-off.</span>
+          <span class="desc">${meta.pr ? "Approve the pull request on GitHub." : "The work is good. The AI only reads the note and stays hands-off."}</span>
         </span>
       </label>
       <p class="small muted" style="margin:14px 0 6px">Note (optional)</p>
       <div class="note-wrap" id="review-note-wrap">
         <div class="editor-attach js-note-chips" id="review-note-chips"></div>
-        <textarea class="gh-textarea" id="review-body" placeholder="Anything the AI should know about this review… (paste a screenshot with Ctrl+V)"></textarea>
+        <textarea class="gh-textarea" id="review-body" placeholder="${meta.pr ? "Summary of the review posted to GitHub… (paste a screenshot with Ctrl+V)" : "Anything the AI should know about this review… (paste a screenshot with Ctrl+V)"}"></textarea>
       </div>
       <div class="small muted" style="margin-top:4px">Ctrl+V / drag-drop to attach a screenshot to the note.</div>
       <div class="dispatch-mode" style="margin-top:14px">
-        <label class="radio-line">
+        ${meta.pr ? P.EMPTY : `<label class="radio-line">
           <input type="checkbox" id="dispatch-send" checked>
           <span>Send to the AI</span>
         </label>
-        <span class="small muted">Uncheck to only save review.json / review.md.</span>
+        <span class="small muted">Uncheck to only save review.json / review.md.</span>`}
       </div>
     </div>
     <div class="modal-footer">
       <button class="gh-btn js-close-modal">Cancel</button>
-      <button class="gh-btn ${meta.pr ? '' : 'gh-btn-primary'}" id="btn-dispatch-submit">${meta.pr ? 'Submit locally' : 'Submit'}</button>
-      ${meta.pr ? `<button type="button" class="gh-btn gh-btn-primary" id="btn-publish-github">Publish to GitHub</button>` : P.EMPTY}
+      ${meta.pr ? P.EMPTY : `<button class="gh-btn" id="btn-dispatch-submit">Submit</button>`}
+      ${meta.pr ? `<button type="button" class="gh-btn gh-btn-primary" id="btn-publish-github">Publish to GitHub</button>` : `<button type="button" class="gh-btn gh-btn-primary" id="btn-dispatch-submit">Submit</button>`}
     </div>
     ${meta.pr ? `<p class="small" id="publish-result" role="status" aria-live="polite"></p>` : P.EMPTY}
   </div>
