@@ -1,5 +1,5 @@
 
-import { currentBranch, listCommits, mergeBase, resolveCommit } from "../git.js";
+import { currentBranch, listCommits, mergeBase, parentOrEmptyTree, resolveCommit } from "../git.js";
 import { GIT, P } from "../config.js";
 
 export async function commitsSinceMergeBase(root, base, head, limit) {
@@ -9,7 +9,11 @@ export async function commitsSinceMergeBase(root, base, head, limit) {
   if (!base) return P.EMPTY_ARRAY;
 
   const fork = await mergeBase(root, base, head).catch(() => null);
-  if (!fork) return P.EMPTY_ARRAY;
+  if (!fork) {
+    // No common ancestor (an empty-tree sentinel base): every commit on the
+    // head side is part of this review.
+    return listCommits(root, { range: head, limit });
+  }
 
   const commits = await listCommits(root, {
     range: `${fork}${GIT.RANGE_SEPARATOR_TWO_DOT}${head}`,
@@ -34,7 +38,18 @@ export async function defaultBase(root) {
     if (await resolveCommit(root, candidate)) return candidate;
   }
 
-  return GIT.DEFAULT_BASE;
+  // No remote and no other branch: a local single-branch checkout still has a
+  // history to review. Comparing against the first commit's parent (the empty
+  // tree) shows the whole branch instead of an empty page.
+  const first = await firstCommit(root).catch(() => null);
+  if (first) return await parentOrEmptyTree(root, first).catch(() => null);
+
+  return null;
+}
+
+async function firstCommit(root) {
+  const commits = await listCommits(root, { limit: GIT.MAX_HISTORY }).catch(() => []);
+  return commits.length ? commits[commits.length - P.ONE].sha : null;
 }
 
 export async function loadScopeCommits(root, scope) {

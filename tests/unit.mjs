@@ -431,7 +431,7 @@ test("a branch at its base lists no commits instead of the whole history", async
     await rm(root, { recursive: true, force: true });
   }
 });
-test("without any base branch the commits tab stays empty, never the whole history", async () => {
+test("without any base branch the review covers the whole local history", async () => {
 
 
   const root = await mkdtemp(join(tmpdir(), "pr-review-nobase-"));
@@ -449,8 +449,10 @@ test("without any base branch the commits tab stays empty, never the whole histo
       await git("commit", "-m", `commit ${index}`);
     }
 
+    // A single-branch checkout with no remote has no merge base. The review
+    // then covers the whole history instead of showing an empty page.
     const commits = await loadScopeCommits(root, { commits: [], base: null, head: null });
-    assert.equal(commits.length, 0, `expected no commits without a base, got ${commits.length}`);
+    assert.equal(commits.length, 30, `expected the whole history, got ${commits.length}`);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

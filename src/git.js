@@ -366,8 +366,11 @@ export async function diffUncommitted(repoPath, { includeStaged = true, includeU
     .join(P.EMPTY);
 }
 export async function diffBetween(repoPath, base, head) {
+  // A merge-base range (base...head) needs commits on both sides, and an
+  // empty-tree sentinel (a single-branch checkout with no remote) is a tree,
+  // which git rejects there. The direct two-sided form accepts both.
   const { ok, stdout } = await git(repoPath, [
-    ...GIT.ARGS.DIFF, GIT.END_OF_OPTIONS, `${safeRef(base)}${GIT.RANGE_SEPARATOR}${safeRef(head ?? GIT.DEFAULT_REF)}`,
+    ...GIT.ARGS.DIFF, GIT.END_OF_OPTIONS, safeRef(base), safeRef(head ?? GIT.DEFAULT_REF),
   ]);
   return ok ? stdout : P.EMPTY;
 }

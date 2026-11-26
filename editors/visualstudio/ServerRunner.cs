@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
@@ -72,13 +73,24 @@ namespace PrReview.VisualStudio
 
         private static string BuildArguments(string cliPath, string cwd, string mode, string? baseRef)
         {
-            var builder = new StringBuilder();
-            builder.Append('"').Append(cliPath).Append('"');
-            builder.Append(" --repo \"").Append(cwd).Append('"');
-            builder.Append(" --mode ").Append(mode);
-            if (!string.IsNullOrWhiteSpace(baseRef)) builder.Append(" --base \"").Append(baseRef).Append('"');
-            builder.Append(" --json");
-            return builder.ToString();
+            // Arguments are joined for a Windows command line here, and manual
+            // quoting is how a trailing backslash eats the closing quote and
+            // turns "Z:\repo\" into "Z:\repo\" --mode … as one path. Windows
+            // quoting rule: double the backslashes that precede a quote.
+            string Quote(string value) => "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
+            var parts = new List<string>
+            {
+                Quote(cliPath),
+                "--repo", Quote(cwd),
+                "--mode", mode,
+                "--json",
+            };
+            if (!string.IsNullOrWhiteSpace(baseRef))
+            {
+                parts.Add("--base");
+                parts.Add(Quote(baseRef));
+            }
+            return string.Join(" ", parts);
         }
 
         private static async Task<ReviewInfo> ReadReadyAsync(Process process)

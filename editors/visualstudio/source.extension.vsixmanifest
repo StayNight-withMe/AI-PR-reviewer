@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011">
   <Metadata>
-    <Identity Id="PrReview.VisualStudio" Version="0.1.13" Language="en-US" Publisher="pr-review" />
+    <Identity Id="PrReview.VisualStudio" Version="0.1.15" Language="en-US" Publisher="pr-review" />
     <DisplayName>PR Review</DisplayName>
     <Description xml:space="preserve">Open a GitHub-style review of the current branch in a dockable tab, using the same page the MCP server and the AI use.</Description>
   </Metadata>
