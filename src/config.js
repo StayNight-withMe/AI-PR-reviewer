@@ -317,6 +317,7 @@ export const GIT = {
 
     QUOTE_PATH_OFF: ["-c", "core.quotepath=false"],
     REV_PARSE_TOPLEVEL: ["rev-parse", "--show-toplevel"],
+    REV_PARSE_VERIFY: ["rev-parse", "--verify", "--quiet"],
     BRANCH_SHOW: ["branch", "--show-current"],
     REMOTE: ["remote", "get-url", "origin"],
     BRANCHES: ["branch", "-a", "--format=%(refname:short)"],

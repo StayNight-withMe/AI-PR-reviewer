@@ -64,7 +64,19 @@ export async function resolveRepo(repoPath) {
       `${GIT.ERROR_NOT_A_REPO}${repoPath}${stderr ? ` (${stderr.trim()})` : P.EMPTY}. ${GIT.ERROR_GIT_GUIDE}`,
     );
   }
-  return stdout.trim();
+  const root = stdout.trim();
+
+  // A checkout with no commits is a working repository, but there is nothing
+  // to compare: say so instead of opening an empty review page with 0 files.
+  const { ok: hasHead } = await git(root, [...GIT.ARGS.REV_PARSE_VERIFY, GIT.DEFAULT_REF]);
+  if (!hasHead) throw new Error(GIT.ERROR_EMPTY_REPO);
+
+  const { ok: onBranch, stdout: branch } = await git(root, GIT.ARGS.BRANCH_SHOW);
+  if (!onBranch || !branch.trim() || branch.trim() === GIT.HEAD_ALIAS) {
+    throw new Error(GIT.ERROR_NO_BRANCH);
+  }
+
+  return root;
 }
 export async function currentBranch(repoPath) {
   const { ok, stdout } = await git(repoPath, GIT.ARGS.BRANCH_SHOW);

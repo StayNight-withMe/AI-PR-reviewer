@@ -77,9 +77,19 @@ export async function prepareScratchCheckout(pr) {
  * Resolves a repository root for a review. When the requested folder is not a
  * checkout and the review is about a pull request, a scratch clone is used so
  * a PR URL works from anywhere. Returns null when no checkout can be made.
+ *
+ * A checkouts that exists but cannot be reviewed (a repository with no commits,
+ * a detached HEAD) keeps its own message: falling back to "not a repository"
+ * would hide the real reason.
  */
 export async function resolveReviewRoot({ checkout = process.cwd(), pr = null, allowScratch = true } = {}) {
-  const direct = await resolveRepo(checkout).catch(() => null);
+  let direct = null;
+  let reason = null;
+  try {
+    direct = await resolveRepo(checkout);
+  } catch (error) {
+    reason = error;
+  }
   if (direct) return { root: direct, scratch: false };
 
   if (allowScratch && pr?.repo) {
@@ -87,5 +97,6 @@ export async function resolveReviewRoot({ checkout = process.cwd(), pr = null, a
     return { root, scratch: true };
   }
 
+  if (reason && !String(reason.message).startsWith(GIT.ERROR_NOT_A_REPO)) throw reason;
   return { root: null, scratch: false };
 }

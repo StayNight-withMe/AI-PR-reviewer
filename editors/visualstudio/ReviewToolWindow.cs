@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
+using Microsoft.VisualStudio.PlatformUI;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 namespace PrReview.VisualStudio
@@ -31,6 +32,12 @@ namespace PrReview.VisualStudio
         public ReviewToolWindow() : base(null)
         {
             Caption = "PR Review";
+
+            // A TextBlock inherits the theme foreground only when it is set
+            // explicitly: without this it falls back to black and disappears
+            // on the dark tool-window background.
+            SetResourceForeground(_hint);
+
             _root.Children.Add(_hint);
             _root.Children.Add(_webView);
             Content = _root;
@@ -61,6 +68,17 @@ namespace PrReview.VisualStudio
 
             _webView.NavigationCompleted += OnNavigationCompleted;
             _webView.CoreWebView2InitializationCompleted += OnInitializationCompleted;
+        }
+
+        private static void SetResourceForeground(TextBlock block)
+        {
+            // VS theme brushes: EnvironmentForeground follows the theme, so the
+            // hint stays readable on a dark and on a light tool window instead
+            // of falling back to black.
+            var owner = Application.Current;
+            var brush = owner?.TryFindResource(EnvironmentColors.ToolWindowTextBrushKey)
+                ?? owner?.TryFindResource(EnvironmentColors.SystemWindowTextBrushKey);
+            if (brush is System.Windows.Media.Brush textBrush) block.Foreground = textBrush;
         }
 
         private void OnInitializationCompleted(object? sender, CoreWebView2InitializationCompletedEventArgs e)
