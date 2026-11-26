@@ -12,7 +12,12 @@ const BUILD = join(HERE, "bin", "Release", "net48");
 const STAGE = join(HERE, "obj", "vsix-stage");
 const TEMP = join(HERE, "obj", "vsix-flat.vsix");
 const OUTPUT = join(BUILD, "PrReview.VisualStudio.vsix");
-const VSSDK = "C:\\Users\\Rog\\.nuget\\packages\\microsoft.vssdk.buildtools\\17.9.3168\\tools\\VSSDK";
+// NuGet resolves the global cache from %NUGET_PACKAGES% and falls back to
+// %USERPROFILE%\.nuget\packages; both must work, a hard-coded profile breaks
+// wherever the cache moved.
+const VSSDK = join(process.env.NUGET_PACKAGES
+  ?? join(process.env.USERPROFILE ?? process.env.HOME ?? P.EMPTY, ".nuget", "packages"),
+  "microsoft.vssdk.buildtools", "17.9.3168", "tools", "VSSDK");
 const IDE = "C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\Common7\\IDE";
 
 
