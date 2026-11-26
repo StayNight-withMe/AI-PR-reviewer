@@ -71,8 +71,7 @@ async function resolveBranch(root, params) {
     base,
     head,
   };
-}
-async function resolveRange(root, params) {
+}async function resolveRange(root, params) {
   if (!params.base) throw new Error(SCOPE_ERROR_RANGE_REQUIRES_BASE);
   const head = params.head ?? GIT.DEFAULT_REF;
   return {

@@ -28,8 +28,19 @@ function parseArgs(argv) {
   return { flags, switches };
 }
 const { flags, switches } = parseArgs(process.argv.slice(P.TWO));
+
+// A launcher that quotes by hand can lose a closing quote to a trailing
+// backslash ("Z:\repo\" reads as Z:\repo\" --mode … as one argument). That is
+// fixed at the launcher, but a damaged path must not become "folder does not
+// exist" with a quote in the middle: cut it at the stray quote.
+function cleanPath(value) {
+  const text = typeof value === "string" ? value : P.EMPTY;
+  const quote = text.indexOf('"');
+  return (quote === -1 ? text : text.slice(P.ZERO, quote)).replace(/\\+$/, P.EMPTY) || text;
+}
+
 const pick = (flag, envKey, fallback) => flags.get(flag) ?? process.env[envKey] ?? fallback;
-const repoPath = resolve(pick("repo", CLI.ENV.REPO, process.cwd()));
+const repoPath = resolve(cleanPath(pick("repo", CLI.ENV.REPO, process.cwd())));
 const port = Number(pick("port", CLI.ENV.PORT, String(SERVER.DEFAULT_PORT)));
 const mode = pick("mode", CLI.ENV.MODE, CLI.DEFAULT_MODE);
 const base = pick("base", CLI.ENV.BASE, undefined);
