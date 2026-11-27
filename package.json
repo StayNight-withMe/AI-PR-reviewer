@@ -1,6 +1,6 @@
 {
   "name": "pr-review-mcp",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "GitHub-style pull request review UI as an MCP server: builds a local review page for uncommitted changes, branch commits or explicit commits, collects inline comments and exports the review as Markdown/JSON for an AI.",
   "type": "module",
   "main": "src/index.js",
