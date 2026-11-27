@@ -181,6 +181,14 @@
     MAX_INDENT: 48,
   };
 
+  window.PR.LARGE_FILE_LINES = 400;
+
+  window.PR.FILE_MENU = {
+    EDGE_MARGIN: 8,
+    RIGHT_AUTO: "auto",
+    LEFT_ZERO: "0",
+  };
+
   window.PR.DISPATCH_MODE = {
     DISPATCH: "dispatch",
     PATH: "path",
