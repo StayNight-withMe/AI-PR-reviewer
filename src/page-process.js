@@ -12,6 +12,18 @@ const PAGE_SCRIPT = join(fileURLToPath(new URL(".", import.meta.url)), "..", "sc
 
 export const PAGE_REGISTRY = "page.json";
 
+// Two reviews of the same scope share a review id and therefore an artifact
+// folder. A single page.json let the second page overwrite the first one's
+// entry, so the process that was still starting never found its own registry,
+// waited out the start timeout and fell back to a blocking in-process page.
+// Each page now writes its own file, named after the process that owns it.
+const PAGE_REGISTRY_BASE = "page";
+const REGISTRY_PATTERN = /^page(?:-\d+)?\.json$/;
+
+export function registryFileName(pid) {
+  return pid ? `${PAGE_REGISTRY_BASE}-${pid}.json` : PAGE_REGISTRY;
+}
+
 export function findFreePort() {
   return new Promise((resolve, reject) => {
     const probe = createServer();
@@ -95,17 +107,19 @@ async function findRegistryIn(artifacts, match) {
   for (const folder of folders) {
     if (!folder.isDirectory()) continue;
 
-    const path = join(artifacts, folder.name, PAGE_REGISTRY);
-    try {
-      const entry = JSON.parse(await readFile(path, "utf8"));
+    const files = await readdir(join(artifacts, folder.name)).catch(() => []);
+    for (const file of files) {
+      if (!REGISTRY_PATTERN.test(file)) continue;
 
-
-
-      if (entry?.port && isAlive(entry.pid) && (!match || match(entry))) {
-        return { ...entry, registryPath: path };
+      const path = join(artifacts, folder.name, file);
+      try {
+        const entry = JSON.parse(await readFile(path, "utf8"));
+        if (entry?.port && isAlive(entry.pid) && (!match || match(entry))) {
+          return { ...entry, registryPath: path };
+        }
+      } catch {
+        // A registry that another process is rewriting right now: skip it.
       }
-    } catch {
-
     }
   }
 
@@ -113,7 +127,17 @@ async function findRegistryIn(artifacts, match) {
 }
 
 export async function writePageRegistry(outputDir, entry) {
-  await writeFile(join(outputDir, PAGE_REGISTRY), JSON.stringify(entry, null, SERVER.JSON_INDENT), SERVER.FILE_ENCODING);
+  await writeFile(
+    join(outputDir, registryFileName(entry.pid)),
+    JSON.stringify(entry, null, SERVER.JSON_INDENT),
+    SERVER.FILE_ENCODING,
+  );
+  // Keep the un-suffixed name too: older editors and bridge code look for it.
+  await writeFile(
+    join(outputDir, PAGE_REGISTRY),
+    JSON.stringify(entry, null, SERVER.JSON_INDENT),
+    SERVER.FILE_ENCODING,
+  ).catch(() => undefined);
   return entry;
 }
 

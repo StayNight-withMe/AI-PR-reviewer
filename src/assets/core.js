@@ -146,6 +146,33 @@
   PR.pathHtml = function (path) {
     return PR.escapeHtml(path).replace(/\//g, "/<wbr>");
   };
+
+  // The page is served over plain http from 127.0.0.1, which is not a secure
+  // context in every browser, so navigator.clipboard can be undefined. The
+  // fallback keeps the copy buttons working: a hidden textarea plus the
+  // deprecated but still supported execCommand("copy").
+  PR.copyText = function (text, onDone, onFail) {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(onDone, function () { fallback(); });
+      return;
+    }
+    fallback();
+
+    function fallback() {
+      var area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.opacity = "0";
+      document.body.appendChild(area);
+      area.select();
+      var ok = false;
+      try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+      area.remove();
+      if (ok) { if (onDone) onDone(); }
+      else if (onFail) onFail();
+    }
+  };
   PR.findFile = function (path) {
     var files = PR.state.files;
     for (var i = 0; i < files.length; i += 1) if (files[i].path === path) return files[i];

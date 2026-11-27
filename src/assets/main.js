@@ -681,7 +681,8 @@
     fetch(API.PATHS)
       .then(function (r) { return r.json(); })
       .then(function (res) {
-        navigator.clipboard.writeText(res.jsonPath).then(
+        PR.copyText(
+          res.jsonPath,
           function () { PR.toast("Path copied"); },
           function () { PR.toast(res.jsonPath); },
         );
@@ -691,7 +692,8 @@
 
   function copyFilePath(path, anchor) {
     PR.pressFeedback(anchor);
-    navigator.clipboard.writeText(path).then(
+    PR.copyText(
+      path,
       function () { PR.toast("Copied " + path); },
       function () { PR.toast(path); },
     );
