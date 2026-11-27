@@ -61,11 +61,11 @@
       collapseViewed: true,
       symbolLinks: "on",
       showSidebar: true,
-      treeWidth: 320,
+      treeWidth: PR.TREE_SIZE.DEFAULT_WIDTH,
       treeHidden: false,
       treeIndent: PR.TREE_SIZE.DEFAULT_INDENT,
       autoScrollTree: true,
-      largeFileLines: 400,
+      largeFileLines: PR.LARGE_FILE_LINES,
       openLinksInline: true,
 
       contextCollapseLines: PR.CONTEXT.DEFAULT_COLLAPSE_LINES,
