@@ -677,16 +677,31 @@
   });
 
 
+  // The clipboard write must happen inside the click gesture. Fetching the
+  // path first spends the gesture, and Firefox then refuses writeText. The
+  // path is requested once at startup and reused.
+  var jsonPathPromise = null;
+  function jsonPath() {
+    if (!jsonPathPromise) {
+      jsonPathPromise = fetch(API.PATHS)
+        .then(function (r) { return r.json(); })
+        .then(function (res) { return res.jsonPath; });
+    }
+    return jsonPathPromise;
+  }
+
+  function prefetchJsonPath() { jsonPath().catch(function () {}); }
+
   function copyPath() {
-    fetch(API.PATHS)
-      .then(function (r) { return r.json(); })
-      .then(function (res) {
+    jsonPath()
+      .then(function (path) {
         PR.copyText(
-          res.jsonPath,
+          path,
           function () { PR.toast("Path copied"); },
-          function () { PR.toast(res.jsonPath); },
+          function () { PR.toast(path); },
         );
-      });
+      })
+      .catch(function () { PR.toast(PR.MESSAGES.NO_CONTENT); });
   }
 
 
@@ -893,6 +908,7 @@
 
   function boot() {
     PR.restore();
+    prefetchJsonPath();
 
     PR.loadSettings().then(function () {
       PR.applySettings();

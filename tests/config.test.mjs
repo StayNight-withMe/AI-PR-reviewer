@@ -40,6 +40,12 @@ test("no duplicated route paths", () => {
   const routes = Object.values(CONFIG.ROUTES);
   assert.equal(new Set(routes).size, routes.length);
 });
+test("the engine version matches package.json", async () => {
+  // APP.VERSION is hardcoded and package.json is bumped by hand, so they drift:
+  // the editor bundles then carry a version nobody released.
+  const pkg = JSON.parse(await readFile(join(SRC, "..", "package.json"), "utf8"));
+  assert.equal(CONFIG.APP.VERSION, pkg.version, "src/config.js APP.VERSION and package.json disagree");
+});
 test("client constants mirror server constants", async () => {
   const text = await readFile(join(SRC, "assets", "constants.js"), "utf8");
 

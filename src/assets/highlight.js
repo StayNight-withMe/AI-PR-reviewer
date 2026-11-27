@@ -13,6 +13,11 @@
   var SKIP_HLJS = /hljs-(keyword|string|comment|number|literal|meta|attr|built_in|symbol|bullet|link)/;
 
 
+  // attr and meta wrap dictionary keys and attribute targets, which are real
+  // identifiers: they stay skip-listed for colouring but are linkified anyway.
+  var SKIP_LINKIFY = /hljs-(keyword|string|comment|number|literal|built_in|symbol|bullet|link)/;
+
+
   var USING_OR_NAMESPACE = /^\s*(using|namespace)\b/;
 
 
@@ -162,7 +167,7 @@
     var node;
     while ((node = walker.nextNode())) {
       var parent = node.parentNode;
-      if (parent && SKIP_HLJS.test(parent.className || "")) continue;
+      if (parent && SKIP_LINKIFY.test(parent.className || "")) continue;
       textNodes.push(node);
     }
 
