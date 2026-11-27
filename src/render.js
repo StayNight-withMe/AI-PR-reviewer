@@ -370,8 +370,9 @@ export async function buildPage(meta, files, stats, allFiles, comments, reviewSt
     </div>
     <div class="modal-footer">
       <button class="gh-btn js-close-modal">Cancel</button>
-      ${meta.pr ? P.EMPTY : `<button class="gh-btn" id="btn-dispatch-submit">Submit</button>`}
-      ${meta.pr ? `<button type="button" class="gh-btn gh-btn-primary" id="btn-publish-github">Publish to GitHub</button>` : `<button type="button" class="gh-btn gh-btn-primary" id="btn-dispatch-submit">Submit</button>`}
+      ${meta.pr
+        ? `<button type="button" class="gh-btn gh-btn-primary" id="btn-publish-github">Publish to GitHub</button>`
+        : `<button type="button" class="gh-btn gh-btn-primary" id="btn-dispatch-submit">Submit</button>`}
     </div>
     ${meta.pr ? `<p class="small" id="publish-result" role="status" aria-live="polite"></p>` : P.EMPTY}
   </div>
