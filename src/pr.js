@@ -133,8 +133,6 @@ try {
 }
 
 function openInBrowser(url) {
-  const platform = process.platform;
-  const command = platform === "win32" ? "cmd" : platform === "darwin" ? "open" : "xdg-open";
-  const args = platform === "win32" ? ["/c", "start", P.EMPTY, url] : [url];
-  import("node:child_process").then(({ spawn }) => spawn(command, args, { detached: true, stdio: "ignore" }).unref());
+  // A missing opener must not crash the server: see src/open-browser.js.
+  void import("./open-browser.js").then(({ openInBrowser: open }) => open(url));
 }
