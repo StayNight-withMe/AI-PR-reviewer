@@ -293,6 +293,17 @@ try {
     run.close();
     await PAUSE(1200);
   });
+
+  await check("the bin files keep an LF shebang for Linux and macOS", async () => {
+    // A shebang followed by CRLF reads the interpreter as "node\r", so a
+    // checkout on Windows with core.autocrlf=true installed a command that
+    // fails on Linux with "bad interpreter". .gitattributes pins eol=lf.
+    const { readFile } = await import("node:fs/promises");
+    for (const file of ["pr.js", "cli.js", "index.js"]) {
+      const source = await readFile(join(ROOT, "..", "src", file), "utf8");
+      assert.match(source, /^#!\/usr\/bin\/env node\n/, `${file} has a CRLF or missing shebang`);
+    }
+  });
 } finally {
   await fixture.cleanup();
   await rm(dbDir, { recursive: true, force: true }).catch(() => {});
