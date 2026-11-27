@@ -1,0 +1,10 @@
+# The bin entries start with a shebang. If git checks them out with CRLF, the
+# kernel reads "node\r" as the interpreter and the command fails with
+# "bad interpreter" on Linux and macOS. Force LF for source files.
+*.js text eol=lf
+*.mjs text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.sh text eol=lf

@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-import { spawn } from "node:child_process";
 import { resolve } from "node:path";
 import { currentBranch } from "./git.js";
 import { parsePrArgument, resolveReviewRoot } from "./checkout.js";
 import { startReview } from "./core.js";
+import { openInBrowser as open } from "./open-browser.js";
 import { CLI, MODE, P, SERVER } from "./config.js";
 
 
@@ -126,14 +126,6 @@ try {
 }
 
 function openInBrowser(url) {
-  const platform = process.platform;
-  const command = platform === "win32" ? "cmd" : platform === "darwin" ? "open" : "xdg-open";
-  const args = platform === "win32" ? ["/c", "start", P.EMPTY, url] : [url];
-
-  try {
-    const child = spawn(command, args, { detached: true, stdio: "ignore", windowsHide: true });
-    child.unref();
-  } catch {
-
-  }
+  // A missing opener must not crash the bridge: see src/open-browser.js.
+  open(url);
 }
