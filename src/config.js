@@ -33,7 +33,7 @@ export const P = {
 
 export const APP = {
   NAME: "pr-review",
-  VERSION: "1.3.0",
+  VERSION: "1.3.1",
 
   PROTOCOL_VERSION: "1",
 };
