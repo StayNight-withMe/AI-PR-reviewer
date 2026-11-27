@@ -277,6 +277,45 @@ try {
     assert.equal(linked, 0);
   });
 
+  await check("identifiers inside hljs-attr spans are still linked", async () => {
+    // hljs wraps dictionary keys and attribute targets in hljs-attr, e.g.
+    // [AiErrorCode.Unauthorized] = .... The skip list for colouring used to be
+    // reused for linkification, so every symbol there stayed plain text.
+    const out = await js(`(() => {
+      // Pick a symbol the page would actually link: isUsed() skips names with a
+      // single usage.
+      const usable = Object.keys(PR.SYMBOLS).find((name) => {
+        const list = PR.USAGES[name];
+        if (!Array.isArray(list) || !list.length) return true;
+        return list.reduce((sum, u) => sum + u.count, 0) > 1 || list.length > 1;
+      });
+      if (!usable) return { skip: true };
+
+      const cell = document.createElement('td');
+      cell.className = 'diff-code';
+      cell.innerHTML = '<span class="hljs-attr">[' + usable + '.Value]</span>';
+      document.body.appendChild(cell);
+      PR.linkifyCell(cell);
+      PR.colorizeCell(cell, 'csharp');
+
+      const links = [...cell.querySelectorAll('.sym-link')];
+      const result = {
+        skip: false,
+        symbol: usable,
+        links: links.length,
+        names: links.map(a => a.dataset.name),
+        attrKept: !!cell.querySelector('.hljs-attr'),
+      };
+      cell.remove();
+      return result;
+    })()`);
+
+    if (out.skip) return;
+    assert.ok(out.attrKept, "the hljs-attr wrapper must survive linkification");
+    assert.ok(out.links > 0, `a symbol inside hljs-attr must become a link (tried ${out.symbol})`);
+    assert.ok(out.names.includes(out.symbol), "the link must carry the symbol name");
+  });
+
   await check("Viewed collapses, chevron expands the same content again", async () => {
     const result = await js(`(async () => {
       const section = document.querySelector('.diff-file');
@@ -1181,6 +1220,54 @@ try {
     assert.ok(out.headers > 0, "expected file headers");
     assert.equal(out.withButton, out.headers, "every header must offer a copy-path button");
     assert.ok(out.path, "the button must carry the file path");
+  });
+
+  await check("the copy button works without navigator.clipboard", async () => {
+    const out = await js(`(async () => {
+      const hasHelper = typeof window.PR.copyText === 'function';
+      const button = document.querySelector('.js-copy-path');
+      if (!button) return { hasHelper, skip: true };
+
+      // Simulate a browser where the page is not a secure context: the async
+      // clipboard API is gone and only execCommand is left.
+      const realClipboard = navigator.clipboard;
+      const realSecure = Object.getOwnPropertyDescriptor(window, 'isSecureContext');
+      let fallbackTried = false;
+      const realExec = document.execCommand;
+      try {
+        Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+        Object.defineProperty(window, 'isSecureContext', { value: false, configurable: true });
+        document.execCommand = function (command) {
+          if (command === 'copy') fallbackTried = true;
+          return true;
+        };
+
+        const toast = document.getElementById('toast');
+        if (toast) toast.className = 'toast';
+        button.click();
+        await new Promise(r => setTimeout(r, 1500));
+        return {
+          hasHelper,
+          skip: false,
+          fallbackTried,
+          toastShown: !!toast && /(^|\\s)show(\\s|$)/.test(toast.className),
+          lastToast: toast ? toast.textContent : null,
+          error: null,
+        };
+      } catch (error) {
+        return { hasHelper, skip: false, error: String(error) };
+      } finally {
+        Object.defineProperty(navigator, 'clipboard', { value: realClipboard, configurable: true });
+        if (realSecure) Object.defineProperty(window, 'isSecureContext', realSecure);
+        document.execCommand = realExec;
+      }
+    })()`);
+
+    assert.ok(out.hasHelper, "PR.copyText must exist");
+    if (out.skip) return;
+    assert.equal(out.error, null, `the copy button threw: ${out.error}`);
+    assert.ok(out.fallbackTried, "the fallback must run when navigator.clipboard is missing");
+    assert.ok(out.toastShown, `copying must report something to the person, toast said ${JSON.stringify(out.lastToast)}`);
   });
 
   await check("comment editor spans the whole diff table", async () => {
