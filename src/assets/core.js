@@ -430,8 +430,14 @@
     pop.hidden = false;
     button.setAttribute("aria-expanded", "true");
 
-
-
+    // Anchor left when the menu would overflow the viewport.
+    var flip = PR.FILE_MENU;
+    pop.style.left = PR.P_EMPTY;
+    pop.style.right = PR.P_EMPTY;
+    if (pop.getBoundingClientRect().left < flip.EDGE_MARGIN) {
+      pop.style.right = flip.RIGHT_AUTO;
+      pop.style.left = flip.LEFT_ZERO;
+    }
 
     var section = button.closest(".diff-file");
     if (section) section.classList.add("menu-open");
