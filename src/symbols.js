@@ -42,6 +42,15 @@ const INHERITS_RE = new RegExp(
   "gm",
 );
 
+// Only real source files are scanned for declarations. Markdown and other
+// prose can quote a class declaration in a fenced example, and a definition
+// found there points nowhere useful — it even wins the alphabetical race
+// against the real source file and breaks the "go to definition" link.
+const DECLARATION_EXTENSIONS = new Set([
+  "cs", "ts", "tsx", "js", "jsx", "mjs", "cjs", "py", "rb", "go", "rs",
+  "java", "kt", "php", "swift", "scala", "cpp", "cc", "cxx", "hpp", "h",
+]);
+
 export async function buildSymbolIndex(repoRoot) {
   const paths = await listScannableFiles(repoRoot);
 
@@ -143,35 +152,38 @@ function buildImplementations(implementations) {
 
 function scanFile(declarations, implementations, path, text) {
   const lines = text.split(P.NEWLINE);
+  const scannable = DECLARATION_EXTENSIONS.has(extensionOf(path));
 
-  for (const { kind, re } of PATTERNS) {
-    re.lastIndex = P.ZERO;
-    let match;
+  if (scannable) {
+    for (const { kind, re } of PATTERNS) {
+      re.lastIndex = P.ZERO;
+      let match;
 
-    while ((match = re.exec(text)) !== null) {
-      const name = match[P.ONE];
-      if (!name || name.length < SYMBOL_INDEX.MIN_NAME_LENGTH) continue;
-      if (NEVER_LINK.has(name)) continue;
+      while ((match = re.exec(text)) !== null) {
+        const name = match[P.ONE];
+        if (!name || name.length < SYMBOL_INDEX.MIN_NAME_LENGTH) continue;
+        if (NEVER_LINK.has(name)) continue;
 
-      const line = lineNumberAt(text, match.index);
-      if (isCommentOrString(lines[line - P.ONE] ?? P.EMPTY)) continue;
+        const line = lineNumberAt(text, match.index);
+        if (isCommentOrString(lines[line - P.ONE] ?? P.EMPTY)) continue;
 
-      addUnique(declarations, name, { path, line, kind });
+        addUnique(declarations, name, { path, line, kind });
+      }
     }
-  }
 
-  INHERITS_RE.lastIndex = P.ZERO;
-  let inherit;
+    INHERITS_RE.lastIndex = P.ZERO;
+    let inherit;
 
-  while ((inherit = INHERITS_RE.exec(text)) !== null) {
-    const declKind = inherit[P.ONE];
-    const declName = inherit[P.TWO];
-    const bases = splitBaseList(inherit[P.THREE]);
-    if (!bases.length) continue;
+    while ((inherit = INHERITS_RE.exec(text)) !== null) {
+      const declKind = inherit[P.ONE];
+      const declName = inherit[P.TWO];
+      const bases = splitBaseList(inherit[P.THREE]);
+      if (!bases.length) continue;
 
-    const line = lineNumberAt(text, inherit.index);
-    for (const base of bases) {
-      addUnique(implementations, base, { path, line, name: declName, kind: declKind });
+      const line = lineNumberAt(text, inherit.index);
+      for (const base of bases) {
+        addUnique(implementations, base, { path, line, name: declName, kind: declKind });
+      }
     }
   }
 }

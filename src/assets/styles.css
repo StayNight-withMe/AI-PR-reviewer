@@ -1057,13 +1057,14 @@ mark.occurrence-hl::selection { background: rgba(210, 153, 34, 0.45); }
 .sym-link {
   color: inherit;
   text-decoration: underline;
-  text-decoration-style: dotted;
-  text-decoration-color: color-mix(in srgb, var(--fg-muted) 70%, transparent);
+  text-decoration-style: solid;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in srgb, var(--accent-fg) 60%, transparent);
   text-underline-offset: 3px;
   cursor: pointer;
   border-radius: 2px;
 }
-.sym-link:hover { background: rgba(68, 147, 248, 0.14); text-decoration-style: solid; text-decoration-color: var(--accent-fg); }
+.sym-link:hover { background: rgba(68, 147, 248, 0.14); text-decoration-color: var(--accent-fg); }
 body.no-symlinks .sym-link { text-decoration: none; pointer-events: none; }
 
 .sym-call { color: var(--sym-call); }
